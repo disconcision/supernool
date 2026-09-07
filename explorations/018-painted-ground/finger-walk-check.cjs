@@ -19,6 +19,31 @@ for(let seed=1;seed<=30;seed++){
  assert(!walk.active,'Finite excursion');assert(walk.distance>1);
 }
 assert(successful>25);assert(starts.some(p=>p.x<0)&&starts.some(p=>p.x>0));assert(new Set(starts.map(p=>p.toArray().map(v=>v.toFixed(1)).join(','))).size>20,'Varied start positions');
+// Stumbles are occasional, happen once, freeze the route and recover in order.
+const mishap=['fall','fallen','recover','dazed'];let stumbles=0,stumbleSeed;
+for(let seed=1;seed<=100;seed++){
+ const walk=new FingerWalk(rng(seed));walk.setTerrain(()=>true);assert(walk.startWalk(root,hands,seed%2));
+ const phases=[];let frozenDistance,upright,previous=walk.pose.orientation.clone();
+ for(let i=0;i<2000&&walk.active;i++){
+  const before=walk.phase;walk.update(1/60,true,false,root);
+  assert(previous.angleTo(walk.pose.orientation)<.3,'No rotation jump through a tumble or recovery');previous.copy(walk.pose.orientation);
+  if(before!==walk.phase&&mishap.includes(walk.phase))phases.push(walk.phase);
+  if(walk.phase==='fall'&&before==='walk'){frozenDistance=walk.distance;upright=walk.pose.orientation.clone();assert(frozenDistance>=1.2);}
+  if(mishap.includes(walk.phase))assert.equal(walk.distance,frozenDistance,'Fallen and dazed hands do not travel');
+  if(before==='dazed'&&walk.phase==='walk')assert(walk.pose.orientation.angleTo(upright)<1e-6,'Recovery returns to the original upright heading');
+ }
+ assert(!walk.active);
+ if(phases.length){stumbles++;stumbleSeed??=seed;assert.deepEqual(phases,mishap,'One complete mishap per walk');assert(walk.distance>frozenDistance+.2,'Walking resumes after the daze');}
+}
+assert(stumbles>=12&&stumbles<=36,'A minority of walks include a tumble');
+for(const phase of mishap)for(const urgent of [false,true]){
+ const walk=new FingerWalk(rng(stumbleSeed));walk.setTerrain(()=>true);assert(walk.startWalk(root,hands,0));
+ for(let i=0;i<2000&&walk.phase!==phase;i++)walk.update(1/60,true,false,root);
+ assert.equal(walk.phase,phase);walk.update(1/60,!urgent,true,root);
+ assert(urgent?!walk.active:walk.leaving,'Every tumble phase yields immediately to interaction or gracefully to movement');
+ for(let i=0;i<100&&walk.active;i++)walk.update(1/60,true,true,root);
+ assert(!walk.active,'Movement never waits for the entire daze');
+}
 for(let i=0;i<200;i++){
  const steps=fingerSteps(i/200*.27);assert(steps.filter(s=>s.lift===0).length>=2,'At least two supporting fingers');
  for(const [k,step] of steps.entries()){
@@ -55,4 +80,4 @@ for(const urgent of [false,true]){
  walk.update(1/60,!urgent,true,root);
  assert(urgent?!walk.active:walk.leaving,'Tree contact is immediate; walking gets a lift-off and return');
 }
-console.log('Finger walks: obstacle-safe varied routes, alternating planted/swing toes, reachable finger IK, both hands, mutual exclusion and shared post-activity cooldown passed.');
+console.log('Finger walks: routes, planted/swing toes, IK, hand choice, shared cooldown and interruptible stumble/recovery passed.',{stumbles,outOf:100});

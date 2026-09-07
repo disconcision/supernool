@@ -14,14 +14,15 @@ export function fingerSteps(distance:number):FingerStep[]{
 
 /** A little surface excursion; the path is sampled against a supplied footprint test. */
 export class FingerWalk {
- phase:'rest'|'land'|'walk'|'rise'|'rejoin'='rest';hand=0;age=0;distance=0;
+ phase:'rest'|'land'|'walk'|'fall'|'fallen'|'recover'|'dazed'|'rise'|'rejoin'='rest';hand=0;age=0;distance=0;
  pose:WalkPose={position:new T.Vector3(),orientation:new T.Quaternion()};weight=0;steps=fingerSteps(0);
  route:T.Vector3[]=[];private start!:WalkPose;private startWeight=0;private index=0;private speed=.35;private direction=new T.Vector3(0,0,1);
  private safe?:(p:T.Vector3)=>boolean;
+ private tripAt=Infinity;private tripSide=1;private upright!:WalkPose;private dazeDuration=1.8;
  constructor(private random:()=>number=Math.random){}
  get active(){return this.phase!=='rest';}
  get leaving(){return this.phase==='rise'||this.phase==='rejoin';}
- get state(){return {phase:this.phase,hand:this.hand,distance:this.distance,weight:this.weight,position:this.pose.position.toArray(),route:this.route.map(p=>p.toArray())};}
+ get state(){return {phase:this.phase,age:this.age,hand:this.hand,distance:this.distance,weight:this.weight,position:this.pose.position.toArray(),route:this.route.map(p=>p.toArray())};}
  setTerrain(safe:(p:T.Vector3)=>boolean){this.safe=safe;}
  startWalk(root:T.Object3D,hands:T.Object3D[],hand:number){
   if(!this.safe)return false;
@@ -47,6 +48,9 @@ export class FingerWalk {
   }
   if(this.route.length<9){this.route=[];return false;}
   this.hand=hand;this.index=0;this.distance=0;this.steps=fingerSteps(0);this.weight=0;this.speed=.38+this.random()*.10;
+  // One possible mishap per excursion, after the gait has had time to establish itself.
+  this.tripAt=this.random()<.24?Math.max(1.2,(this.route.length-1)*.16*(.35+this.random()*.3)):Infinity;
+  this.tripSide=this.random()<.5?-1:1;this.dazeDuration=1.6+this.random()*.7;
   this.pose={position:hands[hand].position.clone(),orientation:hands[hand].quaternion.clone()};
   this.direction.copy(this.route[1]).sub(this.route[0]).normalize();this.enter('land');return true;
  }
@@ -72,14 +76,53 @@ export class FingerWalk {
    this.direction.lerp(direction,1-Math.exp(-dt*9)).normalize();
    this.pose=this.groundPose(center);this.steps=fingerSteps(this.distance);this.weight=1;
    if(u>=1){this.index++;if(this.index>=this.route.length-1)this.enter('rise');}
+   if(this.phase==='walk'&&this.distance>=this.tripAt){
+    this.tripAt=Infinity;
+    // The same conservative footprint used for walking must also clear the sideways tip.
+    const side=new T.Vector3(this.direction.z,0,-this.direction.x).multiplyScalar(this.tripSide);
+    if([.1,.2,.3].every(t=>this.safe!(center.clone().addScaledVector(side,t)))){
+     this.upright={position:this.pose.position.clone(),orientation:this.pose.orientation.clone()};this.enter('fall');
+    }
+   }
+  }else if(this.phase==='fall'){
+   const t=T.MathUtils.clamp(this.age/.48,0,1),u=t*t;
+   this.tipPose(u);
+   if(t===1)this.enter('fallen');
+  }else if(this.phase==='fallen'){
+   // A small impact recoil, then a beat to register what happened.
+   const recoil=Math.sin(Math.min(1,this.age/.28)*Math.PI)*.07;
+   this.tipPose(1-recoil);
+   if(this.age>=.52)this.enter('recover');
+  }else if(this.phase==='recover'){
+   const u=smooth(this.age/.95);
+   this.tipPose(1-u);
+   this.pose.position.y+=Math.sin(Math.PI*u)*.07;
+   if(this.age>=.95)this.enter('dazed');
+  }else if(this.phase==='dazed'){
+   const t=T.MathUtils.clamp(this.age/this.dazeDuration,0,1),envelope=Math.sin(Math.PI*t)*(1-t);
+   this.pose.position.copy(this.upright.position);
+   this.pose.orientation.copy(this.upright.orientation)
+    .multiply(new T.Quaternion().setFromAxisAngle(up,Math.sin(this.age*8)*.19*envelope))
+    .multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,0,1),Math.sin(this.age*5)*.22*envelope));
+   // Hesitant toe shuffles rather than continuing the route while disoriented.
+   this.steps=fingerSteps(this.distance+Math.sin(this.age*5)*.018*envelope);
+   if(t===1)this.enter('walk');
   }else if(this.phase==='rise'){
    const u=smooth(this.age/.45);this.pose.position.copy(this.start.position).add(new T.Vector3(0,.4*u,0));this.weight=this.startWeight*(1-u);
+   // Even a fallen hand rights itself as it lifts to follow a moving avatar.
+   this.pose.orientation.copy(this.start.orientation).slerp(this.groundPose(this.pose.position).orientation,u);
    if(this.age>=.45)this.enter('rejoin');
   }else if(this.phase==='rejoin'){
    const u=smooth(this.age/1),escort=new T.Vector3((this.hand?1:-1)*.9,1.03,.22).applyQuaternion(root.quaternion).add(root.position);
    this.pose.position.copy(this.start.position).lerp(escort,u);this.pose.orientation.copy(this.start.orientation).slerp(root.quaternion,u);
    if(this.age>=1)this.cancel();
   }
+ }
+ private tipPose(amount:number){
+  const side=new T.Vector3(this.direction.z,0,-this.direction.x).multiplyScalar(this.tripSide);
+  this.pose.position.copy(this.upright.position).addScaledVector(side,.24*amount);
+  this.pose.position.y-=.12*amount;
+  this.pose.orientation.copy(this.upright.orientation).multiply(new T.Quaternion().setFromAxisAngle(up,-this.tripSide*1.48*amount));
  }
 }
 
