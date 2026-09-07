@@ -111,7 +111,10 @@ for(let i=0;i<8;i++){
 }
 for(const values of Object.values(byKind)){assert(values.length>=3);for(let i=1;i<values.length;i++)assert.notEqual(values[i],values[i-1],'Each activity uses both hands');}
 // Full controller: a voluntary catch ending cannot immediately launch a walk.
-const actor=createLehi(new T.Scene()),stone=new T.Object3D();stone.position.set(1.8,.08,0);actor.setCatchProps([{object:stone,radius:.2,groundY:.08,touch:new T.Vector3()}]);actor.setIdleTerrain(safe);
+const originalRandom=Math.random;Math.random=rng(351);const actor=createLehi(new T.Scene());Math.random=originalRandom;
+// A clearing with local opportunities on all sides isolates scheduling from
+// whether a single distant stone happens to be encountered by a wandering hand.
+actor.setCatchProps(Array.from({length:12},(_,i)=>{const object=new T.Object3D();object.position.set(Math.sin(i*Math.PI/6)*2.8,.08,Math.cos(i*Math.PI/6)*2.8);return {object,radius:.2,groundY:.08,touch:new T.Vector3()};}));actor.setIdleTerrain(safe);
 const camera=new T.PerspectiveCamera();let previousBusy=false,endings=0,sawCatch=false,sawWalk=false,quiet=0;
 for(let i=0;i<12000;i++){
  actor.update(i*1000/60,1/60,false,camera,undefined,undefined,0,false);

@@ -16,7 +16,7 @@ const output='.cache/idle-roam-review';mkdirSync(output,{recursive:true});
   await page.waitForFunction(()=>{const r=JSON.parse(document.querySelector('#world').dataset.idleRoam);return r.phase==='drift'&&r.age>.4;});
   const initial=await read();await page.waitForTimeout(1800);const drifting=await read();
   const travel=drifting.roam.positions.map((p,i)=>Math.hypot(...p.map((v,k)=>v-initial.roam.positions[i][k])));
-  assert(travel.every(d=>d>.1&&d<.65),'Both hands drift gradually');assert.equal(drifting.walk.phase,'rest');assert.equal(drifting.catch.phase,'rest');
+  assert(travel.every(d=>d>=0&&d<.12),'Departure begins very slowly');assert.equal(drifting.walk.phase,'rest');assert.equal(drifting.catch.phase,'rest');
   if(kind!=='roam'){
    await page.waitForFunction(kind=>{const d=document.querySelector('#world').dataset,w=JSON.parse(d.fingerWalk),c=JSON.parse(d.idleCatch);return kind==='held'?c.phase==='notice':kind==='flight'?c.phase==='flight'&&c.age>.15:w.phase==='walk'&&w.age>.2;},kind,{timeout:90000});
    const playing=await read(),root=playing.player.split(',').map(Number),radius=p=>Math.hypot(p[0]-root[0],p[2]-root[1]);

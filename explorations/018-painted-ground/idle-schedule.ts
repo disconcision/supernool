@@ -11,7 +11,8 @@ export class IdleSchedule {
   if(!allowed||this.mode==='rest'){this.remaining=Math.max(7,this.remaining);return;}
   this.remaining=Math.max(0,this.remaining-dt);if(this.remaining>0)return;
   const kind=this.mode==='explore'?'walk':this.mode==='catch-only'?'catch':this.last?(this.last==='walk'?'catch':'walk'):(this.random()<.5?'walk':'catch');
-  this.remaining=3;return {kind,hand:this.handFor(kind)};
+  // Once the quiet period is over, notice brief nearby-stone opportunities.
+  this.remaining=kind==='catch'?.35:3;return {kind,hand:this.handFor(kind)};
  }
  handFor(kind:IdleKind){return 1-this.lastHands[kind];}
  started(kind:IdleKind,hand:number){this.last=kind;this.lastHands[kind]=hand;}

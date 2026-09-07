@@ -29,6 +29,15 @@ export class IdleCatch {
  setProps(props:CatchProp[],safe?:(p:T.Vector3)=>boolean){this.cancel();this.props=props;this.safe=safe??(()=>true);}
  setEnabled(on:boolean){this.enabled=on;if(!on)this.cancel();}
  requestStart(hand:number){this.requestedHand=hand;this.idle=this.cooldown;}
+ /** Catch is an opportunity at the wandering hand, not a trip across the body. */
+ private pickupFor(hand:number,root:T.Object3D,hands:T.Object3D[]){
+  const from=hands[hand].position;
+  return this.props.filter(p=>p.object.visible&&Math.hypot(p.object.position.x-from.x,p.object.position.z-from.z)<=1.6&&
+   Math.hypot(p.object.position.x-root.position.x,p.object.position.z-root.position.z)<4.6&&
+   [0,.2,.4,.6,.8,1].every(t=>{const at=from.clone().lerp(p.object.position,t);return Math.hypot(at.x-root.position.x,at.z-root.position.z)>.8&&this.safe(at);}))
+   .sort((a,b)=>Math.hypot(a.object.position.x-from.x,a.object.position.z-from.z)-Math.hypot(b.object.position.x-from.x,b.object.position.z-from.z))[0];
+ }
+ nearbyHand(root:T.Object3D,hands:T.Object3D[],eligible:boolean[],preferred:number){return [preferred,1-preferred].find(i=>eligible[i]&&!!this.pickupFor(i,root,hands));}
  get disengaging(){return this.phase==='startle'||this.phase==='depart'||this.phase==='rejoin';}
  get active(){return this.phase!=='rest';}
  get state(){return {phase:this.phase,holder:this.holder,separation:this.homes.length?this.homes[0].position.distanceTo(this.homes[1].position):0,stone:this.prop?.object.userData.rockSeed??null,held:this.held,loose:this.loose,throws:this.throws,catches:this.catches,misses:this.misses,sessions:this.sessions,age:this.age,flightTime:this.flightTime,position:this.prop?.object.position.toArray()??null,windupTime:this.windupTime,cue:this.cue,readCue:this.readCue,hands:this.poses.map(p=>({position:p.position.toArray(),orientation:p.orientation.toArray(),grasp:p.grasp}))};}
@@ -116,14 +125,13 @@ export class IdleCatch {
   if(this.phase==='rest'){
    this.drop(dt);if(this.loose)return;if(!canStart){this.idle=0;return;}
    this.idle+=dt;if(this.idle<this.cooldown)return;
-   let nearby=this.props.filter(p=>p.object.visible&&Math.hypot(p.object.position.x-root.position.x,p.object.position.z-root.position.z)<3.2&&this.safe(p.object.position));
+   const candidate=this.requestedHand??this.nearbyHand(root,hands,[true,true],0);this.requestedHand=undefined;
+   const prop=candidate===undefined?undefined:this.pickupFor(candidate,root,hands);
+   if(!prop){this.idle=2;return;}
    const roamed=hands.some(h=>Math.hypot(h.position.x-root.position.x,h.position.z-root.position.z)>1.7);
-   if(roamed){const distant=nearby.filter(p=>Math.hypot(p.object.position.x-root.position.x,p.object.position.z-root.position.z)>1.7);if(distant.length)nearby=distant;}
-   if(!nearby.length){this.idle=2;return;}
-   this.prop=nearby[Math.floor(this.random()*nearby.length)];this.origin.copy(root.position);this.heading.copy(root.quaternion);
+   this.prop=prop;this.holder=candidate!;this.origin.copy(root.position);this.heading.copy(root.quaternion);
    this.home.copy(this.prop.object.position);this.restingRotation.copy(this.prop.object.quaternion);
-   const side=this.home.clone().sub(this.origin).applyQuaternion(this.heading.clone().invert()).x;
-   this.holder=this.requestedHand??(side<0?0:1);this.requestedHand=undefined;this.poses=hands.map(h=>({position:h.position.clone(),orientation:h.quaternion.clone(),grasp:0}));
+   this.poses=hands.map(h=>({position:h.position.clone(),orientation:h.quaternion.clone(),grasp:0}));
    // Keep the roaming bearings; direct controller previews use the original forward stations.
    this.homes=[0,1].map(i=>{const position=this.local((i?1:-1)*(1.5+this.random()*.25),1.25,1.35);if(roamed){const offset=hands[i].position.clone().sub(this.origin).setY(0);offset.setLength(T.MathUtils.clamp(offset.length(),2.5,3.2));position.copy(this.origin).add(offset).setY(1.25);}return {position,orientation:this.rotation(-Math.PI/2),grasp:0};});
    if(roamed&&this.homes[0].position.distanceTo(this.homes[1].position)<3.2){
@@ -146,10 +154,12 @@ export class IdleCatch {
     this.poses=this.starts.map((p,i)=>({...startledPose(p,this.age,i?1:-1),grasp:p.grasp}));this.drop(dt);
     if(this.age>=.2){this.syncHeld();this.depart();}break;
    case 'scout':{
-    const destination=groundPalm();destination.x+=Math.sin(this.age*4)*.1*(1-smooth(this.age/1.7));
+    const destination=groundPalm();
     this.tween(h,destination,down,.04,this.age/1.7);
-    const u=smooth(this.age/1.7),front=this.local(0,.9,1.8);
-    this.poses[h].position.copy(this.starts[h].position).multiplyScalar((1-u)*(1-u)).addScaledVector(front,2*u*(1-u)).addScaledVector(destination,u*u);
+    // Descend locally to the encountered stone; never detour through the
+    // avatar's forward path as the old cross-body scouting arc did.
+    const u=smooth(this.age/1.7);this.poses[h].position.copy(this.starts[h].position).lerp(destination,u);
+    this.poses[h].position.y+=Math.sin(u*Math.PI)*.12;
     if(this.age>=1.7)this.enter('grip');break;
    }
    case 'grip':

@@ -21,6 +21,18 @@ for(let seed=1;seed<=40;seed++){
  assert(!roam.active,'Roaming hands return promptly');root.position.set(0,0,0);
 }
 assert(arrivals>65&&rear>front&&front>5);assert(thresholds.size>20,'Trigger distances vary');
+let curved=0,independent=0;
+for(let seed=1;seed<=30;seed++){
+ const roam=new IdleRoam(rng(seed*37)),hands=makeHands(),start=hands.map(h=>h.position.clone()),length=[0,0];let early=[0,0],later=[0,0];
+ for(let frame=0;frame<15*60;frame++){
+  roam.update(1/60,true,false,false,root,hands);
+  if(roam.phase!=='drift')continue;
+  roam.poses.forEach((p,i)=>{const d=p.position.distanceTo(hands[i].position);length[i]+=d;if(roam.age<2)early[i]+=d;if(roam.age>8&&roam.age<10)later[i]+=d;hands[i].position.copy(p.position);});
+ }
+ for(let i=0;i<2;i++){assert(early[i]<.09,'Departure starts almost imperceptibly');assert(later[i]>early[i]*2,'Drift eases into a modest cruising pace');if(length[i]>hands[i].position.distanceTo(start[i])*1.035)curved++;}
+ if(Math.abs(length[0]-length[1])>.25)independent++;
+}
+assert(curved>45,'Most wandering paths bend noticeably rather than following a line');assert(independent>20,'The hands make different amounts of progress');
 for(const kind of ['roam','spider','upright','held','flight'])for(const urgent of [false,true]){
  const original=Math.random;Math.random=rng(351);const actor=createLehi(new T.Scene());Math.random=original;
  const camera=new T.PerspectiveCamera(),stone=new T.Object3D();stone.position.set(2.6,.08,0);
@@ -49,6 +61,7 @@ for(let seed=1;seed<=30;seed++){
  const game=new IdleCatch(rng(seed*631)),hands=makeHands(),stone=new T.Object3D();stone.position.set(2.6,.08,0);
  // Both hands arrived on the same side, at many different world bearings.
  hands.forEach((h,i)=>h.position.set(2.5,1,(i?1:-1)*.2).applyAxisAngle(new T.Vector3(0,1,0),seed*.7));
+ stone.position.applyAxisAngle(new T.Vector3(0,1,0),seed*.7);
  game.setProps([{object:stone,radius:.2,groundY:.08,touch:new T.Vector3()}]);game.requestStart(seed%2);game.update(1/60,true,root,hands);
  assert(game.active);let separation=game.state.separation;assert(separation>=3.2,'Same-side arrivals still have space for a proper throw');
  for(let frame=0;frame<2400&&game.active;frame++){

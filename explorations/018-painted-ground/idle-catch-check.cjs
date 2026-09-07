@@ -52,6 +52,17 @@ for(const blocked of [false,true])for(let seed=1;seed<=8;seed++){
  assert(frames>65&&frames<120,'Anticipation has time to read without a long pause');assert(positive&&negative&&lag);assert(twist>.4);
  if(!blocked)assert(travel>.15,'The waiting hand visibly wanders before release');
 }
+// Opportunity is local to the actual initiating hand, with no cross-body fetch.
+{
+ const f=fixture();assert.equal(f.game.nearbyHand(f.root,f.hands,[true,true],0),1,'A nearby stone overrides the preferred hand turn');
+ assert.equal(f.game.nearbyHand(f.root,f.hands,[true,false],0),undefined,'An ineligible nearby hand cannot start early');
+ f.game.requestStart(0);f.tick();assert(!f.game.active,'The distant hand does not fetch the other hand’s stone');
+ f.game.requestStart(1);f.tick();assert(f.game.active);assert.equal(f.game.holder,1);
+ while(f.game.phase==='scout'){f.tick();assert(f.game.poses[1].position.x>=.9,'Pickup stays on the stone side of the avatar');assert(f.game.poses[1].position.z<.25,'Pickup has no detour around the front of the avatar');}
+}
+{
+ const f=fixture(2,undefined,p=>p.x<1.15||p.x>1.5);f.game.requestStart(1);f.tick();assert(!f.game.active,'A blocked local approach is skipped');
+}
 // Walking winds down continuously, even if the traveller stops or turns midway.
 for(const phase of ['scout','grip','lift','windup','throw','flight','catch','miss']){
  const f=fixture();f.until(phase);const throws=f.game.throws;
@@ -74,8 +85,9 @@ for(const cause of ['disabled','unreachable','hidden']){
 buildSync({entryPoints:[__dirname+'/lehi.ts'],bundle:true,platform:'node',external:['three'],outfile:'.cache/idle-catch-lehi.cjs'});
 const {createLehi}=require('../../.cache/idle-catch-lehi.cjs');
 for(const cause of ['movement','contact','pin','rewrite','input']){
- const actor=createLehi(new T.Scene()),stone=new T.Object3D(),camera=new T.PerspectiveCamera();stone.position.set(1.8,.08,0);
- actor.setCatchProps([{object:stone,radius:.2,groundY:.08,touch:new T.Vector3()}]);
+ const original=Math.random;let seed=351;Math.random=()=>{seed=(1664525*seed+1013904223)>>>0;return seed/4294967296;};
+ const actor=createLehi(new T.Scene()),camera=new T.PerspectiveCamera();Math.random=original;
+ actor.setCatchProps(Array.from({length:12},(_,i)=>{const object=new T.Object3D();object.position.set(Math.sin(i*Math.PI/6)*2.8,.08,Math.cos(i*Math.PI/6)*2.8);return {object,radius:.2,groundY:.08,touch:new T.Vector3()};}));
  actor.setIdleMode('catch-only');
  for(let i=0;i<3500;i++){
   actor.update(i*16,1/60,false,camera,undefined,undefined,0,false);
