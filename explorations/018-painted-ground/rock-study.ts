@@ -1,3 +1,4 @@
+import {validateScene,type RockPlacement} from '../../scene-tools/schema';
 import {registerRockAuthoring} from './rock-authoring';
 import * as T from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
@@ -65,7 +66,8 @@ export function mountRockStudy(scene:T.Scene,obstacles:{x:number;z:number;r:numb
    const bare=bareRock(o.geometry);
    variants.set(o,{mesh:o,soft,edges,cel,geometry:o.geometry,creased:toCreasedNormals(o.geometry.clone(),Math.PI/8),bare,bareCreased:toCreasedNormals(bare.clone(),Math.PI/8)});
   });
-  const formations:T.Group[]=[];
+  const formations:T.Group[]=[],copies=new Map<string,T.Group>();
+  const copiedScenery=new T.Group();copiedScenery.name='Authored scenery copies';scene.add(copiedScenery);
   const colliders:{x:number;z:number;r:number}[]=[],newTouches:T.Vector3[]=[],enclosingColliders:typeof colliders=[],enclosingTouches:T.Vector3[]=[];
   function place(parent:T.Group,source:T.Group,x:number,z:number,y:number,sx:number,sy:number,sz:number,angle:number){
    const g=new T.Group();g.position.set(x,y,z);g.scale.set(sx,sy,sz);g.rotation.y=angle;parent.add(g);
@@ -128,11 +130,12 @@ export function mountRockStudy(scene:T.Scene,obstacles:{x:number;z:number;r:numb
   const bankSeeds=new Set([9,10,11,12,13,16,17,18]);
   function update(){
    const enclosed=arrangement.value==='enclosed',full=arrangement.value==='full'||enclosed;
+   copiedScenery.visible=full;
    single.visible=arrangement.value==='single';banks.visible=arrangement.value==='full'||arrangement.value==='banks';completion.visible=arrangement.value==='full';enclosing.visible=enclosed;
    originals.forEach(o=>o.visible=full?o.userData.rockSeed>=100:arrangement.value==='original'||!(arrangement.value==='single'?new Set([11,12]):bankSeeds).has(o.userData.rockSeed));
    replacements.forEach(v=>{v.root.material=full?v.clear:v.material;v.root.castShadow=full?false:v.casts;v.children.forEach(c=>c.visible=!full);v.mesh.visible=full;});
    obstacles.splice(0,obstacles.length,...(full?[...(enclosed?enclosingColliders:colliders),...gateObstacles]:oldObstacles));
-   const otherTouches=[...staticTouches,...props.map(o=>{o.updateWorldMatrix(true,false);return o.userData.contact.clone().applyMatrix4(o.matrixWorld) as T.Vector3;})];
+   const otherTouches=[...staticTouches,...allProps().map(o=>{o.updateWorldMatrix(true,false);return o.userData.contact.clone().applyMatrix4(o.matrixWorld) as T.Vector3;})];
    touchPoints.splice(0,touchPoints.length,...(full?[...otherTouches,...(enclosed?enclosingTouches:newTouches)]:oldTouches));
    document.dispatchEvent(new CustomEvent('grow-rock-touch-points',{detail:touchPoints}));
    growthControls.setVisible(growth.value==='raster');
@@ -144,7 +147,9 @@ export function mountRockStudy(scene:T.Scene,obstacles:{x:number;z:number;r:numb
   }
   scene.add(single,banks,completion,enclosing);arrangement.onchange=shading.onchange=growth.onchange=update;
   growthControls.onChange=()=>{decals?.configure(growthControls.settings);status.dataset.patches=String(decals?.count??0);status.dataset.patchCounts=JSON.stringify(decals?.counts??{moss:0,lichen:0});status.dataset.patchSettings=JSON.stringify(growthControls.settings);};
-  const active=()=>formations.filter(g=>g.visible&&g.parent?.visible);
+  const baseActive=()=>formations.filter(g=>g.visible&&g.parent?.visible);
+  const active=()=>[...baseActive(),...[...copies.values()].filter(g=>['basalt-group','bedrock'].includes(g.userData.formation.kind)&&copiedScenery.visible)];
+  const allProps=()=>[...props,...[...copies.values()].filter(g=>['fragment','mushroom'].includes(g.userData.formation.kind)&&copiedScenery.visible)];
   function refreshFormations(refreshGrowth=true){
    const full=['full','enclosed'].includes(arrangement.value);if(!full)return;
    const targets:{x:number;z:number;r:number}[]=[],contacts:T.Vector3[]=[];
@@ -160,18 +165,51 @@ export function mountRockStudy(scene:T.Scene,obstacles:{x:number;z:number;r:numb
     }
    }
    obstacles.splice(0,obstacles.length,...targets,...gateObstacles);
-   const otherTouches=[...staticTouches,...props.map(o=>{o.updateWorldMatrix(true,false);return o.userData.contact.clone().applyMatrix4(o.matrixWorld) as T.Vector3;})];
+   const otherTouches=[...staticTouches,...allProps().map(o=>{o.updateWorldMatrix(true,false);return o.userData.contact.clone().applyMatrix4(o.matrixWorld) as T.Vector3;})];
    touchPoints.splice(0,touchPoints.length,...otherTouches,...contacts);
-   document.dispatchEvent(new CustomEvent('grow-rock-touch-points',{detail:touchPoints}));if(refreshGrowth)decals?.refresh();
+   document.dispatchEvent(new CustomEvent('grow-rock-touch-points',{detail:touchPoints}));if(refreshGrowth){decals?.refresh();status.dataset.patches=String(decals?.count??0);status.dataset.patchCounts=JSON.stringify(decals?.counts??{moss:0,lichen:0});}
   }
   growthControls.setEnabled(!!decals);update();
-  const editable=()=>[...active(),...props.filter(o=>o.visible)];
-  registerRockAuthoring({list:editable,capture:()=>editable().map(g=>({...g.userData.formation,position:g.position.toArray() as [number,number,number],scale:g.scale.toArray() as [number,number,number],yaw:g.rotation.y})),
+  const editable=()=>[...baseActive(),...props.filter(o=>o.visible),...[...copies.values()].filter(()=>copiedScenery.visible)];
+  const baseObjects=new Map([...formations,...props].map(o=>[o.userData.formation.id,o]));
+  function capture():RockPlacement[]{return editable().map(g=>({...g.userData.formation,position:g.position.toArray() as [number,number,number],scale:g.scale.toArray() as [number,number,number],yaw:g.rotation.y}));}
+  function transform(g:T.Object3D,r:RockPlacement){g.position.fromArray(r.position);g.scale.fromArray(r.scale);g.rotation.set(0,r.yaw,0);}
+  function createCopy(r:RockPlacement){
+   const source=baseObjects.get(r.source!)!,g=new T.Group();g.name=source.name+' · copy '+r.id.slice(5,9);g.userData.formation={id:r.id,kind:r.kind,source:r.source};
+   // Construct from the original asset's solid meshes, excluding disposable growth decals
+   // and obsolete hidden stone geometry. Copies share the same shading variants.
+   for(const child of source.children){
+    if(!(child instanceof T.Mesh)||child.name.includes('surface patch')||!child.visible)continue;
+    const v=meshes.find(v=>v.mesh===child),m=child.clone(false);g.add(m);if(v)meshes.push({...v,mesh:m});
+   }
+   if(source.userData.contact)g.userData.contact=(source.userData.contact as T.Vector3).clone();
+   transform(g,r);copiedScenery.add(g);copies.set(r.id,g);
+   if(['basalt-group','bedrock'].includes(r.kind))decals?.add(g,r.kind==='basalt-group',source as T.Group);
+   return g;
+  }
+  function removeCopy(g:T.Group){
+   decals?.remove(g);const members=new Set(g.children);
+   for(let i=meshes.length-1;i>=0;i--)if(members.has(meshes[i].mesh))meshes.splice(i,1);
+   g.removeFromParent();copies.delete(g.userData.formation.id);
+   // Solid geometry/materials are shared with the asset kit; only decal geometry is owned.
+  }
+  function validateLayout(rocks:RockPlacement[]){
+   validateScene({schema:1,sceneId:'validation',title:'Scenery',controls:{rockLayout:arrangement.value},rocks});
+   if(rocks.filter(r=>r.id.startsWith('rock-')).length!==baseActive().length||rocks.some(r=>{
+    const source=baseObjects.get(r.source??r.id);return !source||source.userData.formation.kind!==r.kind||!r.source&&!editable().includes(source);
+   }))throw new Error('This version uses a different scenery asset layout');
+  }
+  registerRockAuthoring({list:editable,capture,
    apply(rocks){
-    const current=editable();if(rocks.filter(r=>r.id.startsWith('rock-')).length!==active().length||rocks.some(r=>!current.some(g=>g.userData.formation.id===r.id&&g.userData.formation.kind===r.kind)))throw new Error('This version uses a different rock asset layout');
+    validateLayout(rocks);
+    for(const g of copies.values())if(!rocks.some(r=>r.id===g.userData.formation.id&&r.source===g.userData.formation.source))removeCopy(g);
     // Older formation-only saves restore loose props to their authored positions.
     for(const o of props){const d=defaults.get(o)!;o.position.copy(d.position);o.scale.copy(d.scale);o.rotation.set(0,d.yaw,0);}
-    for(const r of rocks){const g=current.find(g=>g.userData.formation.id===r.id)!;g.position.fromArray(r.position);g.scale.fromArray(r.scale);g.rotation.set(0,r.yaw,0);}refreshFormations();
+    for(const r of rocks){const g=r.source?(copies.get(r.id)??createCopy(r)):baseObjects.get(r.id)!;transform(g,r);}update();refreshFormations();
+   },
+   paste(placement){
+    const r={...placement,id:'copy-'+crypto.randomUUID(),source:placement.source??placement.id};
+    validateLayout([...capture(),r]);const g=createCopy(r);update();refreshFormations();return g;
    },refresh:refreshFormations});
 
   arrangement.disabled=shading.disabled=growth.disabled=false;status.textContent=decals?'Rock formations ready':'Rock formations ready · texture unavailable; simple patches retained';

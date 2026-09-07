@@ -227,3 +227,10 @@ The enclosing comparison retains all 14 groups and their scales. Its obstructing
 On port 3101, Inspect → Scene → Edit scenery now uses a one-pixel visible-silhouette outline and a combined move / yaw / proportional-size widget. Green Y is height; red X and blue Z are ground directions. The outer arc turns, and the cream square scales. Q restores all handles; W/E/R isolate a tool. Handles render above atmosphere, and picking respects opaque occlusion.
 
 The object list separates formations, 17 loose stones, and 36 individual mushrooms (cap + stem). Attached formation fragments remain grouped. Puzzle gates, tree, avatar and painted terrain stay gameplay-owned. Prop transforms participate in undo/redo and scene saves; old formation-only saves load with props at their authored defaults. Formation collisions, projected growth and prop hand-contact points refresh after edits. This remains work on `codex/scene-editor`, not a change to the other task’s main checkout.
+
+
+### Scenery copy / paste
+
+The isolated scene editor now exposes Copy, Paste and Duplicate below the object selector, with Cmd/Ctrl+C, V and D shortcuts while editing scenery. Pasted objects are selected and offset one unit on each ground axis per successive paste, ready for placement. Copy captures the current transform; later edits to the original do not change the clipboard. Text inputs keep their normal clipboard behavior.
+
+The scenery clipboard persists in browser storage across reload and works between scenes on the same editor origin. It is separate from the OS text clipboard. Copied formations, loose stones and mushrooms participate in undo/redo, saved versions and defaults. Formation copies share geometry/shading assets, retain the source growth pattern seed, and have independent projected growth, collision footprints and hand contacts. Copies of copies store the original asset reference, and earlier saves remain readable. `npm run test:clipboard` exercises these paths in Chrome.

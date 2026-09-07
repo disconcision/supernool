@@ -15,6 +15,8 @@ export function mountSceneEditor(scene:T.Scene,camera:T.Camera,renderer:T.WebGLR
  <div class="editorButtons"><button id="editScene">Edit scenery</button><button id="undoScene" disabled>Undo</button><button id="redoScene" disabled>Redo</button></div>
  <fieldset id="rockTools" disabled hidden><legend>Scenery layout</legend>
  <label>Object<select id="editorSelection"><option value="">Select scenery in the scene</option></select></label>
+ <div class="editorButtons"><button id="copyScenery" disabled title="Copy selected scenery · Cmd/Ctrl+C">Copy</button><button id="pasteScenery" disabled title="Paste a copy nearby · Cmd/Ctrl+V">Paste</button><button id="duplicateScenery" disabled title="Copy and paste selected scenery · Cmd/Ctrl+D">Duplicate</button></div>
+ <small id="sceneryClipboard" role="status">Scenery clipboard empty · Cmd/Ctrl+C to copy, V to paste, D to duplicate.</small>
  <label>Tool<select id="editorTool"><option value="combined">All handles · Q</option><option value="translate">Move · W</option><option value="rotate">Rotate · E</option><option value="scale">Scale · R</option></select></label>
  <label><span>Snap to increments</span><input id="editorSnap" type="checkbox" checked></label>
  <div class="editorNumbers"><label>X<input id="editorX" type="number" step=".25" min="-80" max="80"></label><label>Height · Y<input id="editorY" type="number" step=".1" min="-10" max="20"></label><label>Z<input id="editorZ" type="number" step=".25" min="-80" max="80"></label><label>Yaw °<input id="editorYaw" type="number" step="5"></label><label>Size ×<input id="editorScale" type="number" step=".1" min=".1" max="8"></label></div>
@@ -42,6 +44,8 @@ export function mountSceneEditor(scene:T.Scene,camera:T.Camera,renderer:T.WebGLR
  let lastSaved:SceneVersion|undefined;
  let past:RockPlacement[][]=[],future:RockPlacement[][]=[],savedId='',defaultId:string|null=null;
  let operation=false;
+ const clipboardKey='supernool-scenery-clipboard-v1';
+ let clipboard:RockPlacement|undefined,pasteCount=0,clipboardText='';
  const active=()=>rockAuthoring?.list()??[];
  function message(text:string){status.textContent=text;}
  function markDirty(){if(loading)return;dirty=true;page.dataset.dirty='true';message('Unsaved changes · save a new version to keep them.');}
@@ -55,14 +59,14 @@ export function mountSceneEditor(scene:T.Scene,camera:T.Camera,renderer:T.WebGLR
   if(!selected)return;input('editorX').value=selected.position.x.toFixed(2);input('editorY').value=selected.position.y.toFixed(2);input('editorZ').value=selected.position.z.toFixed(2);input('editorYaw').value=T.MathUtils.radToDeg(selected.rotation.y).toFixed(1);input('editorScale').value=selected.scale.x.toFixed(2);
   banner.textContent='EDITING · '+selected.name+' · Q all handles · W/E/R single tool · Esc play';
  }
- function choose(g?:T.Object3D){selected=g;gizmo.attach(editing?g:undefined);select.value=g?.userData.formation.id??'';showValues();if(!g)banner.textContent='EDITING · select scenery · Esc play';}
+ function choose(g?:T.Object3D){selected=g;gizmo.attach(editing?g:undefined);select.value=g?.userData.formation.id??'';showValues();if(!g)banner.textContent='EDITING · select scenery · Esc play';clipboardButtons();}
  function mode(){gizmo.configure(input('editorTool').value as 'combined'|'translate'|'rotate'|'scale',input('editorSnap').checked);}
  function setEditing(on:boolean){
   if(on&&!hooks.canEdit()){message('Finish the current gesture before editing.');return;}
   if(on&&!['full','enclosed'].includes(input('rockLayout').value)){message('Choose Approved formations or More enclosing in Appearance first.');return;}
   editing=on;hooks.setEditing(on);document.body.dataset.sceneEditing=String(on);page.dataset.editing=String(on);banner.hidden=!on;banner.textContent='EDITING · select scenery · Esc returns to play';
   input('editScene').textContent=on?'Play scene':'Edit scenery';$<HTMLFieldSetElement>('rockTools').disabled=!on;$('rockTools').hidden=!on;orbit.enabled=true;
-  if(on)refreshSelection();gizmo.attach(on?selected:undefined);mode();renderer.domElement.style.cursor='';
+  if(on)refreshSelection();gizmo.attach(on?selected:undefined);mode();renderer.domElement.style.cursor='';clipboardButtons();
  }
  input('editScene').onclick=()=>setEditing(!editing);select.onchange=()=>choose(active().find(g=>g.userData.formation.id===select.value));
  input('editorTool').onchange=input('editorSnap').onchange=mode;
@@ -84,9 +88,57 @@ export function mountSceneEditor(scene:T.Scene,camera:T.Camera,renderer:T.WebGLR
   else selected.position.setComponent(['editorX','editorY','editorZ'].indexOf(id),T.MathUtils.clamp(v,id==='editorY'?-10:-80,id==='editorY'?20:80));
   rockAuthoring!.refresh();showValues();record(before);
  };
- function undo(redo=false){const from=redo?future:past,to=redo?past:future,state=from.pop();if(!state)return;to.push(rockAuthoring!.capture());rockAuthoring!.apply(state);showValues();history();markDirty();}
+ function readClipboard(){
+  try{
+   const text=localStorage.getItem(clipboardKey);if(text&&text!==clipboardText){
+    const value=JSON.parse(text);validateScene({schema:1,sceneId:'clipboard',title:'Scenery',controls:{rockLayout:'full'},rocks:[value]});
+    clipboard=value;clipboardText=text;pasteCount=0;
+   }
+  }catch{/* Keep a usable in-memory clipboard if browser storage is unavailable. */}
+  return clipboard;
+ }
+ function clipboardButtons(){
+  input('copyScenery').disabled=input('duplicateScenery').disabled=!editing||!selected;
+  input('pasteScenery').disabled=!editing||!readClipboard();
+  $('sceneryClipboard').textContent=clipboard?'Copied '+(active().find(g=>g.userData.formation.id===(clipboard!.source??clipboard!.id))?.name??clipboard.kind)+' · Cmd/Ctrl+V pastes nearby.':'Scenery clipboard empty · Cmd/Ctrl+C to copy, V to paste, D to duplicate.';
+ }
+ function copySelection(){
+  if(!editing||!selected||gizmo.dragging)return;
+  const data=rockAuthoring!.capture().find(r=>r.id===selected!.userData.formation.id);if(!data)return;
+  clipboard=JSON.parse(JSON.stringify(data));clipboardText=JSON.stringify(clipboard);pasteCount=0;
+  try{localStorage.setItem(clipboardKey,clipboardText);}catch{}
+  clipboardButtons();message('Copied '+selected.name+' to the scenery clipboard.');
+ }
+ function pasteSelection(){
+  if(!editing||gizmo.dragging)return;const data=readClipboard();if(!data){message('Copy a scenery object first.');return;}
+  if(active().length>=100){message('This study supports up to 100 scenery objects. Undo an addition before pasting more.');return;}
+  const before=rockAuthoring!.capture(),step=pasteCount+1;
+  const offset=(n:number)=>n+(n+step<=80?step:-step);
+  const placement={...data,position:[offset(data.position[0]),data.position[1],offset(data.position[2])] as [number,number,number]};
+  try{const g=rockAuthoring!.paste(placement);pasteCount=step;refreshSelection();choose(g);record(before);message('Pasted '+g.name+' · drag to place it. Save version to keep this addition.');}
+  catch(e){message((e as Error).message);}
+ }
+ input('copyScenery').onclick=copySelection;input('pasteScenery').onclick=pasteSelection;
+ input('duplicateScenery').onclick=()=>{if(!selected)return;copySelection();pasteSelection();};
+ addEventListener('storage',e=>{if(e.key===clipboardKey)clipboardButtons();});
+ function undo(redo=false){
+  if(gizmo.dragging)return;const from=redo?future:past,to=redo?past:future,state=from.pop();if(!state)return;
+  const before=rockAuthoring!.capture(),id=selected?.userData.formation.id,source=selected?.userData.formation.source;
+  to.push(before);rockAuthoring!.apply(state);refreshSelection();
+  const added=state.find(r=>!before.some(p=>p.id===r.id));choose(active().find(g=>g.userData.formation.id===(added?.id??id))??active().find(g=>g.userData.formation.id===source));history();markDirty();
+ }
  input('undoScene').onclick=()=>undo();input('redoScene').onclick=()=>undo(true);
- addEventListener('keydown',e=>{if(!editing||(e.target as HTMLElement).matches('input,select,textarea'))return;if(e.key==='Escape'){e.preventDefault();setEditing(false);}else if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='z'){e.preventDefault();undo(e.shiftKey);}else if(['q','w','e','r'].includes(e.key.toLowerCase())){input('editorTool').value=({q:'combined',w:'translate',e:'rotate',r:'scale'} as any)[e.key.toLowerCase()];mode();}});
+ addEventListener('keydown',e=>{
+  const target=e.target as HTMLElement,key=e.key.toLowerCase();
+  if(!editing||target.closest('input,textarea,[contenteditable="true"]'))return;
+  if(e.metaKey||e.ctrlKey){
+   if(['c','v','d','z'].includes(key)){e.preventDefault();if(e.repeat)return;
+    if(key==='c')copySelection();else if(key==='v')pasteSelection();else if(key==='d'){if(selected){copySelection();pasteSelection();}}else undo(e.shiftKey);
+   }return;
+  }
+  if(target.matches('select'))return;
+  if(e.key==='Escape'){e.preventDefault();setEditing(false);}else if(['q','w','e','r'].includes(key)){input('editorTool').value=({q:'combined',w:'translate',e:'rotate',r:'scale'} as any)[key];mode();}
+ });
  const controlElements=()=>Array.from(document.querySelectorAll<HTMLInputElement|HTMLSelectElement>('.dock input,.dock select')).filter(e=>!e.closest('#sceneEditor')&&(e.id||e.dataset.rule));
  function fingerprint(data:SceneVersion){return JSON.stringify({controls:data.controls,rocks:data.rocks},(_key,v)=>typeof v==='number'?Math.round(v*100000)/100000:typeof v==='string'&&v!==''&&Number.isFinite(+v)?Math.round(+v*100000)/100000:v);}
  function capture():SceneVersion{
