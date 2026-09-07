@@ -83,3 +83,13 @@ Latest feedback asks for more cloud-like billowing, a little more texture, brief
 ## Round 08 · shadow versions of living canopy constructions
 
 S7–S9 in `shadow.html` explore the living G1/G3/G2 patch layouts as shadow coverage: painted canopy, fibrous hanging shade and turbulent upright banks. The prior volume clouds remain. See [patch-shadow-notes.md](patch-shadow-notes.md) for the separate coverage pass, comparisons, visual revisions and limitations. No new generated paintings or playable-scene changes.
+
+### Round 08 · mixed lightning scales
+
+The user wants frequent small discharges, occasional medium arcs and substantially rarer large strikes. `Lightning mix` in `shadow.html` now exposes independent base rates (1.2 / .16 / .035 per second), three reach controls, rock-contact fraction and flash duration. Agitation multiplies rates by 1 + 1.5 × agitation. Preview buttons freeze small/medium/branch/rock examples; Resume animation restores the mixture. S1–S3 retain their historical renderer with these controls disabled.
+
+Small paths follow exposed canopy borders; medium forked paths bridge cloud groups; large paths connect projected points along current host members to other members or one of the study rocks. Reach chooses contact distance rather than shortening a bolt before it arrives. Strokes are a screen-space effect attached to 3D contacts, with host/sigil masking; they are not a physical discharge solver and do not yet produce transient environment lighting or strike arbitrary scene objects. The current two point lights and mock terrain remain unchanged pending discussion.
+
+Read-only browser inspection captured only defaults after the user's reset; the earlier preferred settings were not recovered. Do not describe the defaults as user-selected.
+
+Validation: `lightning-mix-check.cjs` checks independent event counts, disabled streams, short flashes, finite fork geometry and endpoint contact. Browser review compared all four previews and a rock strike during a regroup tween; no WebGL errors observed. Small strokes retain a faint contribution over canopy gaps so the patch mask does not erase them entirely. Medium/large strokes can cross open air, but still protect wood/sigils. Renderer loops are bounded at 80 segments, and exposed-border candidates are cached per event.

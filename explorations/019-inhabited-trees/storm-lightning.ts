@@ -4,16 +4,16 @@ export type ProjectedLobe={x:number;y:number;rx:number;ry:number};
 export type LightningMemory={key?:string;picks?:{index:number;angle:number}[]};
 export type BoltSegment={a:T.Vector2;b:T.Vector2;weight:number};
 // Short discharge paths on exposed cloud borders. No branch endpoints are used.
-export function exteriorLightning(lobes:ProjectedLobe[],time:number,anger:number,memory:LightningMemory={}){
+export function exteriorLightning(lobes:ProjectedLobe[],time:number,anger:number,memory:LightningMemory={},size=1){
  const rate=.65+anger*1.5,slot=Math.floor(time*rate),phase=time-slot/rate;
  const delay=hash('delay'+slot)*.16,duration=.055+anger*.035;
  const envelope=(t:number)=>t>=0&&t<duration?Math.pow(1-t/duration,.65):0;
  const power=(envelope(phase-delay)+envelope(phase-delay-duration-.045)*.32)*(.28+anger*.85);
  const segments:BoltSegment[]=[];if(power===0||!lobes.length)return {segments,power,slot};
- const candidates:{l:ProjectedLobe;angle:number}[]=[],span=.38+anger*.68;
+ const candidates:{l:ProjectedLobe;angle:number}[]=[],span=(.38+anger*.68)*size;
  const exposed=(p:T.Vector2,own:ProjectedLobe)=>!lobes.some(l=>l!==own&&((p.x-l.x)/l.rx)**2+((p.y-l.y)/l.ry)**2<.99);
  const at=(l:ProjectedLobe,a:number)=>new T.Vector2(l.x+Math.cos(a)*l.rx,l.y+Math.sin(a)*l.ry);
- const key=slot+':'+anger+':'+lobes.length;
+ const key=slot+':'+anger+':'+size+':'+lobes.length;
  if(memory.key!==key){
  for(const l of lobes)for(let i=0;i<32;i++){const angle=i*Math.PI/16;if([0,.25,.5,.75,1].every(t=>exposed(at(l,angle+span*t),l)))candidates.push({l,angle});}
  if(!candidates.length)return {segments,power:0,slot};
@@ -29,4 +29,64 @@ export function exteriorLightning(lobes:ProjectedLobe[],time:number,anger:number
  p.add(new T.Vector2(-Math.sin(direction),Math.cos(direction)).multiplyScalar((hash('fork'+slot+':'+j+':'+f+':bend')-.5)*length*.3));segments.push({a:prev,b:p,weight:.48-f*.065});prev=p;}}
  }
  return {segments,power,slot};
+}
+
+
+export type ArcClass='small'|'medium'|'large';
+export type ArcSettings={smallRate:number;mediumRate:number;largeRate:number;smallSize:number;mediumSize:number;largeSize:number;rockShare:number;duration:number};
+export const arcDefaults:ArcSettings={smallRate:1.2,mediumRate:.16,largeRate:.035,smallSize:1,mediumSize:1,largeSize:1,rockShare:.55,duration:1};
+export type MixedSegment=BoltSegment&{power:number;free:boolean};
+export type ArcPreview=ArcClass|'rock'|'branch';
+// Separate deterministic clocks: rare events never replace the small flickers.
+export function arcEvent(kind:ArcClass,time:number,anger:number,o:ArcSettings){
+ const rate=o[kind+'Rate' as keyof ArcSettings]*(1+anger*1.5);
+ if(rate<=0)return {slot:0,power:0};
+ const slot=Math.floor(time*rate),start=(slot+.12+hash(kind+slot+'onset')*.65)/rate;
+ const duration=({small:.055,medium:.075,large:.10}[kind])*o.duration;
+ const age=time-start,flash=(t:number)=>t>=0&&t<duration?Math.pow(1-t/duration,.65):0;
+ return {slot,power:flash(age)+(kind==='small'?0:flash(age-duration-.035)*.32)};
+}
+function forkedPath(a:T.Vector2,b:T.Vector2,key:string,weight:number):BoltSegment[]{
+ const axis=b.clone().sub(a),normal=new T.Vector2(-axis.y,axis.x).normalize(),length=axis.length(),points:T.Vector2[]=[],segments:BoltSegment[]=[];
+ for(let i=0;i<=12;i++){
+ const t=i/12,p=a.clone().lerp(b,t);
+ p.addScaledVector(normal,Math.sin(Math.PI*t)*(Math.sin(t*Math.PI*2+hash(key)*6)*.055+(hash(key+i+'bend')-.5)*.12)*length);
+ points.push(p);if(i)segments.push({a:points[i-1],b:p,weight:weight*(1-i*.016)});
+ }
+ for(const j of [4,8]){const origin=points[j],end=origin.clone().addScaledVector(axis,.17).addScaledVector(normal,length*(j===4?.16:-.12));let last=origin;
+ for(let i=1;i<=4;i++){const p=origin.clone().lerp(end,i/4).addScaledVector(normal,(hash(key+j+':'+i)-.5)*length*.035*Math.sin(Math.PI*i/4));segments.push({a:last,b:p,weight:weight*(.42-i*.065)});last=p;}}
+ return segments;
+}
+export function mixedLightning(lobes:ProjectedLobe[],branches:T.Vector2[],rocks:T.Vector2[],time:number,anger:number,o:ArcSettings,preview?:ArcPreview,memory:LightningMemory={}){
+ const segments:MixedSegment[]=[],events:{kind:ArcClass;target:string;power:number}[]=[];
+ if(!lobes.length)return {segments,events};
+ const at=(l:ProjectedLobe,a:number)=>new T.Vector2(l.x+Math.cos(a)*l.rx,l.y+Math.sin(a)*l.ry);
+ for(const kind of ['small','medium','large'] as ArcClass[]){
+ const event=arcEvent(kind,time,anger,o),forced=preview&&(preview===kind||(kind==='large'&&(preview==='rock'||preview==='branch')));
+ const power=preview?(forced?.85:0):event.power;if(power<=0)continue;
+ const key=kind+event.slot,source=lobes[Math.floor(hash(key+'source')*lobes.length)],scale=o[kind+'Size' as keyof ArcSettings];let path:BoltSegment[]=[],target='cloud',free=kind!=='small';
+ if(kind==='small'){
+ // Reuse the exposed-border path finder, but vary its angular reach independently.
+ const t=event.slot/(.65+anger*1.5)+hash('delay'+event.slot)*.16+.012;
+ const shaped=exteriorLightning(lobes,t,anger,memory,scale);path=shaped.segments;
+ }else{
+ let a=at(source,hash(key+'angle')*Math.PI*2),b:T.Vector2;
+ if(kind==='large'){
+ const rock=preview==='rock'||(preview!=='branch'&&hash(key+'target')<o.rockShare);
+ const origins=branches.length?branches:[a];a=origins[Math.floor(hash(key+'origin')*origins.length)].clone();
+ const choices=(rock?rocks:branches).filter(p=>p.distanceTo(a)>.025).sort((x,y)=>x.distanceTo(a)-y.distanceTo(a));
+ if(!choices.length)continue;
+ b=choices[Math.min(choices.length-1,Math.floor(T.MathUtils.clamp(.45+scale*.275,0,1)*(choices.length-1)))].clone();target=rock?'rock':'branch';
+ }else{
+ const choices=lobes.filter(l=>l!==source).sort((x,y)=>Math.hypot(x.x-a.x,x.y-a.y)-Math.hypot(y.x-a.x,y.y-a.y));
+ const dest=choices[Math.min(choices.length-1,Math.floor(choices.length*.3*scale))]??source;
+ b=at(dest,Math.atan2(a.y-dest.y,a.x-dest.x));
+ if(b.distanceTo(a)<.02)b=at(source,Math.PI+hash(key+'angle')*Math.PI*2);
+ }
+ path=forkedPath(a,b,key,kind==='large'?1.1:.75);
+ }
+ for(const segment of path)segments.push({...segment,power:power*(kind==='small'?.65:kind==='medium'?.7:1)*(1+anger*.4),free});
+ if(path.length)events.push({kind,target,power});
+ }
+ return {segments,events};
 }
