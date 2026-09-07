@@ -182,3 +182,8 @@ Built-in imagegen made a constrained paths-only edit from v4 and a newly rendere
 The central terrain now projects v6 at .78. V5 is confined to an independent outer-margin projection (.58) beyond the central plate, with saturation/tone adjusted toward v6 and a feathered join. The margin does not stretch central details. This is a provisional surround, not a claim that v5 now matches every hill at the seam; a registered high-resolution overscan remains desirable from the art work. Neither image is native 4K.
 
 Inspected corrected normal and wider regrouped views (`assets/matte-scale-corrected-normal.png`, `...-wide.png`). TypeScript and real mouse regroup + undo/slow return framing pass. The framing test now waits for measured convergence instead of assuming a fixed delay always completes a slow zoom.
+
+
+## Supernool · perimeter mist experiment
+
+User requested a little textured, temporally varying fog beginning around the rock circle. Study 018 now offers a world-anchored, depth-based atmospheric wash with drifting noise and a clear-view toggle, plus density/onset/texture/speed controls. The inner clearing stays clear by default. This is an experiment awaiting feedback, not an approved replacement for the terrain art or a full volumetric atmosphere.

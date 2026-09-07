@@ -181,3 +181,11 @@ Inspected corrected normal and wider regrouped views (`assets/matte-scale-correc
 Checked opening/closing all docks by their accessible names, live cross-tab reassignment/reset, twelve gallery entries, and desktop/mobile screenshots. TypeScript check passed; no browser runtime errors. Header now has larger ivory lettering and a shadow for terrain contrast; subtitle removed. No iteration promotion.
 
 Title refinement: lighter Avenir/system sans lettering in muted lichen gray; NOOL / GROW remains brighter. Rootwork replaces Graft as the lower-right default (previous saved Graft default migrated once; all library options remain selectable).
+
+## Perimeter mist experiment
+
+Inspect → Appearance → Surroundings includes a clear/mist comparison plus amount, onset radius, texture and drift controls. Default onset is 10.5 world units from the clearing's center, close to the boulder perimeter. A broad feathered envelope leaves the inner working area clear. Two scales of world-anchored procedural noise drift slowly through the outer landscape; zero drift freezes the pattern and zero texture yields an even fade. Plain studio and matte authoring captures bypass the effect.
+
+`mist.ts` reconstructs surface positions from the scene's depth texture and applies an atmospheric color wash. This preserves the foreground silhouette while misting the terrain behind it. It is a surface-depth approximation, not integrated volumetric scattering: no light shafts, self-shadowed clouds or visible fog volumes. One full-resolution multisampled render target and one compositing draw are added; clear mode bypasses the pass. Target allocation follows drawing-buffer size and is reused. The GPU memory cost scales with viewport resolution. Render statistics count both passes.
+
+Inspected normal, later-time, orbit and active-grip screenshots (`assets/mist-*.png`). At 1440×900 on this machine the static comparison measured 60 fps with and without mist (16.7 ms average; p95 16.8 vs 16.7 ms), and 1,016 vs 1,015 draws. These are browser frame timings, not GPU timings or a guarantee for other devices. TypeScript/build and the full six-rewrite mouse/body playthrough passed without browser errors. This is a provisional visual option, not an accepted permanent atmosphere direction.

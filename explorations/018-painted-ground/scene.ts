@@ -1,3 +1,4 @@
+import {createMist} from './mist';
 import {fitZoom} from './framing';
 import * as T from 'three';import {createPerformanceStats} from './stats';import {StanceAdjustment} from './stance';import {createRibbon} from './ribbon';import {ScreenGuides} from './guides';import {addBackdrop} from './backdrop';import {makeClearing} from './terrain';import {makeSigil,disposeSigil} from './sigils';import {setupHUD} from './hud';import {createSound} from './sound';import {directionalContact} from './navigation';import {rules,ruleId,ruleColor,Pin,allowsPin,advanceSpring,catchPull} from './interaction';import {createTraveller} from './traveller';import {Gesture,gestures,scoreDrag} from './gestures';import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {Term,Action,initial,walk,count,format,readable,find,actions,replace,solved,hint} from './algebra';import {Pose,layout,transition} from './layout';import {Options,prepare} from './surface';import {makeShading} from './shading';
@@ -14,6 +15,7 @@ const backdrop=addBackdrop(scene,$('world'),renderer);backdrop.set(new URLSearch
 backdrop.setGroundShadows(true);
 const preClearing=new Set(scene.children);const clearing=makeClearing(scene),obstacles=clearing.obstacles;for(const o of scene.children)if(!preClearing.has(o))o.userData.matteExclude=true;
 function mesh(geo:T.BufferGeometry,mat:T.Material,pos:T.Vector3){const m=new T.Mesh(geo,mat);m.position.copy(pos);scene.add(m);return m;}
+const mist=createMist(renderer);
 const stats=createPerformanceStats(renderer);const ribbon=createRibbon(scene),stance=new StanceAdjustment();let stanceMoving=false;
 const sound=createSound();addEventListener('pointerdown',()=>sound.unlock(),{once:true});addEventListener('keydown',()=>sound.unlock(),{once:true});
 const treeScale=1.35*1.15*.92,treeOrigin=new T.Vector3(-1,0,-3),hero=new T.Group();hero.position.copy(treeOrigin);hero.scale.setScalar(treeScale);scene.add(hero);
@@ -265,7 +267,7 @@ function tick(now:number){requestAnimationFrame(tick);const frameMs=now-last;con
  const target=near?0:+value('spread'),next=spread+(target-spread)*(1-Math.exp(-dt*4));spread=Math.abs(next-target)<.008?target:Math.round(next*1000)/1000;
  if(near!==nearOld){nearOld=near;if(!near&&grip)releaseGrip(false);ui();}runes.visible=near;(ring.material as T.MeshBasicMaterial).color.set(solved(tree)?'#f1ce79':near?'#e6ddb7':'#bac8a8');
  if(!animation&&!grip&&spread===0&&near&&document.querySelector<HTMLButtonElement>('#actions button')?.disabled)ui(false);
- requestPose(now);controls.update();frameTree(dt);updateHands(now,dt,moving);drawGuides();renderer.render(scene,camera);stats.update(now,frameMs);
+ requestPose(now);controls.update();frameTree(dt);updateHands(now,dt,moving);drawGuides();mist.render(scene,camera,dt,{enabled:value('mistMode')==='on'&&value('backdrop')!=='plain'&&!new URLSearchParams(location.search).has('matteCapture'),strength:+value('mistDensity'),radius:+value('mistRadius'),texture:+value('mistTexture'),speed:+value('mistSpeed')});stats.update(now,frameMs);
  if(new URLSearchParams(location.search).has('matteCapture')){hero.visible=false;ring.visible=false;avatar.visible=false;scene.traverse(o=>{if(o.userData.matteExclude)o.visible=false;});}
  clearing.update(solved(tree)&&!grip&&!animation,dt);$('world').dataset.caught=String(grip?.caught??false);$('world').dataset.goal=String(solved(tree));
  $('world').dataset.near=String(near);$('world').dataset.busy=String(!!animation||!!grip);$('world').dataset.grip=grip?.chosen?.action.key??(grip?'holding':'none');$('world').dataset.gestureProgress=String(grip?.progress??0);$('world').dataset.springTarget=String(grip?.target??0);$('world').dataset.player=`${avatar.position.x.toFixed(2)},${avatar.position.z.toFixed(2)}`;
