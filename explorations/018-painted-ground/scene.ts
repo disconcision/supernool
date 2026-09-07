@@ -1,3 +1,4 @@
+import {mountSceneEditor} from './scene-editor';
 import {addTravelHandControl} from './hand-travel';
 import {setupControlReadouts} from './control-readouts';
 import {createMist} from './mist';
@@ -206,14 +207,14 @@ function drawGuides(){
 function pick(e:{clientX:number;clientY:number}){pointer.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);ray.setFromCamera(pointer,camera);return near?ray.intersectObjects(runes.children,true)[0]?.object.userData.nodeId as string|undefined:undefined;}
 let groundDown:ScreenPoint|undefined;
 renderer.domElement.tabIndex=0;
-renderer.domElement.addEventListener('pointerdown',e=>{if(e.button!==0)return;renderer.domElement.focus();const id=pick(e);if(id){if(e.shiftKey){togglePin(id);return;}if(bodyMode()){if(!handFocus)setHandFocus(true);select(id);lingerPoint=worldPoint(id);return;}beginGrip(id,{x:e.clientX,y:e.clientY});if(grip)renderer.domElement.setPointerCapture(e.pointerId);}else if(!bodyMode()||!handFocus)groundDown={x:e.clientX,y:e.clientY};});
-renderer.domElement.addEventListener('pointermove',e=>{if(grip&&!grip.keyboard)updateGrip({x:e.clientX,y:e.clientY});else if(!grip&&!bodyMode()){
+renderer.domElement.addEventListener('pointerdown',e=>{if(document.body.dataset.sceneEditing==='true')return;if(e.button!==0)return;renderer.domElement.focus();const id=pick(e);if(id){if(e.shiftKey){togglePin(id);return;}if(bodyMode()){if(!handFocus)setHandFocus(true);select(id);lingerPoint=worldPoint(id);return;}beginGrip(id,{x:e.clientX,y:e.clientY});if(grip)renderer.domElement.setPointerCapture(e.pointerId);}else if(!bodyMode()||!handFocus)groundDown={x:e.clientX,y:e.clientY};});
+renderer.domElement.addEventListener('pointermove',e=>{if(document.body.dataset.sceneEditing==='true')return;if(grip&&!grip.keyboard)updateGrip({x:e.clientX,y:e.clientY});else if(!grip&&!bodyMode()){
  hoverId=pick(e);if(hoverId){lingerPoint=worldPoint(hoverId);lastContactAt=performance.now();}else if(near&&lingerPoint){const floatingPlane=new T.Plane().setFromNormalAndCoplanarPoint(camera.getWorldDirection(new T.Vector3()),lingerPoint);const p=ray.ray.intersectPlane(floatingPlane,new T.Vector3());if(p&&p.distanceTo(treeOrigin.clone().setY(4))<9)lingerPoint=p;}
  renderer.domElement.style.cursor=hoverId?'grab':'default';
 }});
-renderer.domElement.addEventListener('pointerup',e=>{if(e.button!==0)return;if(grip&&!grip.keyboard){releaseGrip();if(renderer.domElement.hasPointerCapture(e.pointerId))renderer.domElement.releasePointerCapture(e.pointerId);}else if(groundDown&&Math.hypot(e.clientX-groundDown.x,e.clientY-groundDown.y)<5){pick(e);const p=ray.ray.intersectPlane(plane,new T.Vector3());if(p&&Math.hypot(p.x,p.z)<14)navTarget=p.setY(0);}groundDown=undefined;});
+renderer.domElement.addEventListener('pointerup',e=>{if(document.body.dataset.sceneEditing==='true')return;if(e.button!==0)return;if(grip&&!grip.keyboard){releaseGrip();if(renderer.domElement.hasPointerCapture(e.pointerId))renderer.domElement.releasePointerCapture(e.pointerId);}else if(groundDown&&Math.hypot(e.clientX-groundDown.x,e.clientY-groundDown.y)<5){pick(e);const p=ray.ray.intersectPlane(plane,new T.Vector3());if(p&&Math.hypot(p.x,p.z)<14)navTarget=p.setY(0);}groundDown=undefined;});
 renderer.domElement.addEventListener('pointercancel',()=>releaseGrip(false));
-addEventListener('keydown',e=>{if((e.target as HTMLElement).matches('input,select,textarea'))return;
+addEventListener('keydown',e=>{if(document.body.dataset.sceneEditing==='true')return;if((e.target as HTMLElement).matches('input,select,textarea'))return;
  const key=e.key.toLowerCase();
  if(e.key==='Escape'){if(grip)releaseGrip(false);else if(bodyMode()&&handFocus)setHandFocus(false);spotlight=undefined;$('settings').hidden=true;$('toolbox').hidden=true;return;}
  if(key==='h'&&!e.repeat){$('hint').click();return;}
@@ -250,6 +251,7 @@ if(new URLSearchParams(location.search).get('mode')==='body')($('inputMode') as 
 $('interact').onclick=()=>{setHandFocus(!handFocus);renderer.domElement.focus();};
 let last=performance.now(),nearOld=false;
 function tick(now:number){requestAnimationFrame(tick);const frameMs=now-last;const dt=Math.min(.05,frameMs/1000);last=now;if(document.hidden)return;
+ if(document.body.dataset.sceneEditing==='true'){keys.clear();navTarget=undefined;walkVelocity.setScalar(0);}
  const arrowWalk=bodyMode()||!grip;
  const dx=(keys.has('d')||(arrowWalk&&keys.has('arrowright'))?1:0)-(keys.has('a')||(arrowWalk&&keys.has('arrowleft'))?1:0),dz=(keys.has('s')||(arrowWalk&&keys.has('arrowdown'))?1:0)-(keys.has('w')||(arrowWalk&&keys.has('arrowup'))?1:0);
  const right=new T.Vector3().setFromMatrixColumn(camera.matrixWorld,0).setY(0).normalize(),forward=new T.Vector3(right.z,0,-right.x);
@@ -266,7 +268,7 @@ function tick(now:number){requestAnimationFrame(tick);const frameMs=now-last;con
  // Automatic steps are confined to idle contact selection. Grip records the
  // current avatar position before this path is disabled, with velocity cleared.
  const stanceContact=bodyMode()?selected:hoverId;
- const stanceDelta=stance.step(now,dt,value('stanceAssist')==='gentle'&&(bodyMode()?handFocus:!!hoverId)&&near&&spread<.12&&!grip&&!animation&&!pin&&!keys.size&&!navTarget,stanceContact??'',stanceContact?worldPoint(stanceContact):undefined,avatar.position,treeOrigin,right,p=>Math.hypot(p.x,p.z)<14.5&&!obstacles.some(o=>Math.hypot(p.x-o.x,p.z-o.z)<o.r+.3));
+ const stanceDelta=stance.step(now,dt,document.body.dataset.sceneEditing!=='true'&&value('stanceAssist')==='gentle'&&(bodyMode()?handFocus:!!hoverId)&&near&&spread<.12&&!grip&&!animation&&!pin&&!keys.size&&!navTarget,stanceContact??'',stanceContact?worldPoint(stanceContact):undefined,avatar.position,treeOrigin,right,p=>Math.hypot(p.x,p.z)<14.5&&!obstacles.some(o=>Math.hypot(p.x-o.x,p.z-o.z)<o.r+.3));
  if(stanceDelta.lengthSq()>0){avatar.position.add(stanceDelta);walkVelocity.copy(stanceDelta).divideScalar(Math.max(dt,.001));moving=true;stanceMoving=true;}
  if(grip?.keyboard){if(grip.body){const d=avatar.position.clone().sub(grip.avatarStart);updateGrip({x:grip.from.x+d.dot(right)*grip.gain,y:grip.from.y-d.dot(forward)*grip.gain});const spring=advanceSpring({value:grip.progress,velocity:grip.velocity},grip.target,dt,+value('mass'));grip.progress=spring.value;grip.velocity=spring.velocity;grip.ready=grip.caught;}
  else{const dx=(keys.has('arrowright')?1:0)-(keys.has('arrowleft')?1:0),dy=(keys.has('arrowdown')?1:0)-(keys.has('arrowup')?1:0);grip.cursor.x+=dx*dt*190;grip.cursor.y+=dy*dt*190;const here=screen(avatar.position),was=screen(grip.avatarStart);updateGrip({x:grip.cursor.x+(here.x-was.x)*2,y:grip.cursor.y+(here.y-was.y)*2});}}
@@ -293,3 +295,16 @@ const travellerPanel=Array.from($('settings').querySelectorAll('details')).find(
 addTravelHandControl(travellerPanel,style=>lehi.setTravelStyle(style));
 const handReview=document.createElement('a');handReview.href='avatar-review.html?hands';handReview.target='_blank';handReview.rel='noopener';handReview.textContent='Compare travelling hands up close ↗';handReview.style.display='block';travellerPanel.append(handReview);
 setupControlReadouts();ui();requestAnimationFrame(tick);
+
+mountSceneEditor(scene,camera,renderer,controls,{
+ canEdit:()=>!animation&&!grip&&!pin,
+ setEditing(on){clearMovement();if(on){releaseGrip(false);pin=undefined;handFocus=false;hoverId=undefined;spotlight=undefined;groundDown=undefined;}ui(false);},
+ capture:()=>({treeSeed:String(shapeSeed),viewX:String(camera.position.x),viewY:String(camera.position.y),viewZ:String(camera.position.z),viewTargetX:String(controls.target.x),viewTargetY:String(controls.target.y),viewTargetZ:String(controls.target.z),viewZoom:String(camera.zoom)}),
+ apply(values){
+  const number=(key:string)=>Number(values[key]);
+  if(Number.isInteger(number('treeSeed'))&&number('treeSeed')>=0&&number('treeSeed')<=1000000){shapeSeed=number('treeSeed');lastKey='';}
+  if(['viewX','viewY','viewZ','viewTargetX','viewTargetY','viewTargetZ','viewZoom'].every(key=>Number.isFinite(number(key)))){
+   camera.position.set(number('viewX'),number('viewY'),number('viewZ'));controls.target.set(number('viewTargetX'),number('viewTargetY'),number('viewTargetZ'));preferredZoom=T.MathUtils.clamp(number('viewZoom'),.4,3);camera.zoom=preferredZoom;controls.update();camera.updateProjectionMatrix();
+  }
+ }
+});

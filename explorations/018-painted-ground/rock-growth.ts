@@ -29,6 +29,7 @@ export async function loadRockGrowth(){
   add(group:T.Group,tall:boolean){moss.add(group,tall);lichen.add(group,tall);},
   configure(next:GrowthLayers){moss.configure(next.moss);lichen.configure(next.lichen);},
   setVisible(on:boolean){moss.setVisible(on);lichen.setVisible(on);},
+  refresh(){moss.refresh();lichen.refresh();},
   get count(){return moss.count+lichen.count;},
   get counts(){return {moss:moss.count,lichen:lichen.count};}
  };
@@ -122,6 +123,7 @@ function createGrowthLayer(atlas:T.Texture,kind:GrowthKind){
    if(key!==geometryKey){geometryKey=key;rebuild();}
   },
   setVisible(on:boolean){visible=on;patches.forEach(p=>p.visible=on);},
+  refresh(){rebuild();},
   get count(){return patches.length;}
  };
 }

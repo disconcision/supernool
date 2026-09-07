@@ -1,8 +1,9 @@
+import {sceneStorage} from './scene-tools/storage';
 import { defineConfig } from 'vite';
 import solid from 'vite-plugin-solid';
 import { resolve } from 'node:path';
 export default defineConfig({
- base:'./', plugins:[solid()], server:{host:'127.0.0.1',port:3100,strictPort:true},
+ base:'./', plugins:[solid(),sceneStorage()], server:{host:'127.0.0.1',port:3100,strictPort:true,watch:{ignored:['**/scenes/**']}},
  assetsInclude:['**/*.m4a','**/*.wav','**/*.glb'],
  build:{target:'esnext',rollupOptions:{input:Object.fromEntries([
  'index.html','explorations/index.html',

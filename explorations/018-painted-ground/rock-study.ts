@@ -1,3 +1,4 @@
+import {registerRockAuthoring} from './rock-authoring';
 import * as T from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {enclosedPlacements} from './rock-enclosure';
@@ -60,9 +61,11 @@ export function mountRockStudy(scene:T.Scene,obstacles:{x:number;z:number;r:numb
    const bare=bareRock(o.geometry);
    variants.set(o,{mesh:o,soft,edges,cel,geometry:o.geometry,creased:toCreasedNormals(o.geometry.clone(),Math.PI/8),bare,bareCreased:toCreasedNormals(bare.clone(),Math.PI/8)});
   });
+  const formations:T.Group[]=[];
   const colliders:{x:number;z:number;r:number}[]=[],newTouches:T.Vector3[]=[],enclosingColliders:typeof colliders=[],enclosingTouches:T.Vector3[]=[];
   function place(parent:T.Group,source:T.Group,x:number,z:number,y:number,sx:number,sy:number,sz:number,angle:number){
    const g=new T.Group();g.position.set(x,y,z);g.scale.set(sx,sy,sz);g.rotation.y=angle;parent.add(g);
+   g.userData.formation={id:'rock-'+formations.length,kind:source===crest.scene?'basalt-group':'bedrock'};g.name=(source===crest.scene?'Basalt crest ':'Low bedrock ')+(formations.length+1);formations.push(g);
    source.traverse(o=>{if(!(o instanceof T.Mesh))return;const v=variants.get(o)!;const m=new T.Mesh(v.geometry,v.soft);m.position.copy(o.position);m.quaternion.copy(o.quaternion);m.scale.copy(o.scale);m.castShadow=true;m.receiveShadow=true;g.add(m);meshes.push({...v,mesh:m});});
    if(parent!==single){
     const targets=parent===enclosing?enclosingColliders:colliders,contacts=parent===enclosing?enclosingTouches:newTouches;
@@ -132,11 +135,38 @@ export function mountRockStudy(scene:T.Scene,obstacles:{x:number;z:number;r:numb
    decals?.configure(growthControls.settings);
    decals?.setVisible(growth.value==='raster');
    meshes.forEach(v=>{v.mesh.material=shading.value==='cel'?v.cel:shading.value==='edges'?v.edges:v.soft;v.mesh.geometry=growth.value==='simple'?(shading.value==='soft'?v.geometry:v.creased):(shading.value==='soft'?v.bare:v.bareCreased);});
+   refreshFormations(false);
    status.dataset.ready='true';status.dataset.layout=arrangement.value;status.dataset.shading=shading.value;status.dataset.growth=growth.value;status.dataset.patches=String(decals?.count??0);status.dataset.patchCounts=JSON.stringify(decals?.counts??{moss:0,lichen:0});status.dataset.patchSettings=JSON.stringify(growthControls.settings);
   }
   scene.add(single,banks,completion,enclosing);arrangement.onchange=shading.onchange=growth.onchange=update;
   growthControls.onChange=()=>{decals?.configure(growthControls.settings);status.dataset.patches=String(decals?.count??0);status.dataset.patchCounts=JSON.stringify(decals?.counts??{moss:0,lichen:0});status.dataset.patchSettings=JSON.stringify(growthControls.settings);};
+  const active=()=>formations.filter(g=>g.visible&&g.parent?.visible);
+  function refreshFormations(refreshGrowth=true){
+   const full=['full','enclosed'].includes(arrangement.value);if(!full)return;
+   const targets:{x:number;z:number;r:number}[]=[],contacts:T.Vector3[]=[];
+   for(const g of active()){
+    g.updateWorldMatrix(true,true);
+    for(const box of footprints[g.userData.formation.kind as 'basalt-group'|'bedrock'].bounds){
+     const min=new T.Vector3(...box.min as [number,number,number]),max=new T.Vector3(...box.max as [number,number,number]);
+     if(max.y*g.scale.y+g.position.y<.5)continue;
+     const dx=(max.x-min.x)*g.scale.x,dz=(max.z-min.z)*g.scale.z,r=Math.max(.22,Math.min(1.25,Math.min(dx,dz)*.49)),count=Math.max(1,Math.ceil(Math.max(dx,dz)/(r*1.5)));
+     for(let i=0;i<count;i++){const p=min.clone().lerp(max,.5);if(dx>dz)p.x=T.MathUtils.lerp(min.x,max.x,(i+.5)/count);else p.z=T.MathUtils.lerp(min.z,max.z,(i+.5)/count);p.applyMatrix4(g.matrixWorld);targets.push({x:p.x,z:p.z,r});}
+     const p=min.clone().lerp(max,.5).applyMatrix4(g.matrixWorld),ray=new T.Raycaster(new T.Vector3(p.x,40,p.z),new T.Vector3(0,-1,0));
+     const hit=ray.intersectObjects(g.children.filter(o=>o instanceof T.Mesh&&!o.name.includes('surface patch')),false)[0];if(hit)contacts.push(hit.point.clone().add(new T.Vector3(0,.025,0)));
+    }
+   }
+   obstacles.splice(0,obstacles.length,...targets,...gateObstacles);
+   const otherTouches=oldTouches.filter(p=>!originals.some(o=>Math.hypot(p.x-o.position.x,p.z-o.position.z)<.01));
+   touchPoints.splice(0,touchPoints.length,...otherTouches,...contacts);
+   document.dispatchEvent(new CustomEvent('grow-rock-touch-points',{detail:touchPoints}));if(refreshGrowth)decals?.refresh();
+  }
   growthControls.setEnabled(!!decals);update();
+  registerRockAuthoring({list:active,capture:()=>active().map(g=>({...g.userData.formation,position:g.position.toArray() as [number,number,number],scale:g.scale.toArray() as [number,number,number],yaw:g.rotation.y})),
+   apply(rocks){
+    const current=active();if(rocks.length!==current.length||rocks.some(r=>!current.some(g=>g.userData.formation.id===r.id&&g.userData.formation.kind===r.kind)))throw new Error('This version uses a different rock asset layout');
+    for(const r of rocks){const g=current.find(g=>g.userData.formation.id===r.id)!;g.position.fromArray(r.position);g.scale.fromArray(r.scale);g.rotation.set(0,r.yaw,0);}refreshFormations();
+   },refresh:refreshFormations});
+
   arrangement.disabled=shading.disabled=growth.disabled=false;status.textContent=decals?'Rock formations ready':'Rock formations ready · texture unavailable; simple patches retained';
   }catch(error){
    const detail=error instanceof Error?error.message:String(error);

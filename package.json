@@ -10,7 +10,9 @@
     "check": "tsc --noEmit --skipLibCheck --target es2020 --module esnext --moduleResolution bundler --lib es2020,dom,dom.iterable explorations/018-painted-ground/scene.ts explorations/018-painted-ground/avatar-review.ts explorations/018-painted-ground/symbol-library.ts",
     "test": "node scripts/check.mjs",
     "test:browser": "node explorations/018-painted-ground/browser-check.cjs",
-    "test:body": "BODY_ALL=1 node explorations/018-painted-ground/browser-check.cjs"
+    "test:body": "BODY_ALL=1 node explorations/018-painted-ground/browser-check.cjs",
+    "dev:editor": "vite --host 127.0.0.1 --port 3101 --strictPort",
+    "test:editor": "node scene-tools/editor-check.cjs"
   },
   "license": "MIT",
   "devDependencies": {
