@@ -59,3 +59,11 @@ Sound brief only: roughly 80–90 BPM, sparse electronic pulse with wooden/pluck
 ## Scope and continuity
 
 This is the beginning of 019 as a concept study. It does not duplicate or replace 018, alter its controls, implement knockback, change the math engine or add permanent new lore that spirits are malicious. Existing tactile mouse/body interaction, hewn geometry, both characters, fog, and the concurrent art work remain in 018. The gallery is included in the production build and linked from the study catalogue.
+
+## Round 04 · direction correction and actual canopy refinement
+
+The original F5 remains primary; F2/F6 and other accepted F alternatives stay in the mix. A new living concept sheet was unnecessary and is archived, not substituted for those references. The request was to iterate the actual 3D study and compare it to the existing paintings.
+
+The first round-04 shadow sheet went too wispy. The correction, `round-04/shadow-body.png`, restores cumulonimbus-like body, defined irregular borders and somewhat brighter coloured edges. Purple and blue remain separate alternatives. This is not yet approved, and its background transmission is weaker than requested. Do not replace the target of dark translucent mass with either opaque foliage or thin tendrils. Preserve readable branches. Increasing anger can produce larger arcs reaching rocks or neighbouring scenery; fine webs and tendrils are secondary possibilities.
+
+`canopy-growth.html` is the new 3D iteration; `canopy.html` preserves the previous comparison. See `growth-notes.md` for construction, visual review, performance limits and attachment checks. These studies share the controller and 018's rewrite/wood implementation. No new playable encounter or shadow rendering is implied.

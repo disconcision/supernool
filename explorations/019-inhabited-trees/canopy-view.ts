@@ -7,6 +7,8 @@ import {makeShading} from '../018-painted-ground/shading';
 import {makeSigil,disposeSigil} from '../018-painted-ground/sigils';
 import {createTraveller} from '../018-painted-ground/traveller';
 import {makeCluster,disposeGroup,wind,hash,Style,Settings} from './canopy';
+import {makeGrowthCluster,makeOffshoots,placeOffshoots,Offshoot,GrowthSettings} from './growth-canopy';
+const growthStudy=document.body.dataset.study==='growth';
 const $=(id:string)=>document.getElementById(id)!,val=(id:string)=>($(id) as HTMLInputElement).value,num=(id:string)=>+val(id),checked=(id:string)=>($(id) as HTMLInputElement).checked;
 const scene=new T.Scene();scene.background=new T.Color('#a5b0a4');scene.fog=new T.Fog('#a5b0a4',38,80);
 const renderer=new T.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;$('view').append(renderer.domElement);
@@ -24,9 +26,11 @@ const foliage=new T.Group(),twigs=new T.Group(),sigils=new T.Group();scene.add(f
 const twigMat=new T.MeshStandardMaterial({color:'#8c774e',roughness:1});
 const o:Options={thickness:1.05,taper:.78,bow:.45,random:.5,twist:.24,facets:.45,seed:3,blend:.16,hewn:true,spread:1};
 const baseTree=initial();
+const offshootGroup=new T.Group();scene.add(offshootGroup);let offshoots:Offshoot[]=[];
 let canopyTriangles=0;
 let terminalIds:string[]=[],clusters=new Map<string,T.Group>(),twigGroups=new Map<string,T.Group>(),currentPose:Pose|undefined;
 function settings():Settings{return {style:val('style') as Style,seed:num('seed'),size:num('size'),density:num('density'),palette:val('palette'),normals:checked('normals'),wire:checked('wire')};}
+function growthSettings():GrowthSettings{return {...settings(),form:val('style'),backing:num('backing'),offshoots:num('offshoots')};}
 function maturePose():Pose{
  const edges:Edge[]=[],points=new Map<string,T.Vector3>(),parents=new Map<string,string>(),nodes=new Map<string,Term>(),seed=num('seed'),spread=num('spread'),t=num('pose');
  function branch(id:string,p:T.Vector3,depth:number,angle:number){points.set(id,p);if(depth===3||(val('specimen')==='uneven'&&depth===2&&hash(id+seed)<.25)){nodes.set(id,{kind:'var',id,name:id});return;}
@@ -47,10 +51,12 @@ function rebuildClusters(p:Pose){disposeGroup(foliage);foliage.clear();clusters.
  // Do not dispose the shared twig material; own geometries only.
  twigs.traverse(obj=>{if(obj instanceof T.Mesh)obj.geometry.dispose();});twigs.clear();twigGroups.clear();
  const ids=terminalIds;
- for(const id of ids){const g=makeCluster(id,settings());clusters.set(id,g);foliage.add(g);const tg=new T.Group();
- for(let k=0;k<5;k++){const a=k*2.399+hash(id)*6,b=new T.Vector3(Math.cos(a)*(.45+k*.09),.5+hash(id+k)*.4,Math.sin(a)*(.45+k*.09));const geo=new T.CylinderGeometry(.014,.045,b.length(),5,1);geo.translate(0,b.length()/2,0);const m=new T.Mesh(geo,twigMat);m.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),b.clone().normalize());tg.add(m);}twigGroups.set(id,tg);twigs.add(tg);}
+ for(const id of ids){const g=growthStudy?makeGrowthCluster(id,growthSettings()):makeCluster(id,settings());clusters.set(id,g);foliage.add(g);const tg=new T.Group();
+ for(let k=0;k<(growthStudy&&val('style')!=='F5'?0:5);k++){const a=k*2.399+hash(id)*6,b=new T.Vector3(Math.cos(a)*(.45+k*.09),.5+hash(id+k)*.4,Math.sin(a)*(.45+k*.09));const geo=new T.CylinderGeometry(.014,.045,b.length(),5,1);geo.translate(0,b.length()/2,0);const m=new T.Mesh(geo,twigMat);m.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),b.clone().normalize());tg.add(m);}twigGroups.set(id,tg);twigs.add(tg);}
+ if(growthStudy){disposeGroup(offshootGroup);offshootGroup.clear();offshoots=makeOffshoots(['mature','uneven'].includes(val('specimen'))?p:layout(baseTree,{seed:num('seed'),spread:num('spread'),height:'depth',irregularity:.5}),growthSettings());offshoots.forEach(s=>offshootGroup.add(s.root));}
  foliage.traverse(obj=>{if(obj instanceof T.Mesh)obj.frustumCulled=false;});
  canopyTriangles=0;foliage.traverse(obj=>{if(obj instanceof T.Mesh)canopyTriangles+=(obj.geometry.index?.count??obj.geometry.attributes.position.count)/3*(obj instanceof T.InstancedMesh?obj.count:1);});
+ if(growthStudy)offshootGroup.traverse(obj=>{if(obj instanceof T.Mesh)canopyTriangles+=(obj.geometry.index?.count??obj.geometry.attributes.position.count)/3*(obj instanceof T.InstancedMesh?obj.count:1);});
  applyPose(p);
 }
 function applyPose(p:Pose){currentPose=p;
@@ -60,6 +66,7 @@ function applyPose(p:Pose){currentPose=p;
  const q=new T.Quaternion().setFromUnitVectors(new T.Vector3(0,1,0),m.axis);g.quaternion.identity().slerp(q,.25);tg.quaternion.copy(g.quaternion);
  const growth=Math.min(1,m.len/.7),scale=num('size')*growth;g.scale.setScalar(scale);tg.scale.setScalar(growth);
  }
+ if(growthStudy){placeOffshoots(offshoots,p,o);for(const shoot of offshoots)shoot.foliage.visible=checked('foliage');}
  sigils.children.forEach(disposeSigil);sigils.clear();if(checked('sigils')&&!['mature','uneven'].includes(val('specimen'))){for(const [id,n]of p.nodes){const point=p.points.get(id);if(!point)continue;const s=makeSigil(n.kind==='op'?(n.op==='+'?'+':'×'):n.kind==='num'?String(n.value):n.name,n.kind==='op',false,'carved');s.position.copy(point).add(new T.Vector3(0,.15,.15));s.scale.setScalar(.7);sigils.add(s);}}
 }
 const worker=new Worker(new URL('../018-painted-ground/mesh.worker.ts',import.meta.url),{type:'module'});
@@ -73,12 +80,12 @@ worker.onmessage=ev=>{busy=false;const job=active,data=ev.data;if(data.error){$(
  $('status').textContent=`${terminalIds.length} attached crown groups · ${Math.round(data.ms)} ms wood rebuild`;document.body.dataset.ready=String(!pending);document.body.dataset.pose=String(num('pose'));}
  pump();};worker.onerror=e=>{document.body.dataset.error=e.message;$('status').textContent=e.message;};
 function resize(){renderer.setSize(innerWidth,innerHeight);const h=8.5;camera.left=-h*innerWidth/innerHeight;camera.right=-camera.left;camera.top=h;camera.bottom=-h;camera.updateProjectionMatrix();}resize();addEventListener('resize',resize);
-const labels:Record<string,string>={F5:'Instanced curved leaf-cluster cards: alpha-tested texture, shaped normals and vertex wind. Density changes card count. Rotate to inspect the volume.',F1:'Low-poly irregular solid clusters. Broad planar surfaces echo the hewn branches; a deliberately geometric extreme.',F2:'Three overlapping flattened lobes per terminal cluster. Layered silhouettes, with open gaps between the tiers.',F3:'Rounded irregular volumes with broad colour variation. A simple solid canopy comparison.',F6:'Tapered hanging volumes with leaf-textured skirts. A hybrid of collective geometry and edge detail.'};
+const labels:Record<string,string>={G1:'Angular textured sprays: directional patches follow woody fans; thin tapered backing replaces rounded cores. Original F5 texture plus F1 angular structure is the reference.',G2:'Layered textured fans: overlapping sprays of leaves along small branches. Original F2 tiering, with F5 texture rather than solid plates.',G3:'Continuous drapes: overlapping textured patches run along hanging twig curves from top to bottom. Original F6 is the reference; no separate solid cap.',F5:'Instanced curved leaf-cluster cards: alpha-tested texture, shaped normals and vertex wind. Density changes card count. Rotate to inspect the volume.',F1:'Low-poly irregular solid clusters. Broad planar surfaces echo the hewn branches; a deliberately geometric extreme.',F2:'Three overlapping flattened lobes per terminal cluster. Layered silhouettes, with open gaps between the tiers.',F3:'Rounded irregular volumes with broad colour variation. A simple solid canopy comparison.',F6:'Tapered hanging volumes with leaf-textured skirts. A hybrid of collective geometry and edge detail.'};
 const conceptURL=new URL('./round-02/foliage.png',import.meta.url).href;$('concept').style.backgroundImage=`url(${conceptURL})`;($('conceptLink') as HTMLAnchorElement).href=conceptURL;
-function sync(){for(const name of ['seed','size','density','spread','pose','wind','light'])$(name+'Value').textContent=num(name).toFixed(name==='seed'||name==='light'?0:2);$('method').textContent=labels[val('style')];for(const id of ['density','normals'])($(id) as HTMLInputElement).disabled=val('style')!=='F5';const pos:Record<string,string>={F1:'0% 0%',F2:'50% 0%',F3:'100% 0%',F5:'50% 100%',F6:'100% 100%'};$('concept').style.backgroundPosition=pos[val('style')];wind.strength.value=num('wind');woodMat.wireframe=checked('wire');}
-for(const id of ['style','size','density','palette','normals','wire'])$(id).addEventListener('input',()=>{sync();if(currentPose)rebuildClusters(currentPose);});
+function sync(){if(growthStudy)($('backing') as HTMLInputElement).disabled=['G3','F5'].includes(val('style'));for(const name of ['seed','size','density','spread','pose','wind','light',...(growthStudy?['offshoots','backing']:[])])$(name+'Value').textContent=num(name).toFixed(name==='seed'||name==='light'?0:2);$('method').textContent=labels[val('style')];for(const id of ['density','normals'])($(id) as HTMLInputElement).disabled=!growthStudy&&val('style')!=='F5';const pos:Record<string,string>={G1:'50% 100%',G2:'50% 0%',G3:'100% 100%',F1:'0% 0%',F2:'50% 0%',F3:'100% 0%',F5:'50% 100%',F6:'100% 100%'};$('concept').style.backgroundPosition=pos[val('style')];wind.strength.value=num('wind');woodMat.wireframe=checked('wire');}
+for(const id of ['style','size','density','palette','normals','wire',...(growthStudy?['offshoots','backing']:[])])$(id).addEventListener('input',()=>{sync();if(currentPose)rebuildClusters(currentPose);});
 for(const id of ['pose','spread','seed','specimen'])$(id).addEventListener('input',()=>{if(id==='seed'){terminalIds=[];}sync();requestPose();});
-$('foliage').onchange=()=>{foliage.visible=checked('foliage');};$('sigils').onchange=()=>{if(currentPose)applyPose(currentPose);};$('wind').oninput=sync;$('light').oninput=sync;
+$('foliage').onchange=()=>{foliage.visible=checked('foliage');if(currentPose)applyPose(currentPose);};$('sigils').onchange=()=>{if(currentPose)applyPose(currentPose);};$('wind').oninput=sync;$('light').oninput=sync;
 let playing=false,playClock=0;$('play').onclick=()=>{playing=!playing;playClock=Math.acos(1-2*num('pose'));$('play').textContent=playing?'Pause pose':'Play pose';};$('resetView').onclick=()=>{camera.position.set(14,12,22);camera.zoom=1;orbit.target.set(0,4,0);camera.updateProjectionMatrix();};
 const hide=()=>document.body.classList.toggle('clean');$('hide').onclick=hide;addEventListener('keydown',e=>{if(e.key.toLowerCase()==='h'&&!(e.target instanceof HTMLInputElement))hide();});
 let previous=performance.now(),total=0,frames=0,clock=0,lastPose=0;
@@ -91,6 +98,7 @@ sync();requestPose();requestAnimationFrame(frame);
 // Read-only inspection surface for the study's attachment/performance checks.
 (window as any).__canopyStudy={inspect:()=>({
  style:val('style'),seed:num('seed'),canopyTriangles,
+ offshoots:offshoots.map(s=>({id:s.id,member:s.member,t:s.t,visible:s.root.visible,position:s.root.position.toArray(),scale:s.root.scale.x})),
  attachments:terminalIds.map(id=>{const e=currentPose?.edges.find(e=>e.id===id),g=clusters.get(id);return {id,visible:g?.visible??false,position:g?.position.toArray(),endpoint:e?.b.toArray(),scale:g?.scale.x};}),
  finite:wood.geometry.attributes.position?Array.from(wood.geometry.attributes.position.array).every(Number.isFinite):true,
  foliageMeshes:[...clusters.values()].reduce((n,g)=>n+g.children.length,0)
