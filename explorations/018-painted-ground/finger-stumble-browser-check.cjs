@@ -2,11 +2,13 @@ const {chromium}=require('playwright'),assert=require('node:assert/strict'),{mkd
 const output='.cache/finger-stumble-review';mkdirSync(output,{recursive:true});
 (async()=>{const browser=await chromium.launch({channel:'chrome',headless:true});try{
  const page=await browser.newPage({viewport:{width:1600,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
- // Force only the occurrence in this browser fixture. Seeded controller tests cover the natural 24% chance.
- await page.route('**/finger-walk.ts*',async route=>{const response=await route.fetch(),source=await response.text(),forced=source.replace('this.random() < 0.24','true');assert.notEqual(source,forced);await route.fulfill({response,body:forced});});
+ // Keep unrelated development edits from resetting a captured animation.
+ await page.routeWebSocket(url=>url.hostname==='127.0.0.1'&&url.port==='3100',ws=>ws.send(JSON.stringify({type:'connected'})));
+ // Seed only the walking controller and force the chance roll, preserving its random sequence.
+ await page.route('**/finger-walk.ts*',async route=>{const response=await route.fetch(),source=await response.text(),forced=source.replace('constructor(random = Math.random)', 'constructor(random = (() => { let seed = 3; return () => { seed = (1664525 * seed + 1013904223) >>> 0; return seed / 4294967296; }; })())').replace('this.random() < (this.style === \"upright\" ? 0.48 : 0.24)', '(this.random(), true)');assert.notEqual(source,forced);await route.fulfill({response,body:forced});});
  for(const live of [false,true]){
   await page.goto('http://127.0.0.1:3100/explorations/018-painted-ground/'+(live?'?mode=body':'avatar-review.html'));
-  if(live){await page.waitForFunction(()=>document.querySelector('#world').dataset.meshing==='ready');await page.getByRole('button',{name:'Open Inspect',exact:true}).click();await page.locator('#idleCatch').selectOption('explore');await page.locator('#character').selectOption('olive-cape');await page.locator('#closeSettings').click();}
+  if(live){await page.waitForFunction(()=>document.querySelector('#world').dataset.meshing==='ready');await page.getByRole('button',{name:'Open Inspect',exact:true}).click();await page.locator('#idleCatch').selectOption('explore');await page.locator('#idleWalkStyle').selectOption('spider');await page.locator('#character').selectOption('olive-cape');await page.locator('#closeSettings').click();}
   else{await page.locator('#motion').selectOption('inspect');await page.locator('#view').selectOption('quarter');}
   const prefix=live?'live-cape':'rig-wrap',state=()=>page.evaluate(live=>JSON.parse((live?document.querySelector('#world'):document.body).dataset.fingerWalk),live);
   const wait=(phase,age=0)=>page.waitForFunction(({live,phase,age})=>{const s=JSON.parse((live?document.querySelector('#world'):document.body).dataset.fingerWalk||'{}');return s.phase===phase&&s.age>=age;},{live,phase,age},{timeout:55000});

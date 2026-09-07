@@ -297,5 +297,9 @@ const idleCatchLabel=document.createElement('label');idleCatchLabel.textContent=
 const idleCatchSelect=document.createElement('select');idleCatchSelect.id='idleCatch';
 idleCatchSelect.add(new Option('Finger walks & catch','catch'));idleCatchSelect.add(new Option('Finger walks only','explore'));idleCatchSelect.add(new Option('Catch only','catch-only'));idleCatchSelect.add(new Option('Resting hands','rest'));
 idleCatchSelect.onchange=()=>lehi.setIdleMode(idleCatchSelect.value as 'catch'|'explore'|'catch-only'|'rest');idleCatchLabel.append(idleCatchSelect);travellerPanel.append(idleCatchLabel);
+const walkStyleLabel=document.createElement('label');walkStyleLabel.textContent='Walking style';
+const walkStyleSelect=document.createElement('select');walkStyleSelect.id='idleWalkStyle';
+for(const [label,value] of [['Both walks','mixed'],['Quick spider walk','spider'],['Awkward upright walk','upright']])walkStyleSelect.add(new Option(label,value));
+walkStyleSelect.onchange=()=>lehi.setIdleWalkStyle(walkStyleSelect.value as 'mixed'|'spider'|'upright');walkStyleLabel.append(walkStyleSelect);travellerPanel.append(walkStyleLabel);
 const handReview=document.createElement('a');handReview.href='avatar-review.html?hands';handReview.target='_blank';handReview.rel='noopener';handReview.textContent='Compare travelling hands up close ↗';handReview.style.display='block';travellerPanel.append(handReview);
 setupControlReadouts();ui();requestAnimationFrame(tick);

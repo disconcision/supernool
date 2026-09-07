@@ -1,6 +1,6 @@
 const T=require('three'),assert=require('node:assert/strict'),{buildSync}=require('esbuild');
 for(const module of ['finger-walk','idle-schedule','lehi'])buildSync({entryPoints:[__dirname+'/'+module+'.ts'],bundle:true,platform:'node',external:['three'],outfile:'.cache/finger-test-'+module+'.cjs'});
-const {FingerWalk,fingerSteps,solveFinger}=require('../../.cache/finger-test-finger-walk.cjs');
+const {FingerWalk,fingerSteps,uprightSteps,walkingFingerAngles,solveFinger}=require('../../.cache/finger-test-finger-walk.cjs');
 const {IdleSchedule}=require('../../.cache/finger-test-idle-schedule.cjs');
 const {createLehi}=require('../../.cache/finger-test-lehi.cjs');
 const rng=seed=>()=>{seed=(1664525*seed+1013904223)>>>0;return seed/4294967296;};
@@ -8,7 +8,7 @@ const root=new T.Group(),hands=[-1,1].map(x=>{const h=new T.Group();h.position.s
 const obstacles=[{x:1.5,z:1,r:.7},{x:-1,z:-1.6,r:.65}],safe=p=>obstacles.every(o=>Math.hypot(p.x-o.x,p.z-o.z)>o.r);
 const starts=[];let successful=0;
 for(let seed=1;seed<=30;seed++){
- const walk=new FingerWalk(rng(seed));walk.setTerrain(safe);if(!walk.startWalk(root,hands,seed%2))continue;successful++;
+ const walk=new FingerWalk(rng(seed));walk.preference='spider';walk.setTerrain(safe);if(!walk.startWalk(root,hands,seed%2))continue;successful++;
  starts.push(walk.route[0]);assert(walk.route.length>=9);
  for(let j=1;j<walk.route.length;j++)for(let k=0;k<=10;k++)assert(safe(walk.route[j-1].clone().lerp(walk.route[j],k/10)),'Segments avoid the obstacle footprints');
  let previous=walk.pose.position.clone();
@@ -22,7 +22,7 @@ assert(successful>25);assert(starts.some(p=>p.x<0)&&starts.some(p=>p.x>0));asser
 // Stumbles are occasional, happen once, freeze the route and recover in order.
 const mishap=['fall','fallen','recover','dazed'];let stumbles=0,stumbleSeed;
 for(let seed=1;seed<=100;seed++){
- const walk=new FingerWalk(rng(seed));walk.setTerrain(()=>true);assert(walk.startWalk(root,hands,seed%2));
+ const walk=new FingerWalk(rng(seed));walk.preference='spider';walk.setTerrain(()=>true);assert(walk.startWalk(root,hands,seed%2));
  const phases=[];let frozenDistance,upright,previous=walk.pose.orientation.clone();
  for(let i=0;i<2000&&walk.active;i++){
   const before=walk.phase;walk.update(1/60,true,false,root);
@@ -36,14 +36,39 @@ for(let seed=1;seed<=100;seed++){
  if(phases.length){stumbles++;stumbleSeed??=seed;assert.deepEqual(phases,mishap,'One complete mishap per walk');assert(walk.distance>frozenDistance+.2,'Walking resumes after the daze');}
 }
 assert(stumbles>=12&&stumbles<=36,'A minority of walks include a tumble');
-for(const phase of mishap)for(const urgent of [false,true]){
- const walk=new FingerWalk(rng(stumbleSeed));walk.setTerrain(()=>true);assert(walk.startWalk(root,hands,0));
+// Both gait planes reach the floor with splay and palm sway; upright uses only digits 1 and 2.
+let uprightStumbleSeed,uprightFalls=0,spiderTime=0,uprightTime=0;const mixed=new Set();
+for(const style of ['spider','upright'])for(let seed=1;seed<=50;seed++){
+ const walk=new FingerWalk(rng(seed*11033));walk.preference=style;walk.setTerrain(()=>true);assert(walk.startWalk(root,hands,seed%2));
+ let time=0;
+ while(walk.active&&time<45){
+  walk.update(1/60,true,false,root);time+=1/60;
+  if(style==='upright'&&walk.phase==='fall'&&walk.age===0){uprightFalls++;uprightStumbleSeed??=seed*11033;}
+  if(walk.phase!=='walk')continue;
+  const gait=walk.gait;
+  assert(style==='upright'?Math.abs(new T.Vector3(0,0,1).applyQuaternion(walk.pose.orientation).y)<.11:true,'Upright palm faces horizontally');
+  for(let k=0;k<4;k++){
+   if(style==='upright'&&(k===0||k===3))continue;
+   const a=[.308,.388,.358,.268][k],b=.435,base=new T.Vector3((k-1.5)*.145,.48,0),splay=(1.5-k)*(style==='upright'?.10:.19),step=gait.steps[k];
+   const q=walkingFingerAngles(a,b,base,.68,new T.Vector3(0,-.17,0),gait.contactPose,gait.direction,step,splay,style==='upright'?0:.204);
+   const toe=new T.Vector3(0,a*Math.cos(q.base)+b*Math.cos(q.base+q.middle),a*Math.sin(q.base)+b*Math.sin(q.base+q.middle));
+   toe.applyAxisAngle(new T.Vector3(0,0,1),splay).add(base).multiplyScalar(.68).add(new T.Vector3(0,-.17,0)).applyQuaternion(gait.contactPose.orientation).add(gait.contactPose.position);
+   assert(Math.abs(toe.y-(.024+step.lift))<1e-7,'Splayed and swaying fingers still plant or clear the floor');
+  }
+ }
+ assert(!walk.active,'Both styles complete');if(style==='spider')spiderTime+=time/walk.distance;else uprightTime+=time/walk.distance;
+ const randomWalk=new FingerWalk(rng(seed*11033));randomWalk.setTerrain(()=>true);randomWalk.startWalk(root,hands,0);mixed.add(randomWalk.style);
+}
+assert.equal(mixed.size,2);assert(uprightTime>spiderTime*2,'Upright is substantially slower');assert(uprightFalls>=14&&uprightFalls<=35,'Upright is more liable to fall');
+for(const style of ['spider','upright'])for(const phase of mishap)for(const urgent of [false,true]){
+ const walk=new FingerWalk(rng(style==='spider'?stumbleSeed:uprightStumbleSeed));walk.preference=style;walk.setTerrain(()=>true);assert(walk.startWalk(root,hands,0));
  for(let i=0;i<2000&&walk.phase!==phase;i++)walk.update(1/60,true,false,root);
  assert.equal(walk.phase,phase);walk.update(1/60,!urgent,true,root);
  assert(urgent?!walk.active:walk.leaving,'Every tumble phase yields immediately to interaction or gracefully to movement');
  for(let i=0;i<100&&walk.active;i++)walk.update(1/60,true,true,root);
  assert(!walk.active,'Movement never waits for the entire daze');
 }
+for(let i=0;i<200;i++)assert(uprightSteps(i/200*.54).filter((s,k)=>(k===1||k===2)&&s.lift===0).length>=1,'At least one biped finger supports each step');
 for(let i=0;i<200;i++){
  const steps=fingerSteps(i/200*.27);assert(steps.filter(s=>s.lift===0).length>=2,'At least two supporting fingers');
  for(const [k,step] of steps.entries()){
@@ -75,9 +100,9 @@ for(let i=0;i<12000;i++){
 }
 assert(sawCatch&&sawWalk&&endings>=3);
 for(const urgent of [false,true]){
- const walk=new FingerWalk(rng(9));walk.setTerrain(safe);assert(walk.startWalk(root,hands,0));
+ const walk=new FingerWalk(rng(9));walk.preference='spider';walk.setTerrain(safe);assert(walk.startWalk(root,hands,0));
  for(let i=0;i<120;i++)walk.update(1/60,true,false,root);
  walk.update(1/60,!urgent,true,root);
  assert(urgent?!walk.active:walk.leaving,'Tree contact is immediate; walking gets a lift-off and return');
 }
-console.log('Finger walks: routes, planted/swing toes, IK, hand choice, shared cooldown and interruptible stumble/recovery passed.',{stumbles,outOf:100});
+console.log('Finger walks: routes, planted/swing toes, IK, hand choice, shared cooldown and interruptible stumble/recovery passed.',{spiderStumbles:stumbles,outOf:100,uprightFalls,outOfUpright:50,uprightSlowerBy:(uprightTime/spiderTime).toFixed(1)});

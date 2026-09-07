@@ -4,7 +4,7 @@ const output='.cache/finger-walk-review';mkdirSync(output,{recursive:true});
  const page=await browser.newPage({viewport:{width:1920,height:1200}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(process.env.SCENE_URL??'http://127.0.0.1:3100/explorations/018-painted-ground/?mode=body');
  await page.waitForFunction(()=>document.querySelector('#world').dataset.meshing==='ready');
- await page.getByRole('button',{name:'Open Inspect',exact:true}).click();await page.locator('#idleCatch').selectOption('explore');await page.locator('#closeSettings').click();
+ await page.getByRole('button',{name:'Open Inspect',exact:true}).click();await page.locator('#idleCatch').selectOption('explore');await page.locator('#idleWalkStyle').selectOption('spider');await page.locator('#closeSettings').click();
  const state=()=>page.evaluate(()=>JSON.parse(document.querySelector('#world').dataset.fingerWalk));
  const walking=()=>page.waitForFunction(()=>{const s=JSON.parse(document.querySelector('#world').dataset.fingerWalk);return s.phase==='walk'&&s.distance>.3;},null,{timeout:50000});
  await walking();const first=await state();await page.screenshot({path:output+'/live-walk-1.png'});

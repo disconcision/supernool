@@ -1,4 +1,5 @@
 import * as T from 'three';
+export type WalkStyle='spider'|'upright';
 export type FingerStep={advance:number;lift:number};
 export type WalkPose={position:T.Vector3;orientation:T.Quaternion};
 const smooth=(t:number)=>T.MathUtils.smoothstep(t,0,1),up=new T.Vector3(0,1,0);
@@ -12,9 +13,31 @@ export function fingerSteps(distance:number):FingerStep[]{
  });
 }
 
+/** Deliberately oversized, slow alternating strides on the two longest fingers. */
+export function uprightSteps(distance:number):FingerStep[]{
+ return [0,0,.5,0].map((offset,index)=>{
+  if(index===0||index===3)return {advance:0,lift:.2};
+  const phase=(distance/.54+offset)%1;
+  if(phase<.62)return {advance:.1674-.54*phase,lift:0};
+  const t=(phase-.62)/.38;
+  return {advance:T.MathUtils.lerp(-.1674,.1674,smooth(t)),lift:Math.sin(Math.PI*t)*.14};
+ });
+}
+
+/** Solve in the splayed finger's plane, keeping stance height through palm sway. */
+export function walkingFingerAngles(a:number,b:number,base:T.Vector3,scale:number,offset:T.Vector3,pose:WalkPose,direction:T.Vector3,step:FingerStep,splay:number,forwardOffset:number){
+ const origin=base.clone().multiplyScalar(scale).add(offset).applyQuaternion(pose.orientation).add(pose.position);
+ const plane=pose.orientation.clone().multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,0,1),splay));
+ const y=new T.Vector3(0,scale,0).applyQuaternion(plane),z=new T.Vector3(0,0,scale).applyQuaternion(plane);
+ const fy=y.dot(direction),fz=z.dot(direction),height=.024+step.lift-origin.y,forward=forwardOffset+step.advance,det=y.y*fz-z.y*fy;
+ return solveFinger(a,b,(height*fz-forward*z.y)/det,(forward*y.y-height*fy)/det);
+}
+
 /** A little surface excursion; the path is sampled against a supplied footprint test. */
 export class FingerWalk {
  phase:'rest'|'land'|'walk'|'fall'|'fallen'|'recover'|'dazed'|'rise'|'rejoin'='rest';hand=0;age=0;distance=0;
+ style:WalkStyle='spider';preference:WalkStyle|'mixed'='mixed';
+ contactPose:WalkPose={position:new T.Vector3(),orientation:new T.Quaternion()};thumb=0;
  pose:WalkPose={position:new T.Vector3(),orientation:new T.Quaternion()};weight=0;steps=fingerSteps(0);
  route:T.Vector3[]=[];private start!:WalkPose;private startWeight=0;private index=0;private speed=.35;private direction=new T.Vector3(0,0,1);
  private safe?:(p:T.Vector3)=>boolean;
@@ -22,11 +45,14 @@ export class FingerWalk {
  constructor(private random:()=>number=Math.random){}
  get active(){return this.phase!=='rest';}
  get leaving(){return this.phase==='rise'||this.phase==='rejoin';}
- get state(){return {phase:this.phase,age:this.age,hand:this.hand,distance:this.distance,weight:this.weight,position:this.pose.position.toArray(),route:this.route.map(p=>p.toArray())};}
+ get state(){return {phase:this.phase,style:this.style,age:this.age,hand:this.hand,distance:this.distance,weight:this.weight,position:this.pose.position.toArray(),route:this.route.map(p=>p.toArray())};}
+ get gait(){return {weight:this.weight,style:this.style,steps:this.steps,contactPose:this.contactPose,direction:this.direction,thumb:this.thumb};}
+ private gaitSteps(distance:number){return this.style==='upright'?uprightSteps(distance):fingerSteps(distance);}
  setTerrain(safe:(p:T.Vector3)=>boolean){this.safe=safe;}
  startWalk(root:T.Object3D,hands:T.Object3D[],hand:number){
   if(!this.safe)return false;
   const origin=root.position.clone(),valid=(p:T.Vector3)=>p.distanceTo(origin)>.95&&p.distanceTo(origin)<3.9&&this.safe!(p);
+  this.style=this.preference==='mixed'?(this.random()<.5?'spider':'upright'):this.preference;
   this.route=[];
   for(let attempt=0;attempt<16;attempt++){
    const angle=root.rotation.y+(hand?1:-1)*(.45+this.random()*2.4),radius=1.3+this.random()*1.2;
@@ -35,7 +61,7 @@ export class FingerWalk {
   }
   if(!this.route.length)return false;
   let heading=this.random()*Math.PI*2;
-  const count=20+Math.floor(this.random()*14);
+  const count=this.style==='upright'?12+Math.floor(this.random()*5):20+Math.floor(this.random()*14);
   for(let j=0;j<count;j++){
    const p=this.route[this.route.length-1];let next:T.Vector3|undefined;
    const drift=(this.random()-.5)*.7;
@@ -47,22 +73,23 @@ export class FingerWalk {
    if(!next)break;this.route.push(next);
   }
   if(this.route.length<9){this.route=[];return false;}
-  this.hand=hand;this.index=0;this.distance=0;this.steps=fingerSteps(0);this.weight=0;this.speed=.38+this.random()*.10;
+  this.hand=hand;this.index=0;this.distance=0;this.steps=this.gaitSteps(0);this.weight=0;this.speed=this.style==='upright'?.18+this.random()*.025:.38+this.random()*.10;
   // One possible mishap per excursion, after the gait has had time to establish itself.
-  this.tripAt=this.random()<.24?Math.max(1.2,(this.route.length-1)*.16*(.35+this.random()*.3)):Infinity;
+  this.tripAt=this.random()<(this.style==='upright'?.48:.24)?Math.max(1.2,(this.route.length-1)*.16*(.35+this.random()*.3)):Infinity;
   this.tripSide=this.random()<.5?-1:1;this.dazeDuration=1.6+this.random()*.7;
   this.pose={position:hands[hand].position.clone(),orientation:hands[hand].quaternion.clone()};
-  this.direction.copy(this.route[1]).sub(this.route[0]).normalize();this.enter('land');return true;
+  this.direction.copy(this.route[1]).sub(this.route[0]).normalize();this.contactPose=this.groundPose(this.route[0]);this.enter('land');return true;
  }
  private enter(phase:typeof this.phase){this.phase=phase;this.age=0;this.startWeight=this.weight;this.start={position:this.pose.position.clone(),orientation:this.pose.orientation.clone()};}
  cancel(){this.phase='rest';this.weight=0;}
  private groundPose(center:T.Vector3){
-  return {position:center.clone().addScaledVector(this.direction,-.39).add(new T.Vector3(0,.38,0)),orientation:new T.Quaternion().setFromAxisAngle(up,Math.atan2(this.direction.x,this.direction.z)).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(1,0,0),Math.PI/2))};
+  const upright=this.style==='upright',cycle=this.distance/.54*Math.PI*2;
+  return {position:center.clone().addScaledVector(this.direction,upright?0:-.39).add(new T.Vector3(0,upright?.64+.014*Math.sin(cycle*2):.38,0)),orientation:new T.Quaternion().setFromAxisAngle(up,Math.atan2(this.direction.x,this.direction.z)).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(1,0,0),upright?Math.PI:Math.PI/2)).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,0,1),upright?Math.sin(cycle)*.09:0))};
  }
  update(dt:number,allowed:boolean,walking:boolean,root:T.Object3D){
   if(!this.active)return;if(!allowed){this.cancel();return;}dt=Math.min(.05,dt);
   if(walking&&!this.leaving)this.enter('rise');
-  this.age+=dt;
+  this.age+=dt;this.thumb=Math.sin(this.distance/(this.style==='upright'?.54:.27)*Math.PI*2);
   if(this.phase==='land'){
    const target=this.groundPose(this.route[0]),u=smooth(this.age/1.25);
    this.pose.position.copy(this.start.position).lerp(target.position,u);this.pose.position.y+=Math.sin(Math.PI*u)*.25;
@@ -71,10 +98,10 @@ export class FingerWalk {
   }else if(this.phase==='walk'){
    const a=this.route[this.index],b=this.route[this.index+1];
    if(!b||!this.safe!(a)||!this.safe!(b)){this.enter('rise');return;}
-   this.distance+=this.speed*dt;const traveled=this.distance-this.index*.16,u=T.MathUtils.clamp(traveled/.16,0,1);
+   this.distance+=this.speed*dt*(this.style==='upright'?.35+.9*Math.sin(this.distance/.54*Math.PI*2)**2:1);const traveled=this.distance-this.index*.16,u=T.MathUtils.clamp(traveled/.16,0,1);
    const center=a.clone().lerp(b,u),direction=b.clone().sub(a).normalize();
    this.direction.lerp(direction,1-Math.exp(-dt*9)).normalize();
-   this.pose=this.groundPose(center);this.steps=fingerSteps(this.distance);this.weight=1;
+   this.pose=this.groundPose(center);this.contactPose={position:this.pose.position.clone(),orientation:this.pose.orientation.clone()};this.steps=this.gaitSteps(this.distance);this.weight=1;
    if(u>=1){this.index++;if(this.index>=this.route.length-1)this.enter('rise');}
    if(this.phase==='walk'&&this.distance>=this.tripAt){
     this.tripAt=Infinity;
@@ -105,7 +132,7 @@ export class FingerWalk {
     .multiply(new T.Quaternion().setFromAxisAngle(up,Math.sin(this.age*8)*.19*envelope))
     .multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,0,1),Math.sin(this.age*5)*.22*envelope));
    // Hesitant toe shuffles rather than continuing the route while disoriented.
-   this.steps=fingerSteps(this.distance+Math.sin(this.age*5)*.018*envelope);
+   this.steps=this.gaitSteps(this.distance+Math.sin(this.age*5)*.018*envelope);
    if(t===1)this.enter('walk');
   }else if(this.phase==='rise'){
    const u=smooth(this.age/.45);this.pose.position.copy(this.start.position).add(new T.Vector3(0,.4*u,0));this.weight=this.startWeight*(1-u);
@@ -121,8 +148,8 @@ export class FingerWalk {
  private tipPose(amount:number){
   const side=new T.Vector3(this.direction.z,0,-this.direction.x).multiplyScalar(this.tripSide);
   this.pose.position.copy(this.upright.position).addScaledVector(side,.24*amount);
-  this.pose.position.y-=.12*amount;
-  this.pose.orientation.copy(this.upright.orientation).multiply(new T.Quaternion().setFromAxisAngle(up,-this.tripSide*1.48*amount));
+  this.pose.position.y-=(this.style==='upright'?.39:.12)*amount;
+  this.pose.orientation.copy(this.upright.orientation).multiply(new T.Quaternion().setFromAxisAngle(this.style==='upright'?new T.Vector3(0,0,1):up,-this.tripSide*1.48*amount));
  }
 }
 
