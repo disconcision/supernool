@@ -20,7 +20,7 @@ export function setupHUD(){
   ['Traveller',['character','characterStatus','palette']],
   ['Interaction',['stanceAssist','bodyLink','pullGain','mass']],
   ['Tree & sigils',['sigils','lighting','surface','resolution','thickness','taper','bow','random','irregularity','twist','facets','blend','spread','height','seed','cost']],
-  ['Surroundings',['backdrop','backdropStatus','groundShadows','resetView','mistMode','mistDensity','mistRadius','mistTexture','mistSpeed']],
+  ['Surroundings',['backdrop','backdropStatus','groundShadows','rockLayout','rockShading','rockGrowth','rockGrowthControls','rockLoad','rockRetry','resetView','mistMode','mistDensity','mistRadius','mistTexture','mistSpeed']],
   ['Sound',['soundMode','previewSound','volume']]
  ] as const;
  for(const [title,ids] of sections){const section=document.createElement('details');section.open=title==='Traveller';const summary=document.createElement('summary');summary.textContent=title;section.append(summary);for(const id of ids){const el=$(id);section.append(el.closest('label')??el);}settings.append(section);}
