@@ -71,3 +71,7 @@ The first round-04 shadow sheet went too wispy. The correction, `round-04/shadow
 ## Round 05 · nearly black translucent mantle
 
 Latest clarification supersedes foliage-like texture in earlier shadow paintings: near-black, mostly untextured cloud silhouettes, visible branches and sigils through them, a coloured fringe and arcs, subtle coloured wood glow. `shadow.html` tests this directly in 3D on the existing host/motion workshop. No additional living or shadow concept images were generated. See `shadow-notes.md` for depth/compositing, sigil readability, actual local light versus overlaid arcs, validation and limits. This does not change the current playable encounter or select a final cloud style.
+
+## Round 06 · painterly living foliage refinement
+
+The existing `canopy-growth.html` now compares Painterly volume with Previous rendering, following the user's request for research and further actual-render iteration against the original F5/F2/F6 images. The new treatment uses shared cluster normals, grouped colour/shading, procedural brush textures and somewhat fuller G1 fans. No new concept paintings or main-scene changes. See `painterly-notes.md` for first-hand artist sources, the inspection loop, remaining differences and validation. The prior rendering remains directly accessible with `?finish=previous`.
