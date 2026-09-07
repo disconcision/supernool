@@ -93,3 +93,7 @@ Small paths follow exposed canopy borders; medium forked paths bridge cloud grou
 Read-only browser inspection captured only defaults after the user's reset; the earlier preferred settings were not recovered. Do not describe the defaults as user-selected.
 
 Validation: `lightning-mix-check.cjs` checks independent event counts, disabled streams, short flashes, finite fork geometry and endpoint contact. Browser review compared all four previews and a rock strike during a regroup tween; no WebGL errors observed. Small strokes retain a faint contribution over canopy gaps so the patch mask does not erase them entirely. Medium/large strokes can cross open air, but still protect wood/sigils. Renderer loops are bounded at 80 segments, and exposed-border candidates are cached per event.
+
+### Temporal correction
+
+The initial lightning mix's jittered periodic clocks were rejected as unnatural. They are superseded by shared storm lulls/active spells with conditional Poisson arrivals and separately randomized intraflash strokes. New controls: Storm burstiness (zero = Poisson), Lull / active-spell timescale, Re-flash tendency. The frequency sliders retain their long-run mean meaning. See [lightning-timing-notes.md](lightning-timing-notes.md) for research, model choices, validation and limitations.
