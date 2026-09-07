@@ -124,6 +124,9 @@ export function createLehi(scene:T.Scene){
      j.scale.setScalar(T.MathUtils.lerp(1,scale,weight));
      j.quaternion.slerp(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,0,1),splay).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(1,0,0),angles.base)),weight);h.tips[k].rotation.x=T.MathUtils.lerp(h.tips[k].rotation.x,angles.middle,weight);
     });
+    h.group.updateMatrixWorld(true);
+    const toes=h.tips.map(t=>t.localToWorld(new T.Vector3(0,.17,0)));
+    fingerWalk.recordContacts(upright?[new T.Vector3(0,1,0),toes[0],toes[1],new T.Vector3(0,1,0)]:toes);
     h.thumb.rotation.x=T.MathUtils.lerp(h.thumb.rotation.x,.35+fingerWalk.thumb*.3,weight);
     h.thumb.rotation.z=T.MathUtils.lerp(h.thumb.rotation.z,(i?1:-1)*(1+fingerWalk.thumb*.2),weight);
    }

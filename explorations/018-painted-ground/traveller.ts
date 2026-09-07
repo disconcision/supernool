@@ -117,7 +117,7 @@ export function createTraveller(scene:T.Scene,status:(message:string)=>void){
      d.node.quaternion.slerp(q,walk.weight);
     }
    }
-   if(walk?.weight>.99){hand.updateMatrixWorld(true);root.userData.fingerWalk.toeHeights=digits.filter(d=>d.walk?.segment==='tip').map(d=>d.node.localToWorld(new T.Vector3(0,.172,0)).y);root.userData.fingerWalk.steps=walk.steps;root.userData.fingerWalk.thumb=walk.thumb;root.userData.fingerWalk.palmNormalY=new T.Vector3(0,0,1).applyQuaternion(hand.quaternion).y;}
+   if(walk?.weight>.99){hand.updateMatrixWorld(true);const toes=digits.filter(d=>d.walk?.segment==='tip').map(d=>d.node.localToWorld(new T.Vector3(0,.172,0)));walk.recordContacts(toes);root.userData.fingerWalk.toeHeights=toes.map(p=>p.y);root.userData.fingerWalk.toes=toes.map(p=>p.toArray());root.userData.fingerWalk.knees=[1,2].map(k=>poses.get(k)?.middle);root.userData.fingerWalk.steps=walk.steps;root.userData.fingerWalk.thumb=walk.thumb;root.userData.fingerWalk.palmNormalY=new T.Vector3(0,0,1).applyQuaternion(hand.quaternion).y;}
   });
  }
  return {root,update,setCatchProps:controller.setCatchProps,setIdleCatch:controller.setIdleCatch,setTravelStyle:controller.setTravelStyle,setIdleWalkStyle:controller.setIdleWalkStyle,setIdleTerrain:controller.setIdleTerrain,setIdleMode:controller.setIdleMode,choose:select,setPalette(name:string){palette=name;variants.forEach(paint);},current:()=>current,locomotion:()=>running?'Run':active?.motion??'procedural',linkEnds(){

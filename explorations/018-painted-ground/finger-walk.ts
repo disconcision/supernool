@@ -20,7 +20,7 @@ export function uprightSteps(distance:number):FingerStep[]{
   const phase=(distance/.54+offset)%1;
   if(phase<.62)return {advance:.1674-.54*phase,lift:0};
   const t=(phase-.62)/.38;
-  return {advance:T.MathUtils.lerp(-.1674,.1674,smooth(t)),lift:Math.sin(Math.PI*t)*.14};
+  return {advance:T.MathUtils.lerp(-.1674,.1674,smooth(t)),lift:Math.sin(Math.PI*t)*.035};
  });
 }
 
@@ -41,12 +41,13 @@ export class FingerWalk {
  pose:WalkPose={position:new T.Vector3(),orientation:new T.Quaternion()};weight=0;steps=fingerSteps(0);
  route:T.Vector3[]=[];private start!:WalkPose;private startWeight=0;private index=0;private speed=.35;private direction=new T.Vector3(0,0,1);
  private safe?:(p:T.Vector3)=>boolean;
+ private pivot=new T.Vector3();private pivotLocal=new T.Vector3();
  private tripAt=Infinity;private tripSide=1;private upright!:WalkPose;private dazeDuration=1.8;
  constructor(private random:()=>number=Math.random){}
  get active(){return this.phase!=='rest';}
  get leaving(){return this.phase==='rise'||this.phase==='rejoin';}
- get state(){return {phase:this.phase,style:this.style,age:this.age,hand:this.hand,distance:this.distance,weight:this.weight,position:this.pose.position.toArray(),route:this.route.map(p=>p.toArray())};}
- get gait(){return {weight:this.weight,style:this.style,steps:this.steps,contactPose:this.contactPose,direction:this.direction,thumb:this.thumb};}
+ get state(){return {phase:this.phase,style:this.style,age:this.age,hand:this.hand,distance:this.distance,weight:this.weight,position:this.pose.position.toArray(),pivot:this.pivot.toArray(),pivotLocal:this.pivotLocal.toArray(),route:this.route.map(p=>p.toArray())};}
+ get gait(){return {weight:this.weight,style:this.style,steps:this.steps,contactPose:this.contactPose,direction:this.direction,thumb:this.thumb,recordContacts:this.recordContacts};}
  private gaitSteps(distance:number){return this.style==='upright'?uprightSteps(distance):fingerSteps(distance);}
  setTerrain(safe:(p:T.Vector3)=>boolean){this.safe=safe;}
  startWalk(root:T.Object3D,hands:T.Object3D[],hand:number){
@@ -83,8 +84,33 @@ export class FingerWalk {
  private enter(phase:typeof this.phase){this.phase=phase;this.age=0;this.startWeight=this.weight;this.start={position:this.pose.position.clone(),orientation:this.pose.orientation.clone()};}
  cancel(){this.phase='rest';this.weight=0;}
  private groundPose(center:T.Vector3){
-  const upright=this.style==='upright',cycle=this.distance/.54*Math.PI*2;
-  return {position:center.clone().addScaledVector(this.direction,upright?0:-.39).add(new T.Vector3(0,upright?.64+.014*Math.sin(cycle*2):.38,0)),orientation:new T.Quaternion().setFromAxisAngle(up,Math.atan2(this.direction.x,this.direction.z)).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(1,0,0),upright?Math.PI:Math.PI/2)).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,0,1),upright?Math.sin(cycle)*.09:0))};
+  const upright=this.style==='upright',cycle=this.distance/.54*Math.PI*2,sway=Math.sin(cycle);
+  const heading=new T.Quaternion().setFromAxisAngle(up,Math.atan2(this.direction.x,this.direction.z))
+   .multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(1,0,0),upright?Math.PI:Math.PI/2));
+  let orientation=heading,height=.38;
+  if(upright){
+   const steps=uprightSteps(this.distance);
+   // Match near-straight reach on the unequal long fingers by rocking the palm,
+   // rather than absorbing their changing reach in two deeply bent joints.
+   const reach=(angle:number)=>{
+    const rotation=heading.clone().multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,0,1),angle));
+    return [1,2].map(k=>{
+     const length=(k===1?.388:.358)+.435-.003,step=steps[k];
+     const base=new T.Vector3((k-1.5)*.145*.68,.48*.68-.17,0).applyQuaternion(rotation);
+     const plane=rotation.clone().multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,0,1),(1.5-k)*.10));
+     const leg=new T.Vector3(0,Math.sqrt(length*length-(step.advance/.68)**2)*.68,0).applyQuaternion(plane);
+     return .024+step.lift-base.y-leg.y;
+    });
+   };
+   let lo=-.55,hi=.55;
+   for(let i=0;i<12;i++){const mid=(lo+hi)/2,h=reach(mid);if(h[0]>h[1])lo=mid;else hi=mid;}
+   const angle=(lo+hi)/2;
+   orientation=heading.clone().multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,0,1),angle));
+   height=Math.min(...reach(angle))-.004;
+  }
+  const position=center.clone().addScaledVector(this.direction,upright?0:-.39).setY(height);
+  if(upright)position.addScaledVector(new T.Vector3(this.direction.z,0,-this.direction.x),-.06*sway);
+  return {position,orientation};
  }
  update(dt:number,allowed:boolean,walking:boolean,root:T.Object3D){
   if(!this.active)return;if(!allowed){this.cancel();return;}dt=Math.min(.05,dt);
@@ -105,10 +131,12 @@ export class FingerWalk {
    if(u>=1){this.index++;if(this.index>=this.route.length-1)this.enter('rise');}
    if(this.phase==='walk'&&this.distance>=this.tripAt){
     this.tripAt=Infinity;
+    if(this.style==='upright'){if(this.steps[1].lift>0)this.tripSide=1;else if(this.steps[2].lift>0)this.tripSide=-1;}
     // The same conservative footprint used for walking must also clear the sideways tip.
-    const side=new T.Vector3(this.direction.z,0,-this.direction.x).multiplyScalar(this.tripSide);
-    if([.1,.2,.3].every(t=>this.safe!(center.clone().addScaledVector(side,t)))){
-     this.upright={position:this.pose.position.clone(),orientation:this.pose.orientation.clone()};this.enter('fall');
+    const side=new T.Vector3(this.direction.z,0,-this.direction.x).multiplyScalar(this.tripSide),reach=this.style==='upright'?.9:.3;
+    if([.25,.5,.75,1].every(t=>this.safe!(center.clone().addScaledVector(side,reach*t)))){
+     this.upright={position:this.pose.position.clone(),orientation:this.pose.orientation.clone()};
+     this.pivot.copy(center).setY(.024);this.capturePivot();this.enter('fall');
     }
    }
   }else if(this.phase==='fall'){
@@ -123,7 +151,7 @@ export class FingerWalk {
   }else if(this.phase==='recover'){
    const u=smooth(this.age/.95);
    this.tipPose(1-u);
-   this.pose.position.y+=Math.sin(Math.PI*u)*.07;
+   if(this.style==='spider')this.pose.position.y+=Math.sin(Math.PI*u)*.07;
    if(this.age>=.95)this.enter('dazed');
   }else if(this.phase==='dazed'){
    const t=T.MathUtils.clamp(this.age/this.dazeDuration,0,1),envelope=Math.sin(Math.PI*t)*(1-t);
@@ -145,11 +173,25 @@ export class FingerWalk {
    if(this.age>=1)this.cancel();
   }
  }
- private tipPose(amount:number){
+ /** Called after posing, so the fall uses the rendered supporting fingertip,
+  * including the selected figure's actual bone lengths and current articulation. */
+ readonly recordContacts=(points:T.Vector3[])=>{
+  if(this.style!=='upright'||this.phase!=='fall'||this.age!==0)return;
   const side=new T.Vector3(this.direction.z,0,-this.direction.x).multiplyScalar(this.tripSide);
-  this.pose.position.copy(this.upright.position).addScaledVector(side,.24*amount);
-  this.pose.position.y-=(this.style==='upright'?.39:.12)*amount;
-  this.pose.orientation.copy(this.upright.orientation).multiply(new T.Quaternion().setFromAxisAngle(this.style==='upright'?new T.Vector3(0,0,1):up,-this.tripSide*1.48*amount));
+  const planted=points.filter((p,k)=>this.steps[k]?.lift===0&&p.y<.075);
+  planted.sort((a,b)=>b.dot(side)-a.dot(side));
+  if(planted[0]){this.pivot.copy(planted[0]);this.capturePivot();}
+ };
+ private capturePivot(){this.pivotLocal.copy(this.pivot).sub(this.upright.position).applyQuaternion(this.upright.orientation.clone().invert());}
+ private tipPose(amount:number){
+  if(this.style==='spider'){
+   const side=new T.Vector3(this.direction.z,0,-this.direction.x).multiplyScalar(this.tripSide);
+   this.pose.position.copy(this.upright.position).addScaledVector(side,.24*amount);this.pose.position.y-=.12*amount;
+   this.pose.orientation.copy(this.upright.orientation).multiply(new T.Quaternion().setFromAxisAngle(up,-this.tripSide*1.48*amount));return;
+  }
+  const rotation=new T.Quaternion().setFromAxisAngle(this.direction,-this.tripSide*1.22*amount);
+  this.pose.orientation.copy(rotation).multiply(this.upright.orientation);
+  this.pose.position.copy(this.upright.position).sub(this.pivot).applyQuaternion(rotation).add(this.pivot);
  }
 }
 
