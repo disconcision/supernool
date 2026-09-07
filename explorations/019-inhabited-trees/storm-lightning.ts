@@ -1,7 +1,9 @@
 import * as T from 'three';
 import {hash} from './canopy';
+import {ArcClass,TimingSettings,activeFlashes} from './lightning-timing';
+export {arcEvent,flashTimeline,strokePattern} from './lightning-timing';
 export type ProjectedLobe={x:number;y:number;rx:number;ry:number};
-export type LightningMemory={key?:string;picks?:{index:number;angle:number}[]};
+export type LightningMemory={events?:Map<string,LightningMemory>;key?:string;picks?:{index:number;angle:number}[]};
 export type BoltSegment={a:T.Vector2;b:T.Vector2;weight:number};
 // Short discharge paths on exposed cloud borders. No branch endpoints are used.
 export function exteriorLightning(lobes:ProjectedLobe[],time:number,anger:number,memory:LightningMemory={},size=1){
@@ -32,20 +34,10 @@ export function exteriorLightning(lobes:ProjectedLobe[],time:number,anger:number
 }
 
 
-export type ArcClass='small'|'medium'|'large';
-export type ArcSettings={smallRate:number;mediumRate:number;largeRate:number;smallSize:number;mediumSize:number;largeSize:number;rockShare:number;duration:number};
-export const arcDefaults:ArcSettings={smallRate:1.2,mediumRate:.16,largeRate:.035,smallSize:1,mediumSize:1,largeSize:1,rockShare:.55,duration:1};
+export type ArcSettings=TimingSettings&{smallSize:number;mediumSize:number;largeSize:number;rockShare:number};
+export const arcDefaults:ArcSettings={smallRate:1.2,mediumRate:.16,largeRate:.035,smallSize:1,mediumSize:1,largeSize:1,rockShare:.55,duration:1,burstiness:.75,stormScale:1,restrikes:.55,timingSeed:3};
 export type MixedSegment=BoltSegment&{power:number;free:boolean};
 export type ArcPreview=ArcClass|'rock'|'branch';
-// Separate deterministic clocks: rare events never replace the small flickers.
-export function arcEvent(kind:ArcClass,time:number,anger:number,o:ArcSettings){
- const rate=o[kind+'Rate' as keyof ArcSettings]*(1+anger*1.5);
- if(rate<=0)return {slot:0,power:0};
- const slot=Math.floor(time*rate),start=(slot+.12+hash(kind+slot+'onset')*.65)/rate;
- const duration=({small:.055,medium:.075,large:.10}[kind])*o.duration;
- const age=time-start,flash=(t:number)=>t>=0&&t<duration?Math.pow(1-t/duration,.65):0;
- return {slot,power:flash(age)+(kind==='small'?0:flash(age-duration-.035)*.32)};
-}
 function forkedPath(a:T.Vector2,b:T.Vector2,key:string,weight:number):BoltSegment[]{
  const axis=b.clone().sub(a),normal=new T.Vector2(-axis.y,axis.x).normalize(),length=axis.length(),points:T.Vector2[]=[],segments:BoltSegment[]=[];
  for(let i=0;i<=12;i++){
@@ -61,14 +53,19 @@ export function mixedLightning(lobes:ProjectedLobe[],branches:T.Vector2[],rocks:
  const segments:MixedSegment[]=[],events:{kind:ArcClass;target:string;power:number}[]=[];
  if(!lobes.length)return {segments,events};
  const at=(l:ProjectedLobe,a:number)=>new T.Vector2(l.x+Math.cos(a)*l.rx,l.y+Math.sin(a)*l.ry);
- for(const kind of ['small','medium','large'] as ArcClass[]){
- const event=arcEvent(kind,time,anger,o),forced=preview&&(preview===kind||(kind==='large'&&(preview==='rock'||preview==='branch')));
- const power=preview?(forced?.85:0):event.power;if(power<=0)continue;
- const key=kind+event.slot,source=lobes[Math.floor(hash(key+'source')*lobes.length)],scale=o[kind+'Size' as keyof ArcSettings];let path:BoltSegment[]=[],target='cloud',free=kind!=='small';
+ const flashes=(['large','medium','small'] as ArcClass[]).flatMap(kind=>{
+ const forced=preview&&(preview===kind||(kind==='large'&&(preview==='rock'||preview==='branch')));
+ return (preview?(forced?[{slot:0,start:time,power:.85}]:[]):activeFlashes(kind,time,anger,o)).map(event=>({kind,event}));
+ });
+ for(const {kind,event} of flashes){
+ if(segments.length+(kind==='small'?(anger>.72?32:16):20)>80)continue;
+ const power=event.power;
+ const key=kind+event.slot,source=lobes[Math.floor(hash(key+'source')*lobes.length)],scale=o[`${kind}Size`];let path:BoltSegment[]=[],target='cloud',free=kind!=='small';
  if(kind==='small'){
  // Reuse the exposed-border path finder, but vary its angular reach independently.
  const t=event.slot/(.65+anger*1.5)+hash('delay'+event.slot)*.16+.012;
- const shaped=exteriorLightning(lobes,t,anger,memory,scale);path=shaped.segments;
+ const cache=memory.events??(memory.events=new Map());if(!cache.has(key)){if(cache.size>=32)cache.delete(cache.keys().next().value!);cache.set(key,{});}
+ const shaped=exteriorLightning(lobes,t,anger,cache.get(key)!,scale);path=shaped.segments;
  }else{
  let a=at(source,hash(key+'angle')*Math.PI*2),b:T.Vector2;
  if(kind==='large'){
@@ -85,6 +82,7 @@ export function mixedLightning(lobes:ProjectedLobe[],branches:T.Vector2[],rocks:
  }
  path=forkedPath(a,b,key,kind==='large'?1.1:.75);
  }
+ if(segments.length+path.length>80)continue;
  for(const segment of path)segments.push({...segment,power:power*(kind==='small'?.65:kind==='medium'?.7:1)*(1+anger*.4),free});
  if(path.length)events.push({kind,target,power});
  }

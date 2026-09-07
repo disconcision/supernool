@@ -90,7 +90,7 @@ export function makeShadowCanopy(renderer:T.WebGLRenderer){
  u.count.value=o.enabled?n:0;
  renderer.info.reset();renderer.info.autoReset=false;renderer.setRenderTarget(target);renderer.render(scene,camera);
  if(patchMode&&pose){projected=patches.render(renderer,camera,target.depthTexture,pose,o);if(!o.enabled){renderer.setRenderTarget(patches.target);renderer.clear();u.patchMode.value=0;}}
- if(lastForm!==o.form)smallMemory.key=undefined;lastForm=o.form;const project=(p:T.Vector3)=>{const q=p.clone().project(camera);return new T.Vector2(q.x*.5+.5,q.y*.5+.5);};
+ if(lastForm!==o.form){smallMemory.key=undefined;smallMemory.events?.clear();}lastForm=o.form;const project=(p:T.Vector3)=>{const q=p.clone().project(camera);return new T.Vector2(q.x*.5+.5,q.y*.5+.5);};
  const branchPoints=(pose?.edges??[]).filter(e=>e.id!=='stem').map(e=>project(e.a.clone().lerp(e.b,.72)));
  const bolt=mixedLightning(projected,branchPoints,o.strikePoints.map(project),o.time,o.anger,o.lightning,o.arcPreview,smallMemory);lastEvents=bolt.events;u.arcCount.value=o.enabled&&o.arcs?Math.min(ARC,bolt.segments.length):0;u.arcPower.value=bolt.segments.length?1:0;
  for(let i=0;i<u.arcCount.value;i++){const s=bolt.segments[i];u.segments.value[i].set(s.a.x,s.a.y,s.b.x,s.b.y);u.weights.value[i]=s.weight;u.powers.value[i]=s.power;u.freeArcs.value[i]=s.free?1:0;}
