@@ -1,0 +1,29 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>supernool · 019 · Shadow mantle</title><link rel="icon" href="data:,"><link rel="stylesheet" href="canopy.css"><style>[hidden]{display:none!important}body[data-study=shadow] #concept{background-size:200% 200%;}</style></head><body data-study="shadow">
+<main id="view" aria-label="Interactive 3D canopy"></main>
+<header><a href="./#round-05">supernool · 019 / round 05</a><h1>Shadow mantle</h1><p>Drag to orbit · scroll to zoom</p></header>
+<aside><details open><summary>Canopy & host</summary><div class="controls">
+<label>Cloud form<select id="style"><option value="S1">Lobed mantle</option><option value="S2">Low storm banks</option><option value="S3">Tall storm columns</option></select></label>
+<label>Darkness / opacity <output id="opacityValue"></output><input id="opacity" type="range" min="0" max=".9" step=".01" value=".72"></label>
+<label>Coloured fringe <output id="fringeValue"></output><input id="fringe" type="range" min="0" max="1.5" step=".01" value=".55"></label>
+<label>Interior texture <output id="textureValue"></output><input id="texture" type="range" min="0" max="1" step=".01" value=".04"></label>
+<label>Agitation / arcs <output id="angerValue"></output><input id="anger" type="range" min="0" max="1" step=".01" value=".3"></label>
+<label>Wood glow <output id="branchGlowValue"></output><input id="branchGlow" type="range" min="0" max="1" step=".01" value=".1"></label>
+<label class="tick"><input id="arcs" type="checkbox" checked>Lightning arcs</label>
+<label>Host / motion<select id="specimen"><option value="mature">Mature branching host</option><option value="uneven">Uneven branching host</option><option value="swap" selected>Expression · swap</option><option value="group">Expression · regroup</option><option value="zero">Expression · remove zero</option></select></label>
+<label>Shape seed <output id="seedValue"></output><input id="seed" type="range" min="1" max="12" step="1" value="3"></label>
+<label>Cloud extent <output id="sizeValue"></output><input id="size" type="range" min=".45" max="1.65" step=".05" value="1.25"></label>
+<div hidden><label>Foliage density <output id="densityValue"></output><input id="density" type="range" min=".3" max="1.8" step=".1" value="1"></label></div>
+<div hidden><label>Lower offshoots <output id="offshootsValue"></output><input id="offshoots" type="range" min="0" max="1" step=".1" value=".7"></label></div>
+<div hidden><label>Solid backing <output id="backingValue"></output><input id="backing" type="range" min="0" max="1" step=".05" value=".35"></label></div>
+<label>Spatial spread <output id="spreadValue"></output><input id="spread" type="range" min="0" max="1" step=".01" value=".4"></label>
+<label>Branch pose <output id="poseValue"></output><input id="pose" type="range" min="0" max="1" step=".01" value="0"></label>
+<div class="row"><button id="play">Play pose</button><button id="resetView">Reset view</button></div>
+<label>Cloud drift <output id="windValue"></output><input id="wind" type="range" min="0" max="1" step=".05" value=".1"></label>
+<label hidden>Colour<select id="palette"><option value="upland">Upland green</option><option value="fresh">Fresh green</option><option value="gold">Late summer</option></select></label>
+<label class="tick" style="display:none!important"><input id="normals" type="checkbox" checked>Shaped patch normals</label>
+<label class="tick"><input id="foliage" type="checkbox" checked>Show shadow mantle</label><label class="tick"><input id="sigils" type="checkbox" checked>Show expression sigils</label><label class="tick"><input id="wire" type="checkbox">Wood wireframe</label>
+</div></details>
+<details><summary>Palette & local light</summary><div class="controls"><label>Colour / local light<select id="spill"><option value="off">Violet · no local light</option><option value="violet" selected>Violet only</option><option value="blue">Blue only</option><option value="amber">Amber</option></select></label><label>Light strength <output id="lightValue"></output><input id="light" type="range" min="0" max="120" step="2" value="28"></label><p>Actual point lights on 3D ground and rocks. This is actual local illumination; the mantle fringe is a separate additive effect.</p></div></details>
+<details><summary>Concept & method</summary><div class="controls"><a href="round-04/shadow-body.png" id="conceptLink" target="_blank"><div id="concept" role="img" aria-label="Selected generated canopy reference"></div></a><p id="method"></p><a href="canopy-growth.html">Living canopy checkpoint →</a><p>Cloud lobes follow stable host members. The original living-canopy study is unchanged. The expression examples use 018's real rewrite layouts; this is a material study, not the playable encounter.</p><a href="./#round-05">Study notes & references</a></div></details>
+</aside><footer><span id="status">Building hewn host…</span><span id="stats"></span><button id="hide">Hide UI · H</button></footer>
+<script type="module" src="canopy-view.ts"></script></body></html>
