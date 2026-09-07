@@ -27,3 +27,5 @@ $('shadow-body-full').href=new URL('./round-04/shadow-body.png',import.meta.url)
 $('shadow-body-prompt').href=new URL('./round-04/shadow-body-prompt.txt',import.meta.url).href;
 $('round-four-provenance').href=new URL('./round-04/provenance.json',import.meta.url).href;
 $('growth-notes').href=new URL('./growth-notes.md',import.meta.url).href;
+
+$('shadow-method').href=new URL('./shadow-notes.md',import.meta.url).href;
