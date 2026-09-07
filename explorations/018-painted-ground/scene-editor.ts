@@ -1,6 +1,7 @@
 import {bakedScene} from './scene-library';
 import * as T from 'three';
-import {TransformControls} from 'three/addons/controls/TransformControls.js';
+import {editorGizmo} from './editor-gizmo';
+import {selectionOutline} from './selection-outline';
 import type {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {rockAuthoring} from './rock-authoring';
 import {validateScene,sceneIdPattern,type SceneVersion,type RockPlacement} from '../../scene-tools/schema';
@@ -9,15 +10,15 @@ type Hooks={canEdit:()=>boolean;setEditing:(on:boolean)=>void;capture:()=>Record
 export function mountSceneEditor(scene:T.Scene,camera:T.Camera,renderer:T.WebGLRenderer,orbit:OrbitControls,hooks:Hooks){
  const dock=document.querySelector('#inspectDock .dockBody')!,nav=dock.querySelector('nav')!;
  const page=document.createElement('div');page.className='dockPage';page.id='sceneEditor';page.hidden=true;
- page.innerHTML=`<h2>Scene workshop</h2><p>Arrange the rock formations, then save their layout together with your scene settings.</p>
+ page.innerHTML=`<h2>Scene workshop</h2><p>Arrange formations, loose stones and mushrooms, then save their layout together with your scene settings.</p>
  <label>Scene<input id="sceneId" value="clearing" maxlength="48"></label>
- <div class="editorButtons"><button id="editScene">Edit rocks</button><button id="undoScene" disabled>Undo</button><button id="redoScene" disabled>Redo</button></div>
- <fieldset id="rockTools" disabled hidden><legend>Rock layout</legend>
- <label>Formation<select id="editorSelection"><option value="">Select a rock in the scene</option></select></label>
- <label>Tool<select id="editorTool"><option value="translate">Move · W</option><option value="rotate">Rotate · E</option><option value="scale">Scale · R</option></select></label>
+ <div class="editorButtons"><button id="editScene">Edit scenery</button><button id="undoScene" disabled>Undo</button><button id="redoScene" disabled>Redo</button></div>
+ <fieldset id="rockTools" disabled hidden><legend>Scenery layout</legend>
+ <label>Object<select id="editorSelection"><option value="">Select scenery in the scene</option></select></label>
+ <label>Tool<select id="editorTool"><option value="combined">All handles · Q</option><option value="translate">Move · W</option><option value="rotate">Rotate · E</option><option value="scale">Scale · R</option></select></label>
  <label><span>Snap to increments</span><input id="editorSnap" type="checkbox" checked></label>
- <div class="editorNumbers"><label>X<input id="editorX" type="number" step=".25" min="-80" max="80"></label><label>Height<input id="editorY" type="number" step=".1" min="-10" max="20"></label><label>Z<input id="editorZ" type="number" step=".25" min="-80" max="80"></label><label>Yaw °<input id="editorYaw" type="number" step="5"></label><label>Size ×<input id="editorScale" type="number" step=".1" min=".1" max="8"></label></div>
- <p>Drag the handles or enter values. Right-drag orbits; scroll zooms. Escape returns to play.</p></fieldset>
+ <div class="editorNumbers"><label>X<input id="editorX" type="number" step=".25" min="-80" max="80"></label><label>Height · Y<input id="editorY" type="number" step=".1" min="-10" max="20"></label><label>Z<input id="editorZ" type="number" step=".25" min="-80" max="80"></label><label>Yaw °<input id="editorYaw" type="number" step="5"></label><label>Size ×<input id="editorScale" type="number" step=".1" min=".1" max="8"></label></div>
+ <p>Arrows move: red X and blue Z along the ground, green Y for height. The outer arc turns; the cream square changes size. Right-drag orbits; scroll zooms. Escape returns to play.</p><p>Large formations include their attached fragments and growth. Loose stones and individual mushrooms are separate objects. The two puzzle gates, tree, traveller and painted terrain are not editable here.</p></fieldset>
  <label>Version name<input id="sceneTitle" value="Clearing study" maxlength="100"></label>
  <div class="editorButtons"><button id="saveScene">Save version</button><button id="exportScene">Export JSON</button></div>
  <label>Saved versions<select id="sceneVersions"><option value="">No saved versions</option></select></label>
@@ -30,9 +31,14 @@ export function mountSceneEditor(scene:T.Scene,camera:T.Camera,renderer:T.WebGLR
  const banner=document.createElement('div');banner.id='editorBanner';banner.hidden=true;document.body.append(banner);
  const $=<E extends HTMLElement>(id:string)=>document.getElementById(id) as E;
  const input=(id:string)=>$<HTMLInputElement>(id),select=$<HTMLSelectElement>('editorSelection'),versions=$<HTMLSelectElement>('sceneVersions'),status=$('sceneStatus');
- const gizmo=new TransformControls(camera,renderer.domElement);gizmo.setSize(.85);scene.add(gizmo.getHelper());gizmo.enabled=false;
- const outline=new T.BoxHelper(undefined,0xe5b94e);outline.visible=false;scene.add(outline);
- let editing=false,selected:T.Group|undefined,dragStart:RockPlacement[]|undefined,loading=false,dirty=false;
+ const outline=selectionOutline(renderer);
+ const gizmo=editorGizmo(camera,renderer.domElement,{
+  start(){orbit.enabled=false;dragStart=rockAuthoring!.capture();},
+  change(){if(selected){selected.scale.clampScalar(.1,8);selected.position.clampScalar(-80,80);showValues();}},
+  end(){orbit.enabled=true;if(dragStart){record(dragStart);dragStart=undefined;rockAuthoring!.refresh();}},
+  hover(text){renderer.domElement.style.cursor=text?'grab':'';if(editing&&selected)banner.textContent='EDITING · '+selected.name+(text?' · '+text:' · Q all handles · Esc play');}
+ });
+ let editing=false,selected:T.Object3D|undefined,dragStart:RockPlacement[]|undefined,loading=false,dirty=false;
  let lastSaved:SceneVersion|undefined;
  let past:RockPlacement[][]=[],future:RockPlacement[][]=[],savedId='',defaultId:string|null=null;
  let operation=false;
@@ -42,34 +48,35 @@ export function mountSceneEditor(scene:T.Scene,camera:T.Camera,renderer:T.WebGLR
  function history(){input('undoScene').disabled=!past.length;input('redoScene').disabled=!future.length;}
  function record(before:RockPlacement[]){if(JSON.stringify(before)===JSON.stringify(rockAuthoring!.capture()))return;past.push(before);if(past.length>60)past.shift();future=[];history();markDirty();}
  function refreshSelection(){
-  const id=selected?.userData.formation.id??'';select.replaceChildren(new Option('Select a rock in the scene',''));
-  active().forEach(g=>select.add(new Option(g.name,g.userData.formation.id)));select.value=id;
+  const id=selected?.userData.formation.id??'';select.replaceChildren(new Option('Select scenery in the scene',''));
+  for(const [label,kinds] of [['Rock formations',['basalt-group','bedrock']],['Loose stones',['fragment']],['Mushrooms',['mushroom']]] as const){const group=document.createElement('optgroup');group.label=label;active().filter(g=>(kinds as readonly string[]).includes(g.userData.formation.kind)).forEach(g=>group.append(new Option(g.name,g.userData.formation.id)));if(group.children.length)select.append(group);}select.value=id;
  }
  function showValues(){
-  if(!selected)return;outline.setFromObject(selected);input('editorX').value=selected.position.x.toFixed(2);input('editorY').value=selected.position.y.toFixed(2);input('editorZ').value=selected.position.z.toFixed(2);input('editorYaw').value=T.MathUtils.radToDeg(selected.rotation.y).toFixed(1);input('editorScale').value=selected.scale.x.toFixed(2);
-  banner.textContent='EDITING · '+selected.name+' · W move / E rotate / R scale · Esc play';
+  if(!selected)return;input('editorX').value=selected.position.x.toFixed(2);input('editorY').value=selected.position.y.toFixed(2);input('editorZ').value=selected.position.z.toFixed(2);input('editorYaw').value=T.MathUtils.radToDeg(selected.rotation.y).toFixed(1);input('editorScale').value=selected.scale.x.toFixed(2);
+  banner.textContent='EDITING · '+selected.name+' · Q all handles · W/E/R single tool · Esc play';
  }
- function choose(g?:T.Group){selected=g;outline.visible=!!g&&editing;gizmo.detach();if(g&&editing)gizmo.attach(g);select.value=g?.userData.formation.id??'';showValues();}
- function mode(){const m=input('editorTool').value as 'translate'|'rotate'|'scale';gizmo.setMode(m);gizmo.showXY=false;gizmo.showYZ=false;gizmo.showXZ=m==='translate';gizmo.showXYZE=m==='scale';gizmo.showX=m!=='rotate';gizmo.showY=m!=='translate';gizmo.showZ=m!=='rotate';const snap=input('editorSnap').checked;gizmo.setTranslationSnap(snap?.25:null);gizmo.setRotationSnap(snap?Math.PI/36:null);gizmo.setScaleSnap(snap?.1:null);}
+ function choose(g?:T.Object3D){selected=g;gizmo.attach(editing?g:undefined);select.value=g?.userData.formation.id??'';showValues();if(!g)banner.textContent='EDITING · select scenery · Esc play';}
+ function mode(){gizmo.configure(input('editorTool').value as 'combined'|'translate'|'rotate'|'scale',input('editorSnap').checked);}
  function setEditing(on:boolean){
   if(on&&!hooks.canEdit()){message('Finish the current gesture before editing.');return;}
   if(on&&!['full','enclosed'].includes(input('rockLayout').value)){message('Choose Approved formations or More enclosing in Appearance first.');return;}
-  editing=on;outline.visible=on&&!!selected;hooks.setEditing(on);document.body.dataset.sceneEditing=String(on);page.dataset.editing=String(on);banner.hidden=!on;banner.textContent='EDITING · select a rock formation · Esc returns to play';
-  input('editScene').textContent=on?'Play scene':'Edit rocks';$<HTMLFieldSetElement>('rockTools').disabled=!on;$('rockTools').hidden=!on;gizmo.enabled=on;orbit.enabled=true;
-  if(on){refreshSelection();if(selected)gizmo.attach(selected);}else gizmo.detach();mode();
+  editing=on;hooks.setEditing(on);document.body.dataset.sceneEditing=String(on);page.dataset.editing=String(on);banner.hidden=!on;banner.textContent='EDITING · select scenery · Esc returns to play';
+  input('editScene').textContent=on?'Play scene':'Edit scenery';$<HTMLFieldSetElement>('rockTools').disabled=!on;$('rockTools').hidden=!on;orbit.enabled=true;
+  if(on)refreshSelection();gizmo.attach(on?selected:undefined);mode();renderer.domElement.style.cursor='';
  }
  input('editScene').onclick=()=>setEditing(!editing);select.onchange=()=>choose(active().find(g=>g.userData.formation.id===select.value));
  input('editorTool').onchange=input('editorSnap').onchange=mode;
  let press:{x:number;y:number}|undefined;
- renderer.domElement.addEventListener('pointerdown',e=>{if(editing&&e.button===0&&!gizmo.axis)press={x:e.clientX,y:e.clientY};else press=undefined;});
+ renderer.domElement.addEventListener('pointerdown',e=>{if(editing&&e.button===0&&!gizmo.dragging)press={x:e.clientX,y:e.clientY};else press=undefined;});
  renderer.domElement.addEventListener('pointerup',e=>{
   if(!editing||!press||Math.hypot(e.clientX-press.x,e.clientY-press.y)>5){press=undefined;return;}press=undefined;
   const box=renderer.domElement.getBoundingClientRect(),ray=new T.Raycaster();ray.setFromCamera(new T.Vector2((e.clientX-box.left)/box.width*2-1,1-(e.clientY-box.top)/box.height*2),camera);
-  const hit=ray.intersectObjects(active(),true)[0];let o=hit?.object;while(o&&!o.userData.formation)o=o.parent??undefined;choose(o as T.Group|undefined);
+  const surfaces:T.Mesh[]=[];scene.traverseVisible(o=>{if(o instanceof T.Mesh)surfaces.push(o);});
+  const hit=ray.intersectObjects(surfaces,false).find(h=>{const m=(h.object as T.Mesh).material,material=Array.isArray(m)?m[h.face?.materialIndex??0]:m;return material.visible&&(!material.transparent||material.alphaTest>0);});
+  let o=hit?.object;while(o&&!o.userData.formation)o=o.parent??undefined;
+  choose(o&&active().includes(o)?o:undefined);
+  if(hit&&!o)banner.textContent='This belongs to gameplay or the backdrop · choose a formation, loose stone or mushroom';
  });
- gizmo.addEventListener('dragging-changed',e=>{orbit.enabled=!e.value;if(e.value)dragStart=rockAuthoring!.capture();});
- gizmo.addEventListener('objectChange',()=>{if(selected){selected.scale.clampScalar(.1,8);selected.position.clampScalar(-80,80);showValues();}});
- gizmo.addEventListener('mouseUp',()=>{if(dragStart){record(dragStart);dragStart=undefined;rockAuthoring!.refresh();}});
  for(const id of ['editorX','editorY','editorZ','editorYaw','editorScale'])input(id).onchange=()=>{
   if(!selected||!Number.isFinite(input(id).valueAsNumber))return;const before=rockAuthoring!.capture(),v=input(id).valueAsNumber;
   if(id==='editorYaw')selected.rotation.y=T.MathUtils.degToRad(T.MathUtils.clamp(v,-18000,18000));
@@ -79,7 +86,7 @@ export function mountSceneEditor(scene:T.Scene,camera:T.Camera,renderer:T.WebGLR
  };
  function undo(redo=false){const from=redo?future:past,to=redo?past:future,state=from.pop();if(!state)return;to.push(rockAuthoring!.capture());rockAuthoring!.apply(state);showValues();history();markDirty();}
  input('undoScene').onclick=()=>undo();input('redoScene').onclick=()=>undo(true);
- addEventListener('keydown',e=>{if(!editing||(e.target as HTMLElement).matches('input,select,textarea'))return;if(e.key==='Escape'){e.preventDefault();setEditing(false);}else if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='z'){e.preventDefault();undo(e.shiftKey);}else if(['w','e','r'].includes(e.key.toLowerCase())){input('editorTool').value=({w:'translate',e:'rotate',r:'scale'} as any)[e.key.toLowerCase()];mode();}});
+ addEventListener('keydown',e=>{if(!editing||(e.target as HTMLElement).matches('input,select,textarea'))return;if(e.key==='Escape'){e.preventDefault();setEditing(false);}else if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='z'){e.preventDefault();undo(e.shiftKey);}else if(['q','w','e','r'].includes(e.key.toLowerCase())){input('editorTool').value=({q:'combined',w:'translate',e:'rotate',r:'scale'} as any)[e.key.toLowerCase()];mode();}});
  const controlElements=()=>Array.from(document.querySelectorAll<HTMLInputElement|HTMLSelectElement>('.dock input,.dock select')).filter(e=>!e.closest('#sceneEditor')&&(e.id||e.dataset.rule));
  function fingerprint(data:SceneVersion){return JSON.stringify({controls:data.controls,rocks:data.rocks},(_key,v)=>typeof v==='number'?Math.round(v*100000)/100000:typeof v==='string'&&v!==''&&Number.isFinite(+v)?Math.round(+v*100000)/100000:v);}
  function capture():SceneVersion{
@@ -116,4 +123,5 @@ export function mountSceneEditor(scene:T.Scene,camera:T.Camera,renderer:T.WebGLR
  const init=action(async()=>{await library();if(defaultId){await apply(await request('/default'));versions.value=defaultId;}else message('Built-in scene · edit or adjust settings, then save your first version.');refreshSelection();});
  if(rockAuthoring)void init();else document.addEventListener('scene-rocks-ready',()=>void init(),{once:true});
  if(new URLSearchParams(location.search).has('editor')){document.querySelector<HTMLButtonElement>('#inspectDock .dockToggle')!.click();tab.click();}
+ return {render(){if(editing){outline.render(scene,camera,selected);gizmo.render(renderer);}}};
 }

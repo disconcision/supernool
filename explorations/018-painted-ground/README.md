@@ -220,3 +220,10 @@ Latest preference favors scattered growth, broader moss areas and smaller lichen
 The enclosing comparison retains all 14 groups and their scales. Its obstructing rear crest moves to the northwest shoulder; lower beds move away from the painted junction, and the side/front banks ease outward slightly. Positions are in `rock-enclosure.ts`; the open arrangement remains available. Both rear painted trails now have clear sightlines. The matte painting is unchanged. These are scenery clearance changes; the existing puzzle-controlled gate behavior remains.
 
 `rock-path-check.mjs` traces both routes from the existing v6 image, intersects the actual backdrop ground, and checks all enclosing GLB meshes against 486 route/corridor samples. It verifies paint-camera and live-camera sightlines plus vertical ground clearance. `rock-check.cjs` verifies independent layer counts/settings, one-layer removal, persistence and loading recovery. TypeScript, core tests and the enclosing scene's full mouse/body playthrough pass. The source atlas is still provisional; controls separate its moss and lichen rows, without repainting motifs inside those cells.
+
+
+### Scene editor selection and transforms · isolated editor branch
+
+On port 3101, Inspect → Scene → Edit scenery now uses a one-pixel visible-silhouette outline and a combined move / yaw / proportional-size widget. Green Y is height; red X and blue Z are ground directions. The outer arc turns, and the cream square scales. Q restores all handles; W/E/R isolate a tool. Handles render above atmosphere, and picking respects opaque occlusion.
+
+The object list separates formations, 17 loose stones, and 36 individual mushrooms (cap + stem). Attached formation fragments remain grouped. Puzzle gates, tree, avatar and painted terrain stay gameplay-owned. Prop transforms participate in undo/redo and scene saves; old formation-only saves load with props at their authored defaults. Formation collisions, projected growth and prop hand-contact points refresh after edits. This remains work on `codex/scene-editor`, not a change to the other task’s main checkout.

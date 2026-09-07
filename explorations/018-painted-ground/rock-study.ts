@@ -10,7 +10,11 @@ import {toCreasedNormals} from 'three/addons/utils/BufferGeometryUtils.js';
 /** Approved formations, available in the ordinary prototype and its Appearance panel. */
 export function mountRockStudy(scene:T.Scene,obstacles:{x:number;z:number;r:number}[],touchPoints:T.Vector3[]){
  const originals=scene.children.filter(o=>typeof o.userData.rockSeed==='number');
+ const props=scene.children.filter(o=>o.userData.formation?.kind==='mushroom'||o.userData.rockSeed>=100&&o.userData.rockSeed<200);
+ for(const o of props)if(o.userData.rockSeed!==undefined){o.userData.formation={id:'stone-'+(o.userData.rockSeed-100),kind:'fragment'};o.name='Loose stone '+(o.userData.rockSeed-99);o.userData.contact=new T.Vector3(0,1,0);}
+ const defaults=new Map(props.map(o=>[o,{position:o.position.clone(),scale:o.scale.clone(),yaw:o.rotation.y}]));
  const oldObstacles=[...obstacles],oldTouches=[...touchPoints];
+ const staticTouches=oldTouches.filter(p=>![...originals,...props].some(o=>Math.hypot(p.x-o.position.x,p.z-o.position.z)<.01));
  const gateObstacles=oldObstacles.filter(o=>o.z===-7.5);
  const panel=document.getElementById('settings')!;
  function select(id:string,title:string,options:[string,string][]){
@@ -128,7 +132,7 @@ export function mountRockStudy(scene:T.Scene,obstacles:{x:number;z:number;r:numb
    originals.forEach(o=>o.visible=full?o.userData.rockSeed>=100:arrangement.value==='original'||!(arrangement.value==='single'?new Set([11,12]):bankSeeds).has(o.userData.rockSeed));
    replacements.forEach(v=>{v.root.material=full?v.clear:v.material;v.root.castShadow=full?false:v.casts;v.children.forEach(c=>c.visible=!full);v.mesh.visible=full;});
    obstacles.splice(0,obstacles.length,...(full?[...(enclosed?enclosingColliders:colliders),...gateObstacles]:oldObstacles));
-   const otherTouches=oldTouches.filter(p=>!originals.some(o=>Math.hypot(p.x-o.position.x,p.z-o.position.z)<.01));
+   const otherTouches=[...staticTouches,...props.map(o=>{o.updateWorldMatrix(true,false);return o.userData.contact.clone().applyMatrix4(o.matrixWorld) as T.Vector3;})];
    touchPoints.splice(0,touchPoints.length,...(full?[...otherTouches,...(enclosed?enclosingTouches:newTouches)]:oldTouches));
    document.dispatchEvent(new CustomEvent('grow-rock-touch-points',{detail:touchPoints}));
    growthControls.setVisible(growth.value==='raster');
@@ -156,14 +160,17 @@ export function mountRockStudy(scene:T.Scene,obstacles:{x:number;z:number;r:numb
     }
    }
    obstacles.splice(0,obstacles.length,...targets,...gateObstacles);
-   const otherTouches=oldTouches.filter(p=>!originals.some(o=>Math.hypot(p.x-o.position.x,p.z-o.position.z)<.01));
+   const otherTouches=[...staticTouches,...props.map(o=>{o.updateWorldMatrix(true,false);return o.userData.contact.clone().applyMatrix4(o.matrixWorld) as T.Vector3;})];
    touchPoints.splice(0,touchPoints.length,...otherTouches,...contacts);
    document.dispatchEvent(new CustomEvent('grow-rock-touch-points',{detail:touchPoints}));if(refreshGrowth)decals?.refresh();
   }
   growthControls.setEnabled(!!decals);update();
-  registerRockAuthoring({list:active,capture:()=>active().map(g=>({...g.userData.formation,position:g.position.toArray() as [number,number,number],scale:g.scale.toArray() as [number,number,number],yaw:g.rotation.y})),
+  const editable=()=>[...active(),...props.filter(o=>o.visible)];
+  registerRockAuthoring({list:editable,capture:()=>editable().map(g=>({...g.userData.formation,position:g.position.toArray() as [number,number,number],scale:g.scale.toArray() as [number,number,number],yaw:g.rotation.y})),
    apply(rocks){
-    const current=active();if(rocks.length!==current.length||rocks.some(r=>!current.some(g=>g.userData.formation.id===r.id&&g.userData.formation.kind===r.kind)))throw new Error('This version uses a different rock asset layout');
+    const current=editable();if(rocks.filter(r=>r.id.startsWith('rock-')).length!==active().length||rocks.some(r=>!current.some(g=>g.userData.formation.id===r.id&&g.userData.formation.kind===r.kind)))throw new Error('This version uses a different rock asset layout');
+    // Older formation-only saves restore loose props to their authored positions.
+    for(const o of props){const d=defaults.get(o)!;o.position.copy(d.position);o.scale.copy(d.scale);o.rotation.set(0,d.yaw,0);}
     for(const r of rocks){const g=current.find(g=>g.userData.formation.id===r.id)!;g.position.fromArray(r.position);g.scale.fromArray(r.scale);g.rotation.set(0,r.yaw,0);}refreshFormations();
    },refresh:refreshFormations});
 
