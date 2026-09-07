@@ -25,6 +25,7 @@ export function createTraveller(scene:T.Scene,status:(message:string)=>void){
   if(name!=='checkpoint'&&!variants.has(name)){status('Loading '+name+'…');return;}
   for(const v of variants.values()){v.model.visible=false;v.hands.forEach(h=>h.visible=false);}
   active=variants.get(name);current=name;controller.body.visible=!active;
+  controller.hands.forEach(h=>h.group.userData.artHand=!!active);controller.resetWalkContacts();
   originalHands.forEach(parts=>parts.forEach(p=>p.visible=!active));
   if(active){active.model.visible=true;active.hands.forEach(h=>h.visible=true);}
   status(active?'Art handoff 01 · run / walk / articulated hands':'Previous procedural figure retained for comparison.');
@@ -117,7 +118,7 @@ export function createTraveller(scene:T.Scene,status:(message:string)=>void){
      d.node.quaternion.slerp(q,walk.weight);
     }
    }
-   if(walk?.weight>.99){hand.updateMatrixWorld(true);const toes=digits.filter(d=>d.walk?.segment==='tip').map(d=>d.node.localToWorld(new T.Vector3(0,.172,0)));walk.recordContacts(toes);root.userData.fingerWalk.toeHeights=toes.map(p=>p.y);root.userData.fingerWalk.toes=toes.map(p=>p.toArray());root.userData.fingerWalk.knees=[1,2].map(k=>poses.get(k)?.middle);root.userData.fingerWalk.steps=walk.steps;root.userData.fingerWalk.thumb=walk.thumb;root.userData.fingerWalk.palmNormalY=new T.Vector3(0,0,1).applyQuaternion(hand.quaternion).y;}
+   if(walk?.weight>.99){hand.updateMatrixWorld(true);const tips=digits.filter(d=>d.walk?.segment==='tip'),toes=tips.map(d=>d.node.localToWorld(new T.Vector3(0,.172,0)));Object.assign(root.userData.fingerWalk,walk.recordContacts(toes,hand));hand.updateMatrixWorld(true);toes.forEach((p,k)=>p.copy(tips[k].node.localToWorld(new T.Vector3(0,.172,0))));root.userData.fingerWalk.toeHeights=toes.map(p=>p.y);root.userData.fingerWalk.toes=toes.map(p=>p.toArray());root.userData.fingerWalk.knees=[1,2].map(k=>poses.get(k)?.middle);root.userData.fingerWalk.steps=walk.steps;root.userData.fingerWalk.thumb=walk.thumb;root.userData.fingerWalk.palmNormalY=new T.Vector3(0,0,1).applyQuaternion(hand.quaternion).y;}
   });
  }
  return {root,update,setCatchProps:controller.setCatchProps,setIdleCatch:controller.setIdleCatch,setTravelStyle:controller.setTravelStyle,setIdleWalkStyle:controller.setIdleWalkStyle,setIdleTerrain:controller.setIdleTerrain,setIdleMode:controller.setIdleMode,choose:select,setPalette(name:string){palette=name;variants.forEach(paint);},current:()=>current,locomotion:()=>running?'Run':active?.motion??'procedural',linkEnds(){

@@ -19,9 +19,9 @@ export function uprightSteps(distance:number):FingerStep[]{
  return [0,0,.5,0].map((offset,index)=>{
   if(index===0||index===3)return {advance:0,lift:.2};
   const phase=(distance/.54+offset)%1;
-  if(phase<.62)return {advance:.1674-.54*phase,lift:0};
-  const t=(phase-.62)/.38;
-  return {advance:T.MathUtils.lerp(-.1674,.1674,smooth(t)),lift:Math.sin(Math.PI*t)*.035};
+  if(phase<.5)return {advance:.135-.54*phase,lift:0};
+  const t=(phase-.5)/.5;
+  return {advance:T.MathUtils.lerp(-.135,.135,smooth(t)),lift:Math.sin(Math.PI*t)*.035};
  });
 }
 
@@ -42,12 +42,13 @@ export class FingerWalk {
  pose:WalkPose={position:new T.Vector3(),orientation:new T.Quaternion()};weight=0;steps=fingerSteps(0);
  route:T.Vector3[]=[];private start!:WalkPose;private startWeight=0;private index=0;private speed=.35;private direction=new T.Vector3(0,0,1);
  private safe?:(p:T.Vector3)=>boolean;
+ private planted=-1;private plantedPoint=new T.Vector3();private plantOffset=new T.Vector3();private groundedPose?:WalkPose;
  private pivot=new T.Vector3();private pivotLocal=new T.Vector3();
  private tripAt=Infinity;private tripSide=1;private upright!:WalkPose;private dazeDuration=1.8;
  constructor(private random:()=>number=Math.random){}
  get active(){return this.phase!=='rest';}
  get leaving(){return this.phase==='startle'||this.phase==='rise'||this.phase==='rejoin';}
- get state(){return {phase:this.phase,style:this.style,age:this.age,hand:this.hand,distance:this.distance,weight:this.weight,position:this.pose.position.toArray(),pivot:this.pivot.toArray(),pivotLocal:this.pivotLocal.toArray(),route:this.route.map(p=>p.toArray())};}
+ get state(){return {phase:this.phase,style:this.style,age:this.age,hand:this.hand,distance:this.distance,weight:this.weight,support:this.planted,anchor:this.plantedPoint.toArray(),position:this.pose.position.toArray(),pivot:this.pivot.toArray(),pivotLocal:this.pivotLocal.toArray(),route:this.route.map(p=>p.toArray())};}
  get gait(){return {weight:this.weight,style:this.style,steps:this.steps,contactPose:this.contactPose,direction:this.direction,thumb:this.thumb,recordContacts:this.recordContacts};}
  private gaitSteps(distance:number){return this.style==='upright'?uprightSteps(distance):fingerSteps(distance);}
  setTerrain(safe:(p:T.Vector3)=>boolean){this.safe=safe;}
@@ -82,6 +83,7 @@ export class FingerWalk {
    if(!next)break;this.route.push(next);
   }
   if(this.route.length<9){this.route=[];return false;}
+  this.planted=-1;this.plantOffset.setScalar(0);this.groundedPose=undefined;
   this.hand=hand;this.index=0;this.distance=0;this.steps=this.gaitSteps(0);this.weight=0;this.speed=this.style==='upright'?.18+this.random()*.025:.38+this.random()*.10;
   // One possible mishap per excursion, after the gait has had time to establish itself.
   this.tripAt=this.random()<(this.style==='upright'?.48:.24)?Math.max(1.2,(this.route.length-1)*.16*(.35+this.random()*.3)):Infinity;
@@ -90,7 +92,8 @@ export class FingerWalk {
   this.direction.copy(this.route[1]).sub(this.route[0]).normalize();this.contactPose=this.groundPose(this.route[0]);this.enter('land');return true;
  }
  private enter(phase:typeof this.phase){this.phase=phase;this.age=0;this.startWeight=this.weight;this.start={position:this.pose.position.clone(),orientation:this.pose.orientation.clone()};}
- cancel(){this.phase='rest';this.weight=0;}
+ cancel(){this.phase='rest';this.weight=0;this.planted=-1;}
+ resetContacts(){this.planted=-1;}
  private groundPose(center:T.Vector3){
   const upright=this.style==='upright',cycle=this.distance/.54*Math.PI*2,sway=Math.sin(cycle);
   const heading=new T.Quaternion().setFromAxisAngle(up,Math.atan2(this.direction.x,this.direction.z))
@@ -136,6 +139,7 @@ export class FingerWalk {
    const center=a.clone().lerp(b,u),direction=b.clone().sub(a).normalize();
    this.direction.lerp(direction,1-Math.exp(-dt*9)).normalize();
    this.pose=this.groundPose(center);this.contactPose={position:this.pose.position.clone(),orientation:this.pose.orientation.clone()};this.steps=this.gaitSteps(this.distance);this.weight=1;
+   if(this.style==='upright')this.pose.position.add(this.plantOffset);
    if(u>=1){this.index++;if(this.index>=this.route.length-1)this.enter('rise');}
    if(this.phase==='walk'&&this.distance>=this.tripAt){
     this.tripAt=Infinity;
@@ -183,14 +187,36 @@ export class FingerWalk {
    if(this.age>=1)this.cancel();
   }
  }
- /** Called after posing, so the fall uses the rendered supporting fingertip,
-  * including the selected figure's actual bone lengths and current articulation. */
- readonly recordContacts=(points:T.Vector3[])=>{
-  if(this.style!=='upright'||this.phase!=='fall'||this.age!==0)return;
-  const side=new T.Vector3(this.direction.z,0,-this.direction.x).multiplyScalar(this.tripSide);
-  const planted=points.filter((p,k)=>this.steps[k]?.lift===0&&p.y<.075);
-  planted.sort((a,b)=>b.dot(side)-a.dot(side));
-  if(planted[0]){this.pivot.copy(planted[0]);this.capturePivot();}
+ /** Constrain the active rig after articulation, using its actual fingertip.
+  * Translating the palm by the contact error makes sway and turns rotate about
+  * that planted point. Accumulate the correction across support transfers. */
+ readonly recordContacts=(points:T.Vector3[],hand?:T.Object3D)=>{
+  if(this.style==='upright'){
+   if(this.phase==='walk'||(this.phase==='fall'&&this.age===0)){
+    const support=[1,2].find(k=>this.steps[k].lift===0)!;
+    if(this.planted!==support){this.planted=support;this.plantedPoint.copy(points[support]).setY(.024);}
+    const correction=this.plantedPoint.clone().sub(points[support]);
+    const next=this.pose.position.clone().add(correction);
+    if(this.phase==='walk'&&this.groundedPose&&![.25,.5,.75,1].every(t=>this.safe!(this.groundedPose!.position.clone().lerp(next,t)))){
+     // The planted solve may deviate from the nominal route at a corner.
+     // Lift away from the last clear pose rather than slide the planted toe.
+     this.pose={position:this.groundedPose.position.clone(),orientation:this.groundedPose.orientation.clone()};
+     hand?.position.copy(this.pose.position);hand?.quaternion.copy(this.pose.orientation);this.planted=-1;this.enter('rise');
+    }else{
+     this.pose.position.copy(next);this.plantOffset.add(correction);hand?.position.add(correction);points.forEach(p=>p.add(correction));
+     this.groundedPose={position:this.pose.position.clone(),orientation:this.pose.orientation.clone()};
+    }
+   }
+   if(this.phase==='fall'&&this.age===0){
+    // Preserve the existing tumble, now starting from the corrected stance.
+    this.upright.position.copy(this.pose.position);
+    const side=new T.Vector3(this.direction.z,0,-this.direction.x).multiplyScalar(this.tripSide);
+    const planted=points.filter((p,k)=>this.steps[k]?.lift===0&&p.y<.075);
+    planted.sort((a,b)=>b.dot(side)-a.dot(side));
+    if(planted[0]){this.pivot.copy(planted[0]);this.capturePivot();}
+   }
+  }
+  return this.state;
  };
  private capturePivot(){this.pivotLocal.copy(this.pivot).sub(this.upright.position).applyQuaternion(this.upright.orientation.clone().invert());}
  private tipPose(amount:number){

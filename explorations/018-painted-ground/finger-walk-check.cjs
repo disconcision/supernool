@@ -55,7 +55,7 @@ assert(stumbles>=12&&stumbles<=36,'A minority of walks include a tumble');
 let maxUprightKnee=0,pivotSamples=0,uprightStumbleSeed,uprightFalls=0,spiderTime=0,uprightTime=0;const mixed=new Set();
 for(const style of ['spider','upright'])for(let seed=1;seed<=50;seed++){
  const walk=new FingerWalk(rng(seed*11033));walk.preference=style;walk.setTerrain(()=>true);assert(walk.startWalk(root,hands,seed%2));
- let time=0,pivotIndex=-1;
+ let time=0,pivotIndex=-1,stanceIndex=-1,stancePoint,stanceSamples=0;
  while(walk.active&&time<45){
   walk.update(1/60,true,false,root);time+=1/60;
   if(style==='upright'&&walk.phase==='fall'&&walk.age===0){uprightFalls++;uprightStumbleSeed??=seed*11033;}
@@ -72,14 +72,23 @@ for(const style of ['spider','upright'])for(let seed=1;seed<=50;seed++){
    assert(Math.abs(toe.y-(.024+step.lift))<1e-7,'Splayed and swaying fingers still plant or clear the floor');
    toes[k]=toe;
   }
-  if(style==='upright'&&walk.phase==='fall'&&walk.age===0){walk.recordContacts(toes);const pivot=new T.Vector3().fromArray(walk.state.pivot);pivotIndex=toes.findIndex(p=>p.distanceTo(pivot)<1e-8);assert(pivotIndex>=0,'A planted fingertip supplies the fall pivot');}
-  if(pivotIndex>=0&&['fall','fallen','recover'].includes(walk.phase)){
-   const point=toes[pivotIndex].clone().sub(gait.contactPose.position).applyQuaternion(gait.contactPose.orientation.clone().invert()).applyQuaternion(walk.pose.orientation).add(walk.pose.position);
-   assert(point.distanceTo(new T.Vector3().fromArray(walk.state.pivot))<1e-7,'The supporting fingertip stays fixed throughout tipping and recovery');pivotSamples++;
-   for(const k of [1,2]){const p=toes[k].clone().sub(gait.contactPose.position).applyQuaternion(gait.contactPose.orientation.clone().invert()).applyQuaternion(walk.pose.orientation).add(walk.pose.position);assert(p.y>.020,'The other walking finger does not tip through the floor');}
+  const rendered=toes.map(p=>p.clone().sub(gait.contactPose.position).applyQuaternion(gait.contactPose.orientation.clone().invert()).applyQuaternion(walk.pose.orientation).add(walk.pose.position));
+  walk.recordContacts(rendered);
+  if(style==='upright'&&walk.phase==='walk'){
+   const support=walk.state.support;assert([1,2].includes(support));
+   if(support!==stanceIndex){stancePoint=rendered[support].clone();stanceIndex=support;}
+   else{assert(rendered[support].distanceTo(stancePoint)<1e-7,'The loaded fingertip stays fixed through palm sway and route turns');stanceSamples++;}
+   assert(Math.abs(rendered[support].y-.024)<1e-7);
+   assert(rendered[3-support].y>=.024-1e-7,'Swinging fingertip stays clear of the floor');
   }
+  if(style==='upright'&&walk.phase==='fall'&&walk.age===0){const pivot=new T.Vector3().fromArray(walk.state.pivot);pivotIndex=rendered.findIndex(p=>p.distanceTo(pivot)<1e-8);assert(pivotIndex>=0,'A planted fingertip supplies the fall pivot');}
+  if(pivotIndex>=0&&['fall','fallen','recover'].includes(walk.phase)){
+   assert(rendered[pivotIndex].distanceTo(new T.Vector3().fromArray(walk.state.pivot))<1e-7,'The supporting fingertip stays fixed throughout tipping and recovery');pivotSamples++;
+   for(const k of [1,2])assert(rendered[k].y>.020,'The other walking finger does not tip through the floor');
+  }
+
  }
- assert(!walk.active,'Both styles complete');if(style==='spider')spiderTime+=time/walk.distance;else uprightTime+=time/walk.distance;
+ assert(!walk.active,'Both styles complete');if(style==='upright')assert(stanceSamples>200,'Several complete anchored steps were checked');if(style==='spider')spiderTime+=time/walk.distance;else uprightTime+=time/walk.distance;
  const randomWalk=new FingerWalk(rng(seed*11033));randomWalk.setTerrain(()=>true);randomWalk.startWalk(root,hands,0);mixed.add(randomWalk.style);
 }
 assert(maxUprightKnee<.38,'Upright gait uses shallow middle-joint bends');assert(pivotSamples>100);
@@ -131,5 +140,19 @@ for(const urgent of [false,true]){
  for(let i=0;i<120;i++)walk.update(1/60,true,false,root);
  walk.update(1/60,!urgent,true,root);
  assert(urgent?!walk.active:walk.leaving,'Tree contact is immediate; walking gets a lift-off and return');
+}
+// The procedural comparison uses its own rendered toe lengths, too.
+{
+ const actor=createLehi(new T.Scene()),camera=new T.PerspectiveCamera();actor.setIdleTerrain(()=>true);actor.setIdleMode('explore');actor.setIdleWalkStyle('upright');
+ let samples=0,lastSupport=-1,lastPoint;
+ for(let frame=0;frame<5000&&samples<240;frame++){
+  actor.update(frame*1000/60,1/60,false,camera,undefined,undefined,0,false);const s=actor.root.userData.fingerWalk;
+  if(s.phase!=='walk')continue;
+  const p=actor.hands[s.hand].tips[s.support-1].localToWorld(new T.Vector3(0,.17,0));
+  assert(Math.abs(p.y-.024)<1e-7,'Procedural supporting toe is grounded');
+  if(s.support===lastSupport)assert(p.distanceTo(lastPoint)<1e-7,'Procedural stance is anchored');
+  lastSupport=s.support;lastPoint=p;samples++;
+ }
+ assert(samples===240);
 }
 console.log('Finger walks: routes, planted/swing toes, IK, hand choice, shared cooldown and interruptible stumble/recovery passed.',{spiderStumbles:stumbles,outOf:100,uprightFalls,outOfUpright:50,uprightSlowerBy:(uprightTime/spiderTime).toFixed(1),maxKneeDegrees:(maxUprightKnee*180/Math.PI).toFixed(1),pivotSamples});

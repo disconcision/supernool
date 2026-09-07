@@ -132,11 +132,11 @@ export function createLehi(scene:T.Scene){
     });
     h.group.updateMatrixWorld(true);
     const toes=h.tips.map(t=>t.localToWorld(new T.Vector3(0,.17,0)));
-    fingerWalk.recordContacts(upright?[new T.Vector3(0,1,0),toes[0],toes[1],new T.Vector3(0,1,0)]:toes);
+    if(!h.group.userData.artHand)Object.assign(root.userData.fingerWalk,fingerWalk.recordContacts(upright?[new T.Vector3(0,1,0),toes[0],toes[1],new T.Vector3(0,1,0)]:toes,h.group));
     h.thumb.rotation.x=T.MathUtils.lerp(h.thumb.rotation.x,.35+fingerWalk.thumb*.3,weight);
     h.thumb.rotation.z=T.MathUtils.lerp(h.thumb.rotation.z,(i?1:-1)*(1+fingerWalk.thumb*.2),weight);
    }
   });
  }
- return {root,body,hands,update,setIdleWalkStyle:(style:WalkStyle|'mixed')=>{fingerWalk.preference=style;fingerWalk.cancel();idleSchedule.rest();},setIdleTerrain:(safe:(p:T.Vector3)=>boolean)=>{fingerWalk.setTerrain(safe);roam.setTerrain(safe);},setIdleMode:(mode:IdleMode)=>{idleSchedule.mode=mode;if(mode==='rest')roam.cancel();catchGame.setEnabled(mode==='catch'||mode==='catch-only');if(mode==='rest'||mode==='catch-only')fingerWalk.cancel();idleSchedule.rest();},setCatchProps:(props:CatchProp[],safe?:(p:T.Vector3)=>boolean)=>catchGame.setProps(props,safe),setIdleCatch:(on:boolean)=>catchGame.setEnabled(on),setTravelStyle:(style:string)=>travel.setStyle(style),setTravelMotion(speed:number,phase:number){travelSpeed=speed;travelPhase=phase;},linkEnds(){root.updateMatrixWorld(true);hands[0].group.updateMatrixWorld(true);return {from:arms[0].localToWorld(new T.Vector3(0,-.34,0)),to:hands[0].group.localToWorld(new T.Vector3(0,-.20,0))};}};
+ return {root,body,hands,update,resetWalkContacts:()=>fingerWalk.resetContacts(),setIdleWalkStyle:(style:WalkStyle|'mixed')=>{fingerWalk.preference=style;fingerWalk.cancel();idleSchedule.rest();},setIdleTerrain:(safe:(p:T.Vector3)=>boolean)=>{fingerWalk.setTerrain(safe);roam.setTerrain(safe);},setIdleMode:(mode:IdleMode)=>{idleSchedule.mode=mode;if(mode==='rest')roam.cancel();catchGame.setEnabled(mode==='catch'||mode==='catch-only');if(mode==='rest'||mode==='catch-only')fingerWalk.cancel();idleSchedule.rest();},setCatchProps:(props:CatchProp[],safe?:(p:T.Vector3)=>boolean)=>catchGame.setProps(props,safe),setIdleCatch:(on:boolean)=>catchGame.setEnabled(on),setTravelStyle:(style:string)=>travel.setStyle(style),setTravelMotion(speed:number,phase:number){travelSpeed=speed;travelPhase=phase;},linkEnds(){root.updateMatrixWorld(true);hands[0].group.updateMatrixWorld(true);return {from:arms[0].localToWorld(new T.Vector3(0,-.34,0)),to:hands[0].group.localToWorld(new T.Vector3(0,-.20,0))};}};
 }
