@@ -1,3 +1,4 @@
+import {addTravelHandControl} from './hand-travel';
 import {setupControlReadouts} from './control-readouts';
 import {createMist} from './mist';
 import {fitZoom} from './framing';
@@ -287,4 +288,8 @@ function tick(now:number){requestAnimationFrame(tick);const frameMs=now-last;con
  $('pullStatus').textContent=bodyMode()&&animation?'SETTLING · The tree is catching up; the motion is finishing':grip?.body?`PULL · Keep Space held · Spring ${Math.round(grip.progress*100)}% · pull ${Math.round(grip.target*100)}%${grip.ready?' · CAUGHT — release':''}`:bodyMode()?(handFocus?'HAND · Arrows choose a sigil · Hold Space, then move to pull · Esc leaves':'WALK · Arrows move the traveller · Space reaches into the tree'):'Hold a rune and pull · Shift-click to pin';
 }
 $('groundShadows').onchange=()=>{const on=value('groundShadows')==='on';clearing.setGroundShadows(on);backdrop.setGroundShadows(on);};
-$('backdrop').onchange=()=>{backdrop.set(value('backdrop'));clearing.setGroundPainted(value('backdrop')!=='plain');resize();};$('resetView').onclick=()=>{framingFloor=Infinity;preferredZoom=1;camera.position.set(39,32,63);camera.zoom=1;controls.target.set(0,2,0);controls.update();resize();};$('previewSound').onclick=()=>{sound.unlock();sound.catch();};$('soundMode').onchange=()=>{sound.unlock();sound.setMode(value('soundMode'));};$('volume').oninput=()=>sound.setVolume(+value('volume'));setupHUD();setupControlReadouts();ui();requestAnimationFrame(tick);
+$('backdrop').onchange=()=>{backdrop.set(value('backdrop'));clearing.setGroundPainted(value('backdrop')!=='plain');resize();};$('resetView').onclick=()=>{framingFloor=Infinity;preferredZoom=1;camera.position.set(39,32,63);camera.zoom=1;controls.target.set(0,2,0);controls.update();resize();};$('previewSound').onclick=()=>{sound.unlock();sound.catch();};$('soundMode').onchange=()=>{sound.unlock();sound.setMode(value('soundMode'));};$('volume').oninput=()=>sound.setVolume(+value('volume'));setupHUD();
+const travellerPanel=Array.from($('settings').querySelectorAll('details')).find(d=>d.querySelector('summary')?.textContent==='Traveller')!;
+addTravelHandControl(travellerPanel,style=>lehi.setTravelStyle(style));
+const handReview=document.createElement('a');handReview.href='avatar-review.html?hands';handReview.target='_blank';handReview.rel='noopener';handReview.textContent='Compare travelling hands up close ↗';handReview.style.display='block';travellerPanel.append(handReview);
+setupControlReadouts();ui();requestAnimationFrame(tick);

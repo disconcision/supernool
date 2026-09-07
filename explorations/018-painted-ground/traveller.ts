@@ -72,10 +72,11 @@ export function createTraveller(scene:T.Scene,status:(message:string)=>void){
  }
  for(const name of ['blue-wrap','olive-cape'])load(name).catch(e=>{console.error(e);if(requested===name){status('Figure failed to load; previous figure remains available. '+e.message);}});
  function update(...args:Parameters<typeof controller.update>){
-  controller.update(...args);
   const [,dt,moving,,grip,brace,,,pull]=args;
   const displacement=root.position.clone().sub(previous);const distance=initialized?displacement.length():0;previous.copy(root.position);initialized=true;
   speed=T.MathUtils.lerp(speed,distance/Math.max(dt,.001),1-Math.exp(-dt*10));
+  controller.setTravelMotion(speed,active?.stride.phase??(args[0]/1000*1.7)%1);
+  controller.update(...args);
   if(!active)return;
   // Grounded only. Retiming is bounded; controller speeds are chosen to fit
   // this short authored stride instead of substituting a hovering animation.
@@ -91,7 +92,7 @@ export function createTraveller(scene:T.Scene,status:(message:string)=>void){
   active.lean=T.MathUtils.lerp(active.lean,pull?-.08-effort*.08:running?.09:0,1-Math.exp(-dt*10));active.model.rotation.x=0;active.stride.lean(active.lean);
   active.digits.forEach((digits,i)=>{const grasp=controller.hands[i].group.userData.grasp as number;for(const d of digits)d.node.quaternion.copy(d.rest).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(1,0,0),grasp*d.amount));});
  }
- return {root,update,setIdleTargets:controller.setIdleTargets,choose:select,setPalette(name:string){palette=name;variants.forEach(paint);},current:()=>current,locomotion:()=>running?'Run':active?.motion??'procedural',linkEnds(){
+ return {root,update,setTravelStyle:controller.setTravelStyle,setIdleTargets:controller.setIdleTargets,choose:select,setPalette(name:string){palette=name;variants.forEach(paint);},current:()=>current,locomotion:()=>running?'Run':active?.motion??'procedural',linkEnds(){
   const ends=controller.linkEnds();if(active){root.updateMatrixWorld(true);const m=active.wrist;if(m instanceof T.SkinnedMesh)m.skeleton.update();const p=new T.Vector3(),sum=new T.Vector3();const n=m.geometry.attributes.position.count;for(let i=0;i<n;i++)sum.add(m.getVertexPosition(i,p));ends.from.copy(m.localToWorld(sum.divideScalar(n)));ends.to.copy(active.hands[0].localToWorld(new T.Vector3(0,0,0)));}return ends;
  }};
 }

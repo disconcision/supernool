@@ -1,3 +1,4 @@
+import {TravelHands} from './hand-travel';
 import * as T from 'three';
 // Provisional short-mantle silhouette informed by reference-lab/avatar-scale A.
 // Auxiliary hands are separate tools; ordinary small arms remain on the body.
@@ -38,9 +39,12 @@ export function createLehi(scene:T.Scene){
  }
  // The character faces local +Z: anatomical right is local -X.
  const hands=[hand(-1),hand(1)],orientation=new T.Quaternion();
+ const travel=new TravelHands();let travelSpeed=0,travelPhase=0;
  let grasp=[0,0],idleTime=0,idleTurn=0;let idleTargets:T.Vector3[]=[];let curiosity:{target:T.Vector3;hand:number;age:number}|undefined;
  function update(now:number,dt:number,moving:boolean,camera:T.Camera,grip?:T.Vector3,brace?:T.Vector3,active=0,engaged=true,pull?:{velocity:T.Vector3;effort:number}){
   const time=now/1000;
+  travel.update(dt,travelSpeed,moving,!grip&&!brace&&!engaged&&!pull);
+  root.userData.travelHandPose=travel.style;root.userData.travelHandWeight=travel.weight;
   if(moving||grip||brace||engaged){idleTime=0;curiosity=undefined;}else{
    idleTime+=dt;
    if(curiosity){curiosity.age+=dt;if(curiosity.age>4.5){curiosity=undefined;idleTime=0;}}
@@ -60,7 +64,9 @@ export function createLehi(scene:T.Scene){
   body.position.y=T.MathUtils.lerp(body.position.y,(moving?Math.abs(Math.sin(gait))*(pull?.012:.025):Math.sin(time*2)*.012)-(pull?.04+effort*.025:0),ease);
   hands.forEach((h,i)=>{
    const contact=i===active?grip:brace;
-   const rest=new T.Vector3((i?1:-1)*.9,1.03+Math.sin(time*2+i)*.07,.22).applyAxisAngle(new T.Vector3(0,1,0),root.rotation.y).add(root.position);
+   const travelling=travel.sample(i?1:-1,travelPhase);
+   const travelWeight=contact?0:travel.weight;
+   const rest=new T.Vector3((i?1:-1)*.9,1.03+Math.sin(time*2+i)*.07,.22).lerp(travelling.position,travelWeight).applyAxisAngle(new T.Vector3(0,1,0),root.rotation.y).add(root.position);
    const cameraRight=new T.Vector3(1,0,0).applyQuaternion(camera.quaternion);
    const sideOnScreen=new T.Vector3(i?1:-1,0,0).applyQuaternion(root.quaternion).dot(cameraRight);
    const contactOffset=new T.Vector3(sideOnScreen*.10-.52,-.30,.80).applyQuaternion(camera.quaternion);
@@ -73,14 +79,15 @@ export function createLehi(scene:T.Scene){
    // Camera-facing palms used to swap apparent handedness when the body turned.
    orientation.copy(root.quaternion);
    orientation.multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,0,1),contact?(i?.18:-.18):(i?-.22:.22)));
+   if(travelWeight>0)orientation.slerp(root.quaternion.clone().multiply(travelling.orientation),travelWeight);
    if(exploring)orientation.multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(1,0,0),2.65*Math.max(0,inspectWeight)));
    h.group.quaternion.slerp(orientation,1-Math.exp(-dt*14));
-   grasp[i]=T.MathUtils.lerp(grasp[i],contact&&(engaged||i!==active)?1:exploring?.25:0,1-Math.exp(-dt*12));
+   grasp[i]=T.MathUtils.lerp(grasp[i],contact&&(engaged||i!==active)?1:exploring?.25:travelling.grasp*travelWeight,1-Math.exp(-dt*12));
    h.joints.forEach((j,k)=>{j.rotation.x=.06+grasp[i]*(.48+k*.045);h.tips[k].rotation.x=grasp[i]*(1.0+k*.06);});
    h.thumb.rotation.x=grasp[i]*.65;h.thumb.rotation.z=(i?1:-1)*(.8-grasp[i]*.25);
    h.group.userData.grasp=grasp[i];
    h.group.scale.setScalar(contact?1.15:1);
   });
  }
- return {root,body,hands,update,setIdleTargets(points:T.Vector3[]){idleTargets=points.map(p=>p.clone());},linkEnds(){root.updateMatrixWorld(true);hands[0].group.updateMatrixWorld(true);return {from:arms[0].localToWorld(new T.Vector3(0,-.34,0)),to:hands[0].group.localToWorld(new T.Vector3(0,-.20,0))};}};
+ return {root,body,hands,update,setTravelStyle:(style:string)=>travel.setStyle(style),setTravelMotion(speed:number,phase:number){travelSpeed=speed;travelPhase=phase;},setIdleTargets(points:T.Vector3[]){idleTargets=points.map(p=>p.clone());},linkEnds(){root.updateMatrixWorld(true);hands[0].group.updateMatrixWorld(true);return {from:arms[0].localToWorld(new T.Vector3(0,-.34,0)),to:hands[0].group.localToWorld(new T.Vector3(0,-.20,0))};}};
 }
