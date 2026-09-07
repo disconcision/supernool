@@ -79,3 +79,7 @@ The existing `canopy-growth.html` now compares Painterly volume with Previous re
 ## Round 07 · roiling shadow comparisons
 
 Latest feedback asks for more cloud-like billowing, a little more texture, brief forked lightning around the cloud exterior, and animated grazing-angle bark emission. `shadow.html` now compares three new constructions with the original three methods. Depth-only, lifted-skeleton and clear-host visibility modes explicitly test how much the cloud should obscure the algebra. See [storm-notes.md](storm-notes.md) for implementation, inspection, limits and remaining encounter integration.
+
+## Round 08 · shadow versions of living canopy constructions
+
+S7–S9 in `shadow.html` explore the living G1/G3/G2 patch layouts as shadow coverage: painted canopy, fibrous hanging shade and turbulent upright banks. The prior volume clouds remain. See [patch-shadow-notes.md](patch-shadow-notes.md) for the separate coverage pass, comparisons, visual revisions and limitations. No new generated paintings or playable-scene changes.
