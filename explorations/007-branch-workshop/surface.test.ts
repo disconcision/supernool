@@ -1,0 +1,8 @@
+import {pose,Settings} from './motion';
+import {prepare,fill,Shape} from './surface';
+const s:Settings={rule:'regroup',mapping:'exchange',complexity:'nested',anchor:'fixed',path:'orbit',t:0,height:'depth',irregularity:0};
+const shape:Shape={thickness:1.5,taper:.8,curve:.3,irregularity:.25,twist:.35,hewn:true};
+test('depth policy lowers A, raises C and preserves relative descendant offsets',()=>{const a=pose(s),b=pose({...s,t:1});expect(b.A.y).toBeLessThan(a.A.y);expect(b.C.y).toBeGreaterThan(a.C.y);expect(b.B.y).toBe(a.B.y);for(const id of ['ax','ay']){expect(b.joints.find(x=>x.id===id)!.y-b.A.y).toBeCloseTo(a.joints.find(x=>x.id===id)!.y-a.A.y);}});
+test('curved subdivision preserves original attachment endpoints and is deterministic',()=>{const raw=pose(s).segments,curves=prepare(raw,shape);expect(curves[0].a).toEqual(raw[0].a);expect(curves[4].b.x).toBeCloseTo(raw[0].b.x);expect(curves[4].b.y).toBeCloseTo(raw[0].b.y);expect(prepare(raw,shape)).toEqual(curves);expect(curves.every(x=>x.r0>0&&x.r1>0)).toBe(true);});
+test('thickness scales radii while taper changes relative levels',()=>{const seg=pose(s).segments;const a=prepare(seg,shape),b=prepare(seg,{...shape,thickness:3});expect(b[0].r0/a[0].r0).toBeCloseTo(2);const c=prepare(seg,{...shape,taper:1.5});expect(c[0].r0).not.toBe(a[0].r0);});
+test('hewn and rounded fields differ and remain finite',()=>{const a=new Float32Array(32**3),b=new Float32Array(32**3),seg=pose(s).segments;fill(a,32,prepare(seg,shape),.12);fill(b,32,prepare(seg,{...shape,hewn:false}),.12);expect(a.every(Number.isFinite)).toBe(true);expect(b.every(Number.isFinite)).toBe(true);expect(a.some((v,i)=>Math.abs(v-b[i])>.001)).toBe(true);expect(a.some(x=>x>0)).toBe(true);});

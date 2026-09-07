@@ -1,0 +1,16 @@
+{
+  "states": 2214,
+  "meshes": 24,
+  "checks": [
+    "spread preserves graph IDs, radii and x/y coordinates",
+    "zero spread recovers original embedding",
+    "carried A subtree local offsets remain fixed during rewriting",
+    "member interior centreline retained",
+    "finite extracted geometry; capacity respected"
+  ],
+  "limits": [
+    "GPU shading checked visually, not by this script",
+    "no proof of collision-free spatial embedding",
+    "no persistent mesh topology or UVs"
+  ]
+}

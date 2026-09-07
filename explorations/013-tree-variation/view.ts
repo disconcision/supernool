@@ -1,0 +1,43 @@
+import * as T from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {fill,Options} from './surface';import {MarchingCubes} from 'three/addons/objects/MarchingCubes.js';import {specimen} from './spatial';import {carved,feed} from './shading';
+const $=(s:string)=>document.getElementById(s)!,val=(s:string)=>($(s) as HTMLInputElement).value,check=(s:string)=>($(s) as HTMLInputElement).checked;
+let renderNeeded=true;
+const host=$('canvas'),renderer=new T.WebGLRenderer({antialias:true});host.append(renderer.domElement);renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+const scene=new T.Scene();scene.background=new T.Color('#e8e0cf');scene.add(new T.HemisphereLight('#fff6e2','#776f5b',1.3));const sun=new T.DirectionalLight('#fff3d9',3);sun.position.set(-8,10,5);scene.add(sun);
+const floor=new T.Mesh(new T.CylinderGeometry(6,6.3,.25,64),new T.MeshStandardMaterial({color:'#c5b899',roughness:1}));floor.position.y=-.06;scene.add(floor);
+const camera=new T.OrthographicCamera(-8,8,7,-7,.1,100);camera.position.set(10,8,17);camera.lookAt(0,3.6,0);const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,3.6,0);controls.enableDamping=true;controls.addEventListener('change',()=>renderNeeded=true);
+function resize(){const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.left=-6.6*w/h;camera.right=6.6*w/h;camera.top=6.6;camera.bottom=-6.6;camera.updateProjectionMatrix();renderNeeded=true;}new ResizeObserver(resize).observe(host);resize();
+let t=0,dirty=true,playing=false,last=0,seed=1;const labels=new T.Group();scene.add(labels);const textures=new Map<string,T.CanvasTexture>();
+function label(text:string){let tex=textures.get(text);if(!tex){const c=document.createElement('canvas');c.width=128;c.height=64;const ctx=c.getContext('2d')!;ctx.fillStyle='#fff8e7';ctx.fillRect(0,0,128,64);ctx.fillStyle='#514c3e';ctx.font='bold 28px Georgia';ctx.textAlign='center';ctx.fillText(text,64,42);tex=new T.CanvasTexture(c);textures.set(text,tex);}const s=new T.Sprite(new T.SpriteMaterial({map:tex,depthTest:false}));s.scale.set(.65,.325,1);return s;}
+const gradient=new T.DataTexture(new Uint8Array([45,110,185,255]),4,1,T.RedFormat);gradient.minFilter=T.NearestFilter;gradient.magFilter=T.NearestFilter;gradient.needsUpdate=true;
+const studio=()=>new T.MeshStandardMaterial({color:'#c0a073',roughness:.85});
+const toon=()=>new T.MeshToonMaterial({color:'#c0a073',gradientMap:gradient});
+const materials={smooth:studio(),carved:carved(studio()),cel:carved(toon()),smoothCel:toon()};
+const material=materials.carved;
+const skin=new MarchingCubes(96,material,false,false,120000);skin.isolation=0;skin.scale.setScalar(6);skin.position.y=5;skin.frustumCulled=false;scene.add(skin);
+let geometryKey='',lastMembers:ReturnType<typeof fill>=[],lastRebuild=0,geometryBuilds=0;
+function update(){const before=performance.now();const c=specimen(val('rule'),val('complexity'),val('mapping'),t,seed,val('height'),Number(val('lengthRandom')),+val('spread'),val('motion'));
+ const options:Options={thickness:+val('thickness'),taper:+val('taper'),bow:+val('bow'),random:+val('random'),twist:+val('twist'),facets:+val('facets'),seed,spread:+val('spread'),blend:+val('blend'),hewn:val('surface')==='hewn'};
+ const resolution=+val('resolution');
+ const key=JSON.stringify([seed,t,...['rule','complexity','mapping','motion','height','lengthRandom','spread','thickness','taper','bow','random','twist','facets','blend','surface','resolution'].map(val)]);
+ const rebuilt=key!==geometryKey;
+ if(rebuilt){if(skin.resolution!==resolution){skin.geometry.dispose();skin.init(resolution);skin.isolation=0;}skin.reset();lastMembers=fill(skin.field,resolution,c.edges,options);skin.update();feed(lastMembers,options);geometryKey=key;host.dataset.rebuilds=String(++geometryBuilds);lastRebuild=performance.now()-before;}
+ const members=lastMembers,material=materials[val('lighting') as keyof typeof materials];skin.material=material;material.wireframe=check('wire');
+
+ labels.children.forEach(o=>((o as T.Sprite).material as T.Material).dispose());labels.clear();if(check('runes'))for(const j of c.joints){if(val('rule')==='regroup'&&val('motion')==='retract'&&Math.abs(t-.5)<.00001&&j.id==='q')continue;const s=label((val('rule')==='regroup'&&val('motion')==='retract'&&Math.abs(t-.5)<.00001&&j.id==='p'?'p/q +':(['p','q'].includes(j.id)?j.id+' ':'')+j.label));s.position.set(j.x,j.y+.35,j.z);labels.add(s);}
+ $('audit').textContent=`${Math.round(skin.geometry.drawRange.count/3).toLocaleString()} triangles · ${members.length} members · ${resolution}³ grid · narrowest end radius ${Math.min(...members.map(m=>m.tip)).toFixed(3)}`;
+ $('status').textContent=`${rebuilt?Math.round(lastRebuild)+' ms rebuild':'geometry reused'} · ${val('surface')} geometry · ${val('lighting')} lighting · ${Math.round(+val('spread')*100)}% spatial spread`;
+ $('equation').textContent=val('rule')==='regroup'?(val('mapping')==='exchange'?'p(q(A,B),C) → q(A,p(B,C))':'p(q(A,B),C) → p(A,q(B,C))'):val('rule')==='identity'?'A → 0 + A · fixed attachment':val('rule')==='swap'?'A + B → B + A · orbit':val('rule')==='generated'?'Generated tree · same construction rules':'Seven longitudinal strips · one fork';
+ const active=['identity','regroup','swap'].includes(val('rule'));($('time') as HTMLInputElement).disabled=!active;($('play') as HTMLButtonElement).disabled=!active;($('mapping') as HTMLSelectElement).disabled=val('rule')!=='regroup';($('motion') as HTMLSelectElement).disabled=val('rule')!=='regroup';dirty=false;}
+for(const id of ['rule','complexity','mapping','motion','height','wire','runes','surface','lighting','resolution'])$(id).onchange=()=>{dirty=true;playing=false;$('play').textContent='Play';};
+for(const id of ['twist','bow','thickness','taper','random','lengthRandom','facets','blend','spread'])$(id).oninput=()=>dirty=true;
+$('time').oninput=()=>{t=Number(val('time'))/1000;playing=false;dirty=true;$('play').textContent='Play';};$('play').onclick=()=>{playing=!playing;if(playing&&t>=1)t=0;$('play').textContent=playing?'Pause':'Play';};
+$('seed').onclick=()=>{seed++;playing=false;dirty=true;};$('reset').onclick=()=>{camera.position.set(10,8,17);camera.zoom=1;controls.target.set(0,3.6,0);camera.updateProjectionMatrix();controls.update();};
+document.querySelectorAll<HTMLButtonElement>('[data-spread]').forEach(b=>b.onclick=()=>{($('spread') as HTMLInputElement).value=b.dataset.spread!;dirty=true;});
+document.querySelectorAll<HTMLButtonElement>('[data-time]').forEach(b=>b.onclick=()=>{t=Number(b.dataset.time);playing=false;dirty=true;$('play').textContent='Play';});
+document.querySelectorAll<HTMLButtonElement>('[data-camera]').forEach(b=>b.onclick=()=>{const views:Record<string,number[]>={front:[0,5,20],back:[0,5,-20],side:[20,5,0],oblique:[10,8,17]};camera.position.fromArray(views[b.dataset.camera!]);controls.target.set(0,3.6,0);controls.update();});
+function tick(now:number){requestAnimationFrame(tick);if(document.hidden){last=now;return;}if(playing){t=Math.min(1,t+Math.min(100,now-last)/6000);dirty=true;if(t===1){playing=false;$('play').textContent='Replay';}}last=now;const changed=dirty;if(dirty)update();($('time') as HTMLInputElement).value=String(Math.round(t*1000));$('progress').textContent=Math.round(t*100)+'%';const cameraChanged=controls.update();if(changed||cameraChanged||renderNeeded){renderer.render(scene,camera);host.dataset.draws=String(renderer.info.render.frame);renderNeeded=false;}}requestAnimationFrame(tick);
+const params=new URLSearchParams(location.search);
+if(params.has('embed')){($('bow') as HTMLInputElement).value='0';camera.position.set(0,5,20);controls.target.set(0,3.6,0);controls.update();document.querySelector('aside')!.style.display='none';document.querySelector<HTMLElement>('.transport')!.style.display='none';document.querySelector<HTMLElement>('.caption')!.style.display='none';}
+window.addEventListener('message',event=>{if(event.origin!==location.origin||event.data?.type!=='nool-specimen')return;const state=event.data;($('rule') as HTMLSelectElement).value='regroup';($('complexity') as HTMLSelectElement).value='nested';($('mapping') as HTMLSelectElement).value='exchange';($('motion') as HTMLSelectElement).value='slide';($('height') as HTMLSelectElement).value='depth';($('lengthRandom') as HTMLInputElement).value='0';($('spread') as HTMLInputElement).value=String(Math.max(0,Math.min(1,Number(state.spread)||0)));t=Math.max(0,Math.min(1,Number(state.time)||0));playing=false;dirty=true;});

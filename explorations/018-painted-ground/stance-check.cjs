@@ -1,0 +1,10 @@
+const assert=require('node:assert/strict'),T=require('three'),{buildSync}=require('esbuild'),fs=require('node:fs');
+buildSync({entryPoints:[__dirname+'/stance.ts'],bundle:true,platform:'node',external:['three'],outfile:__dirname+'/.stance-check.cjs'});const {StanceAdjustment}=require('./.stance-check.cjs');fs.unlinkSync(__dirname+'/.stance-check.cjs');
+const origin=new T.Vector3(),right=new T.Vector3(1,0,0),first=new T.Vector3(0,4,0),last=new T.Vector3(8,5,0);const s=new StanceAdjustment(),p=new T.Vector3(0,0,2);
+s.step(0,.016,true,'a',first,p,origin,right,()=>true);assert.equal(s.step(50,.016,true,'b',last,p,origin,right,()=>true).length(),0);
+assert.equal(s.step(150,.016,true,'b',last,p,origin,right,()=>true).length(),0,'Wait before small stance changes');
+for(let i=0;i<180;i++){const d=s.step(400+i*16,1/60,true,'b',last,p,origin,right,()=>true);assert(d.length()<=.65/60+1e-8);p.add(d);}assert(p.x>.9&&p.x<=1.1);assert.equal(p.z,2);
+assert.equal(s.step(4000,.016,false,'b',last,p,origin,right,()=>true).length(),0,'Grip disables auto motion immediately');assert.equal(s.phase,'off');
+const q=new T.Vector3(0,0,8),far=new StanceAdjustment();far.step(0,.016,true,'a',first,q,origin,right,()=>true);far.step(1,.016,true,'b',last,q,origin,right,()=>true);const inward=far.step(500,.016,true,'b',last,q,origin,right,()=>true);assert(inward.z<0&&inward.x===0,'Step back toward the tree after backing away');
+const blocked=new StanceAdjustment(),b=new T.Vector3(0,0,2);blocked.step(0,.016,true,'a',first,b,origin,right,()=>true);blocked.step(1,.016,true,'b',last,b,origin,right,()=>true);assert.equal(blocked.step(500,.016,true,'b',last,b,origin,right,()=>false).length(),0);assert.equal(blocked.phase,'blocked');
+console.log('Delayed faster side shuffle, bounded inward recovery, obstacle stop and immediate grip cutoff passed.');

@@ -1,0 +1,21 @@
+{
+  "triangles": 11166,
+  "vertices": 5603,
+  "textures": [
+    "rock-color.png",
+    "rock-normal.png"
+  ],
+  "atlas_size": 2048,
+  "dimensions_blender_xyz": [
+    4.929322242736816,
+    3.1816208362579346,
+    3.0259501934051514
+  ],
+  "export": "Y-up GLB; baked base color and tangent-space normal",
+  "references": [
+    "I0500",
+    "I0499",
+    "generations/01-ground.png"
+  ],
+  "purpose": "One opt-in rock group for prototype018; unchanged ground and camera"
+}

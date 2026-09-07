@@ -1,0 +1,69 @@
+{
+  "environment": "Node CPU benchmark; same straight-axis inputs; excludes GPU shading and browser/UI work",
+  "rows": [
+    {
+      "rule": "regroup",
+      "resolution": 96,
+      "implementation": "012",
+      "medianMs": 67.8,
+      "triangles": 4844,
+      "maxFieldDifference": 0
+    },
+    {
+      "rule": "regroup",
+      "resolution": 96,
+      "implementation": "013",
+      "medianMs": 43.8,
+      "triangles": 4844,
+      "maxFieldDifference": 0
+    },
+    {
+      "rule": "regroup",
+      "resolution": 144,
+      "implementation": "012",
+      "medianMs": 186.6,
+      "triangles": 11068,
+      "maxFieldDifference": 0
+    },
+    {
+      "rule": "regroup",
+      "resolution": 144,
+      "implementation": "013",
+      "medianMs": 142.2,
+      "triangles": 11068,
+      "maxFieldDifference": 0
+    },
+    {
+      "rule": "generated",
+      "resolution": 96,
+      "implementation": "012",
+      "medianMs": 85.8,
+      "triangles": 8032,
+      "maxFieldDifference": 0
+    },
+    {
+      "rule": "generated",
+      "resolution": 96,
+      "implementation": "013",
+      "medianMs": 60.8,
+      "triangles": 8032,
+      "maxFieldDifference": 0
+    },
+    {
+      "rule": "generated",
+      "resolution": 144,
+      "implementation": "012",
+      "medianMs": 354,
+      "triangles": 18792,
+      "maxFieldDifference": 0
+    },
+    {
+      "rule": "generated",
+      "resolution": 144,
+      "implementation": "013",
+      "medianMs": 223.5,
+      "triangles": 18792,
+      "maxFieldDifference": 0
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+import {example,expr,Rule,Complexity,Path} from './model';
+import {drawing,Options,View} from './drawing';
+const $=(id:string)=>document.getElementById(id)!;
+const value=(id:string)=>($(id) as HTMLSelectElement).value;
+let t=0,playing=false,last=0;
+const opts=():Options=>({rule:value('rule') as Rule,complexity:value('complexity') as Complexity,path:value('path') as Path,view:value('view') as View,t});
+function frame(){const o=opts();$('stage').innerHTML=drawing(o);($('time') as HTMLInputElement).value=String(Math.round(t*1000));$('percent').textContent=Math.round(t*100)+'%';}
+function refresh(){const o=opts(),e=example(o.rule,o.complexity);$('equation').textContent=expr(e.before)+' → '+expr(e.after);$('event').textContent=JSON.stringify(e.edit,null,2);
+ ($('path') as HTMLSelectElement).disabled=o.rule!=='swap';
+ $('note').textContent=o.rule==='swap'?(o.path==='flat'?'Both operands keep their internal structure, but their roots coincide halfway through this straight path. The overlap is deliberate for comparison.':'The operands follow opposite half-circles in the horizontal depth plane. Root separation stays constant; the internal subtree travels rigidly with its root.'):o.rule==='regroup'?'A, B and C stay in place. The same grouping joint changes which pair belongs together. Its path is a geometric choice, independent of the size of each operand.':'The original operand remains in place. A new addition context and zero appear together during one semantic rewrite.';
+ $('policy').textContent=o.rule==='swap'?'Swap changes two ordered child slots atomically. The orbit is one proposed realization: flexible parent connections follow the moving roots. It proves separation of the roots, not clearance of arbitrary branches, shelves or attachments.':o.rule==='regroup'?(o.view==='plateaus'?'The grouping shelf is absorbed into the common support and re-emerges under B and C; the operand shelves remain fixed. Opacity sketches the absorption, not a final material effect. Joint q keeps its identity even when its surface is hidden.':'The grouping joint moves from the left pair to the right pair. A and C attachment points slide along the parent–joint member, while B remains attached to the joint. These temporary attachment points belong to geometry, not the term tree.'):'This depicts the compound semantic event as a coordinated fade-in. A later solid version should specify actual growth of the context and zero rather than use opacity.';
+ $('frames').innerHTML=[0,.5,1].map((phase,i)=>`<button class="frame" data-t="${phase}"><strong>${['Before','Midpoint · geometric state','After'][i]}</strong>${drawing({...o,t:phase})}</button>`).join('');frame();}
+for(const id of ['rule','complexity','path','view'])$(id).onchange=()=>{playing=false;$('play').textContent='Play';t=0;refresh();};
+$('time').oninput=()=>{playing=false;$('play').textContent='Play';t=Number(value('time'))/1000;frame();};
+$('frames').onclick=e=>{const b=(e.target as HTMLElement).closest<HTMLElement>('[data-t]');if(b){t=Number(b.dataset.t);playing=false;$('play').textContent='Play';frame();}};
+$('play').onclick=()=>{playing=!playing;if(playing&&t>=1)t=0;$('play').textContent=playing?'Pause':'Play';};
+function tick(now:number){if(playing){t=Math.min(1,t+Math.min(50,now-last)/4000);frame();if(t===1){playing=false;$('play').textContent='Replay';}}last=now;requestAnimationFrame(tick);}requestAnimationFrame(tick);
+$('export').onclick=()=>{const o=opts(),url=URL.createObjectURL(new Blob([drawing(o)],{type:'image/svg+xml'})),a=document.createElement('a');a.href=url;a.download=`004-${o.rule}-${o.complexity}-${o.view}-${o.path}-${Math.round(t*100)}.svg`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};refresh();

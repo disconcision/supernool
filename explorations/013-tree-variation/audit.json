@@ -1,0 +1,17 @@
+{
+  "heightCases": 10,
+  "states": 252,
+  "spatialSeeds": 12,
+  "meshes": 24,
+  "checks": [
+    "main height response in every operation and both height policies",
+    "generated branching is non-coplanar across tested deep trees",
+    "working plane and local bow remain planar for steady regroup",
+    "endpoints stay attached",
+    "finite geometry and mesh capacity"
+  ],
+  "limitations": [
+    "no collision-free embedding guarantee",
+    "no GPU timing in these checks"
+  ]
+}

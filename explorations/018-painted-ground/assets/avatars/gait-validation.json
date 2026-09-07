@@ -1,0 +1,103 @@
+{
+  "coordinateSystem": "Blender Z-up; forward is -Y, converted to glTF +Z",
+  "blueActualEvaluatedAnkleTrajectory": [
+    {
+      "frame": 1,
+      "left_ankle_xyz": [
+        -0.175,
+        -0.18,
+        0.18
+      ]
+    },
+    {
+      "frame": 7,
+      "left_ankle_xyz": [
+        -0.175,
+        -0.09,
+        0.18
+      ]
+    },
+    {
+      "frame": 13,
+      "left_ankle_xyz": [
+        -0.175,
+        0.0,
+        0.18
+      ]
+    },
+    {
+      "frame": 19,
+      "left_ankle_xyz": [
+        -0.175,
+        0.09,
+        0.18
+      ]
+    },
+    {
+      "frame": 25,
+      "left_ankle_xyz": [
+        -0.175,
+        0.18,
+        0.18
+      ]
+    },
+    {
+      "frame": 31,
+      "left_ankle_xyz": [
+        -0.175,
+        0.09,
+        0.2507
+      ]
+    },
+    {
+      "frame": 37,
+      "left_ankle_xyz": [
+        -0.175,
+        -0.0,
+        0.28
+      ]
+    },
+    {
+      "frame": 43,
+      "left_ankle_xyz": [
+        -0.175,
+        -0.09,
+        0.2507
+      ]
+    },
+    {
+      "frame": 49,
+      "left_ankle_xyz": [
+        -0.175,
+        -0.18,
+        0.18
+      ]
+    }
+  ],
+  "oliveVerification": "Exported Walk root/leg/foot tracks match the verified blue rig exactly. Raw pose-bone reads in the second scene did not refresh during the single-call audit, so they are not reported as evaluated motion.",
+  "matchingTracks": [
+    "Root:translation",
+    "Root:rotation",
+    "Root:scale",
+    "Thigh.L:translation",
+    "Thigh.L:rotation",
+    "Thigh.L:scale",
+    "Shin.L:translation",
+    "Shin.L:rotation",
+    "Shin.L:scale",
+    "Foot.L:translation",
+    "Foot.L:rotation",
+    "Foot.L:scale",
+    "Thigh.R:translation",
+    "Thigh.R:rotation",
+    "Thigh.R:scale",
+    "Shin.R:translation",
+    "Shin.R:rotation",
+    "Shin.R:scale",
+    "Foot.R:translation",
+    "Foot.R:rotation",
+    "Foot.R:scale"
+  ],
+  "stance": "front-to-back at z=0.18",
+  "swing": "back-to-front, lifting ankle to z=0.28"
+}

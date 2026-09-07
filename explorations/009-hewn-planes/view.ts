@@ -1,0 +1,24 @@
+import * as T from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {mergeVertices} from 'three/addons/utils/BufferGeometryUtils.js';
+import {build,Config} from './mesh';
+const $=(s:string)=>document.getElementById(s)!;const val=(s:string)=>($(s) as HTMLInputElement).value;const host=$('viewport');
+const renderer=new T.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));host.append(renderer.domElement);renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;
+const scene=new T.Scene();scene.background=new T.Color('#e7e0d0');
+const camera=new T.OrthographicCamera(-6,6,6,-6,.1,100);camera.position.set(6,3,12);camera.lookAt(0,0,0);
+const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,0,0);controls.enableDamping=true;
+const hemi=new T.HemisphereLight('#fff7e3','#8c8170',1.1);scene.add(hemi);const light=new T.DirectionalLight('#fff2d9',3.4);light.position.set(-5,7,5);light.castShadow=true;light.shadow.mapSize.set(1024,1024);Object.assign(light.shadow.camera,{left:-6,right:6,top:6,bottom:-6,near:.1,far:30});scene.add(light);
+const floor=new T.Mesh(new T.PlaneGeometry(100,100),new T.MeshStandardMaterial({color:'#c9bd9f',roughness:1}));floor.rotation.x=-Math.PI/2;floor.position.y=-3.82;floor.receiveShadow=true;scene.add(floor);
+let mesh:T.Mesh|undefined,dirty=true;
+const config=():Config=>({sides:Number(val('sides')),bevel:Number(val('bevel')),twist:Number(val('twist')),curve:Number(val('curve')),radius:Number(val('radius')),share:Number(val('share'))});
+function rebuild(){if(mesh){mesh.geometry.dispose();(mesh.material as T.Material).dispose();scene.remove(mesh);}const cfg=config(),data=build(cfg);let g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(data.positions,3));
+ if(val('shading')==='smooth')g=mergeVertices(g,1e-5);g.computeVertexNormals();
+ const mat=val('shading')==='normal'?new T.MeshNormalMaterial():new T.MeshStandardMaterial({color:'#c7a46e',roughness:.88,metalness:0});mat.wireframe=($('wire') as HTMLInputElement).checked;
+ mesh=new T.Mesh(g,mat);mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);
+ hemi.intensity=val('light')==='soft'?2.2:.85;light.intensity=val('light')==='soft'?1:3.8;
+ $('stats').textContent=`${data.positions.length/9} triangles · ${data.boundaryEdges} open edges · ${data.nonmanifoldEdges} multiply shared edges. Child radii: ${(cfg.radius*Math.sqrt(cfg.share)).toFixed(2)}, ${(cfg.radius*Math.sqrt(1-cfg.share)).toFixed(2)}.`;dirty=false;}
+for(const id of ['sides','shading','light','wire'])$(id).onchange=()=>dirty=true;
+for(const id of ['bevel','twist','curve','radius','share'])$(id).oninput=()=>dirty=true;
+function resize(){const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.left=-5*w/h;camera.right=5*w/h;camera.top=5;camera.bottom=-5;camera.updateProjectionMatrix();}new ResizeObserver(resize).observe(host);resize();
+$('reset').onclick=()=>{camera.position.set(6,3,12);camera.zoom=1;controls.target.set(0,0,0);camera.lookAt(controls.target);camera.updateProjectionMatrix();controls.update();};
+function tick(){requestAnimationFrame(tick);if(dirty)rebuild();controls.update();renderer.render(scene,camera);}tick();

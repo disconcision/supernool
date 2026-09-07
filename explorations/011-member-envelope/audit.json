@@ -1,0 +1,17 @@
+{
+  "states": 3636,
+  "meshes": 40,
+  "minRetainedRadiusFraction": 0.5970782845502729,
+  "checks": [
+    "centreline remains inside each member",
+    "length taper bounded",
+    "carried operand local positions preserved",
+    "extracted positions and normals finite",
+    "mesh capacity not exceeded"
+  ],
+  "limitations": [
+    "No collision-free guarantee",
+    "No proof of identical mesh topology between frames",
+    "Visual reviews recorded separately"
+  ]
+}

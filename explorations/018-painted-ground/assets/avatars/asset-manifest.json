@@ -1,0 +1,32 @@
+{
+  "format": "glb",
+  "up": "+Y",
+  "forward": "+Z",
+  "bodyHeightApprox": 2.4,
+  "figureShading": "cel",
+  "largeHandShading": "soft or faceted",
+  "assets": [
+    {
+      "file": "olive-cape.glb",
+      "sha256": "a483fe78867d1f9ecab758bd10154ad71bb2ca4244abf5f27fcc104f78fe2baa",
+      "bytes": 534896,
+      "skins": 1,
+      "clips": [
+        "Idle",
+        "Walk",
+        "Hover"
+      ]
+    },
+    {
+      "file": "blue-wrap.glb",
+      "sha256": "33c1a2dfbd79430aef26a0a8075d5502300252ad1c5a92590f11fa050bfff560",
+      "bytes": 490768,
+      "skins": 1,
+      "clips": [
+        "Idle",
+        "Walk",
+        "Hover"
+      ]
+    }
+  ]
+}

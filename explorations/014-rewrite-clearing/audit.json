@@ -1,0 +1,44 @@
+{
+  "initialNodes": 13,
+  "finalNodes": 5,
+  "moves": 6,
+  "route": [
+    {
+      "move": "Swap branches",
+      "before": "((((2 × x) + 0) + y) + ((3 × x) + 0))",
+      "after": "(((3 × x) + 0) + (((2 × x) + 0) + y))",
+      "hintMs": 84
+    },
+    {
+      "move": "Regroup to the left",
+      "before": "(((3 × x) + 0) + (((2 × x) + 0) + y))",
+      "after": "((((3 × x) + 0) + ((2 × x) + 0)) + y)",
+      "hintMs": 60
+    },
+    {
+      "move": "Remove zero",
+      "before": "((((3 × x) + 0) + ((2 × x) + 0)) + y)",
+      "after": "(((3 × x) + ((2 × x) + 0)) + y)",
+      "hintMs": 28
+    },
+    {
+      "move": "Remove zero",
+      "before": "(((3 × x) + ((2 × x) + 0)) + y)",
+      "after": "(((3 × x) + (2 × x)) + y)",
+      "hintMs": 3
+    },
+    {
+      "move": "Factor common x",
+      "before": "(((3 × x) + (2 × x)) + y)",
+      "after": "(((3 + 2) × x) + y)",
+      "hintMs": 0
+    },
+    {
+      "move": "Combine numbers",
+      "before": "(((3 + 2) × x) + y)",
+      "after": "((5 × x) + y)",
+      "hintMs": 0
+    }
+  ],
+  "checkedLegalMoves": 738
+}

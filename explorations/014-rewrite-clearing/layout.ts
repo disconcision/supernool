@@ -1,0 +1,43 @@
+import * as T from 'three';import {Term,walk,children} from './algebra';import type {Edge} from './surface';
+export type Pose={points:Map<string,T.Vector3>;parents:Map<string,string>;nodes:Map<string,Term>;edges:Edge[]};
+export type LayoutOptions={spread:number;irregularity:number;height:string;seed:number};
+const noise=(id:string,seed:number)=>Math.sin([...id].reduce((n,c)=>n+c.charCodeAt(0)*7,seed*29)*1.71);
+export function layout(tree:Term,o:LayoutOptions):Pose{
+ const points=new Map<string,T.Vector3>(),parents=new Map<string,string>(),nodes=new Map(walk(tree).map(t=>[t.id,t]));let leaf=0;const maxDepth=(n:Term):number=>n.kind==='op'?1+Math.max(maxDepth(n.left),maxDepth(n.right)):0,deep=maxDepth(tree);
+ function place(n:Term,depth:number):number{let x;if(n.kind==='op'){parents.set(n.left.id,n.id);parents.set(n.right.id,n.id);x=(place(n.left,depth+1)+place(n.right,depth+1))/2;}else x=leaf++*1.2;
+  const y=1.3+(o.height==='level'&&n.kind!=='op'?deep:depth)*1.5+(depth?o.irregularity*.4*noise(n.id,o.seed):0);points.set(n.id,new T.Vector3(x,y,0));return x;}
+ place(tree,0);const rootX=points.get(tree.id)!.x;points.forEach(p=>p.x-=rootX);
+ const spatial=new Map<string,T.Vector3>();spatial.set(tree.id,points.get(tree.id)!.clone());
+ function grow(n:Term,d:number){for(const child of children(n)){const a=points.get(n.id)!,b=points.get(child.id)!,delta=b.x-a.x,angle=d*2.399963+o.seed*.3;spatial.set(child.id,spatial.get(n.id)!.clone().add(new T.Vector3(delta*Math.cos(angle),b.y-a.y,delta*Math.sin(angle))));grow(child,d+1);}}grow(tree,0);
+ points.forEach((p,id)=>p.lerp(spatial.get(id)!,o.spread));
+ const weight=(n:Term):number=>n.kind==='op'?weight(n.left)+weight(n.right):1;
+ const edges:Edge[]=[{id:'stem',a:new T.Vector3(0,-.12,0),b:points.get(tree.id)!,r:.43}];
+ for(const n of walk(tree)){const parent=parents.get(n.id);if(parent)edges.push({id:n.id,a:points.get(parent)!,b:points.get(n.id)!,r:.15*Math.sqrt(weight(n))});}
+ return {points,parents,nodes,edges};
+}
+export function transition(before:Term,after:Term,t:number,o:LayoutOptions,kind:string,merge:Record<string,string>={}):Pose{
+ const a=layout(before,o),b=layout(after,o),points=new Map<string,T.Vector3>(),ease=t*t*(3-2*t);
+ const ancestor=(id:string,source:Pose,target:Pose):string=>{let p:string|undefined=id;while(p&&!target.points.has(p))p=source.parents.get(p);return p??(target===b?after.id:before.id);};
+ const all=new Set([...a.points.keys(),...b.points.keys()]);
+ for(const id of all){const start=a.points.get(id)??a.points.get(ancestor(id,b,a))!,end=b.points.get(id)??b.points.get(merge[id]??ancestor(id,a,b))!;const p=start.clone().lerp(end,ease);
+  if(kind==='swap'&&a.points.has(id)&&b.points.has(id))p.z+=Math.sin(Math.PI*t)*(end.x-start.x)*.5;
+  points.set(id,p);
+ }
+ const route=(from:string,to:string)=>{const adj=new Map<string,Set<string>>();for(const pose of [a,b])for(const [child,parent] of pose.parents){if(!adj.has(child))adj.set(child,new Set());if(!adj.has(parent))adj.set(parent,new Set());adj.get(child)!.add(parent);adj.get(parent)!.add(child);}
+  const queue=[[from]],seen=new Set([from]);for(const path of queue){const last=path[path.length-1];if(last===to)return path;for(const n of adj.get(last)??[])if(!seen.has(n)){seen.add(n);queue.push([...path,n]);}}return [from,to];};
+ const attachment=(from:string,to:string)=>{const path=route(from,to);if(path.length===1)return points.get(from)!.clone();const f=ease*(path.length-1),i=Math.min(path.length-2,Math.floor(f));return points.get(path[i])!.clone().lerp(points.get(path[i+1])!,f-i);};
+ const edges:Edge[]=[],retracted=new Map<string,T.Vector3>();const old=new Map(a.edges.map(e=>[e.id,e])),fresh=new Map(b.edges.map(e=>[e.id,e]));
+ for(const id of new Set([...old.keys(),...fresh.keys()])){
+  if(id==='stem'){edges.push({id,a:new T.Vector3(0,-.12,0),b:points.get(before.id)!.clone().lerp(points.get(after.id)!,ease),r:.43});continue;}
+  const e0=old.get(id),e1=fresh.get(id),p0=a.parents.get(id),p1=b.parents.get(id);let end=points.get(id)!.clone();
+  let start:T.Vector3;if(p0&&p1)start=attachment(p0,p1);else start=points.get((p0??p1)!)!.clone();
+  // Retire material along the member, rather than making a full-length needle.
+  // Sub-voxel needles otherwise break into disconnected specks at play resolution.
+  const r=e0&&e1?e0.r+(e1.r-e0.r)*ease:(e0??e1)!.r;
+  if(!e1){end=start.clone().lerp(end,1-ease);retracted.set(id,end);}
+  if(!e0){end=start.clone().lerp(end,ease);}
+  if(r>1e-5&&start.distanceTo(end)>1e-5)edges.push({id,a:start,b:end,r});
+ }
+ for(const [id,p] of retracted)points.set(id,p);
+ const nodes=t<.5?a.nodes:b.nodes;return {points,parents:b.parents,nodes,edges};
+}

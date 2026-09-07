@@ -1,0 +1,10 @@
+{
+  "states": 1818,
+  "checks": [
+    "endpoints match slide variant",
+    "all operand attachments remain at named pluses",
+    "root remains anchored in both embeddings",
+    "connector alone reaches zero extent and radius",
+    "continuous positions across the transfer"
+  ]
+}

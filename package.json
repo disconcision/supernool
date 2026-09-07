@@ -1,0 +1,39 @@
+{
+  "name": "supernool",
+  "version": "0.1.0",
+  "description": "A tactile world of transforming trees, structures, and places.",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 3100 --strictPort",
+    "start": "npm run dev",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "check": "tsc --noEmit --skipLibCheck --target es2020 --module esnext --moduleResolution bundler --lib es2020,dom,dom.iterable explorations/018-painted-ground/scene.ts explorations/018-painted-ground/avatar-review.ts explorations/018-painted-ground/symbol-library.ts",
+    "test": "node scripts/check.mjs",
+    "test:browser": "node explorations/018-painted-ground/browser-check.cjs",
+    "test:body": "BODY_ALL=1 node explorations/018-painted-ground/browser-check.cjs"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "29.5.10",
+    "@types/three": "0.185.4",
+    "jest": "29.7.0",
+    "ts-jest": "29.1.1",
+    "typescript": "5.9.3",
+    "vite": "4.5.0",
+    "vite-plugin-solid": "2.7.2",
+    "playwright": "^1.55.0",
+    "esbuild": "0.18.20"
+  },
+  "dependencies": {
+    "@types/dom-view-transitions": "1.0.4",
+    "bootstrap": "5.3.2",
+    "flipping": "1.1.0",
+    "html-to-image": "1.11.13",
+    "rand-seed": "1.0.2",
+    "random-seed": "0.3.0",
+    "solid-js": "1.8.6",
+    "three": "0.185.1",
+    "tone": "14.7.77"
+  },
+  "private": true
+}

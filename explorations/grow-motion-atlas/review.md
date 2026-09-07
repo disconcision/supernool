@@ -1,0 +1,12 @@
+# Image review — concepts versus exact diagrams
+
+These images were inspected as they returned. They are successful as gesture and material explorations, with the qualifications below. Use the formal note and example matrix for exact symbolic structure.
+
+- **01 Motion vocabularies:** initial row 1 incorrectly removed all branches and reversed leaf order. The targeted edit corrected it: the final row retains a,b,c in order, passes through a three-way joint, and regroups b,c. Lower rows give useful collar, socket, depth-crossing, and wrapping ideas, but their exact control geometry is not specified.
+- **02 Peeling and unweaving:** the ribbon cross-sections and separating silhouettes are particularly useful. Budding and unweaving panels do not rigorously maintain every fork tip; they illustrate material motion rather than an exact subtree copy. The diagram should be reconstructed with explicit correspondence before implementation.
+- **03 Containment:** regrouping preserves the three marked objects and changes the enclosed pair clearly. Unwrapping gives a compelling double-shell interpretation. The last row is more a partition of an existing region than a literal duplication of every object; its colored spots should not be interpreted as a validated copy map.
+- **04 Living junctions:** three recognizable terminal color groups and the rocky setting persist across frames; the fork shifts from grouping the left pair to the right pair. The single conspicuous rune collar does not encode all operators. Useful art direction for a moving joint, not a fully labeled AST.
+- **06 Crystal and organism:** the branching crystal and coalescing stem offer a contrasting hard-edged material grammar. The tidal enclosure suggests architecture formed by an organism's body. Small insets remain schematic; neither is an exact factorization diagram.
+
+A recurring promising distinction is **boundary motion** for containment versus **attachment motion** for branching. The seam/collar is often more readable than an undifferentiated soft blend. At the same time, these sheets are relatively naturalistic and detailed; a runtime treatment can simplify the surface while retaining those gestures.
+- **05 Inhabitable strata:** strong scale and material alternatives. The shelter riding on a separated plate and the room exposed by opening shells connect directly to user construction. The basalt treatment is richer and more literal than the runtime should necessarily be. Its small insets suggest movement but do not establish valid containment throughout a transition.
