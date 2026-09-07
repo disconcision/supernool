@@ -1,0 +1,11 @@
+{
+  "method": "Built-in image_gen; two independent thumbnail sheets, not animation sequences",
+  "date": "2026-09-07",
+  "reference": "../references/state-0.png",
+  "referenceRole": "Camera, hewn wood, traveller scale and setting reference, not a locked edit target",
+  "outputs": [
+    {"file": "foliage.png", "prompt": "foliage-prompt.txt", "labels": ["F1", "F2", "F3", "F4", "F5", "F6"], "original": "/Users/andrewblinn/.codex/generated_images/01a07563-399b-7f62-8731-6ed1b6a17b48/exec-8fa7a57a-3b76-4829-af44-34015c9d9134.png"},
+    {"file": "spirit.png", "prompt": "spirit-prompt.txt", "labels": ["S1", "S2", "S3", "S4", "S5", "S6"], "original": "/Users/andrewblinn/.codex/generated_images/01a07563-399b-7f62-8731-6ed1b6a17b48/exec-6171da71-eda4-4a27-9624-a571cbfe97ab.png"}
+  ],
+  "review": "Both sheets visually inspected. Different collective forms achieved. Algebra glyphs and branch topology are not exact. None selected by the user. No live scene changes."
+}

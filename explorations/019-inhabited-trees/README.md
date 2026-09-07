@@ -8,6 +8,20 @@ Initial art assumption: the spirit departs. A spirit that settles peacefully ins
 
 Reference frames were captured from 018 by performing its six legal mouse rewrites. See references/states.json for actual expressions, node counts and camera zoom at every step. The production page and the user’s browser settings were not changed. Header/docks are hidden only in the capture browser; mist drift is frozen.
 
+## Round 02 — collective forms (latest feedback)
+
+The user finds round 01 interesting but rejects the small diamond/shard-like spectral leaves as the direction for arrival/concentration. Wants substantial amorphous bodies between tendrils, storm and crystal, plus blue/violet shimmer attached to bark and stronger near the silhouette. The recovered tree needs a much denser, mature crown; explore collective geometry as well as texture-based density. Release remains promising. Do not carry forward the old individual-leaf prescription as approved direction.
+
+`round-02/foliage.png` and `round-02/spirit.png` contain twelve independent labelled alternatives, not sequential frames. The gallery presents them first. The exact prompts and provenance are beside the sheets. Both use the actual full-tree screenshot as a reference; neither claims exact mathematical correspondence. Reframing allows whole crowns to fit.
+
+F1 cut masses; F2 layered shelves; F3 rounded clusters; F4 folded membranes; F5 aggregate textured clusters; F6 hanging curtains. S1 storm mantle; S2 tendril body; S3 folded shroud; S4 liquid crystal; S5 current wreaths; S6 cloaked wood.
+
+Review: the F alternatives show substantially different mature crown silhouettes. F1 can read as stone, F4 as folded cloth; these are useful extremes, not mistakes to silently homogenize. F5 is an illustration of a texture-oriented appearance, not evidence of rendering cost or a functioning card mesh. S3 is quite literal fabric, S2 quite tentacular, S6 busy with small ruffles; S1/S4 have more substantial continuous masses. Shimmer should remain separable from the outer mass, and all effects require actual sigil/hand readability tests before acceptance. Generated glyphs and topology vary; no mechanical claim is made. No alternative is user-selected yet.
+
+Possible implementation axes, not commitments: large canopy meshes for silhouette plus optional textured edge breakup; branch-local attachment clusters for deformation; surface-bound emission/rim response distinct from world-space surrounding spirit volumes. A concept's apparent simplicity does not guarantee lower cost: transparent layered spirit effects may be expensive. Do not implement an exact mesh/material plan until the visual direction narrows.
+
+The older brief below records round 01 and must be read in light of this correction. The playable 018 is untouched.
+
 ## Artwork and review
 
 Open `index.html` for five selected paint-overs with a source-screenshot toggle. Files and exact prompts are under `concepts/`; `provenance.json` identifies every output and input. Generated with the built-in imagegen tool. The first concentration draft is rejected because it copied the arrival topology and reintroduced removed nodes; keep it for provenance, not implementation.

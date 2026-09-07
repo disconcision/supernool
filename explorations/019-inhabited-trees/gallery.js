@@ -11,3 +11,9 @@ function show(){const s=stages[selected];$('art').src=reference?references[s.sta
 stages.forEach((s,i)=>{const b=document.createElement('button');b.innerHTML='<small>'+String(i+1).padStart(2,'0')+'</small>'+s.title;b.onclick=()=>{selected=i;show();};buttons.push(b);document.querySelector('.stage-buttons').append(b);});$('reference').onclick=()=>{reference=!reference;show();};show();
 
 document.getElementById('brief').href=new URL('./README.md',import.meta.url).href;document.getElementById('provenance').href=new URL('./provenance.json',import.meta.url).href;document.getElementById('states').href=new URL('./references/states.json',import.meta.url).href;
+
+$('foliage-full').href=new URL('./round-02/foliage.png',import.meta.url).href;
+$('spirit-full').href=new URL('./round-02/spirit.png',import.meta.url).href;
+$('foliage-prompt').href=new URL('./round-02/foliage-prompt.txt',import.meta.url).href;
+$('spirit-prompt').href=new URL('./round-02/spirit-prompt.txt',import.meta.url).href;
+$('round-two-provenance').href=new URL('./round-02/provenance.json',import.meta.url).href;
