@@ -50,7 +50,7 @@ export class FingerWalk {
  get gait(){return {weight:this.weight,style:this.style,steps:this.steps,contactPose:this.contactPose,direction:this.direction,thumb:this.thumb,recordContacts:this.recordContacts};}
  private gaitSteps(distance:number){return this.style==='upright'?uprightSteps(distance):fingerSteps(distance);}
  setTerrain(safe:(p:T.Vector3)=>boolean){this.safe=safe;}
- startWalk(root:T.Object3D,hands:T.Object3D[],hand:number){
+ startWalk(root:T.Object3D,hands:T.Object3D[],hand:number,camera?:T.Camera){
   if(!this.safe)return false;
   const origin=root.position.clone(),valid=(p:T.Vector3)=>p.distanceTo(origin)>.95&&p.distanceTo(origin)<3.9&&this.safe!(p);
   this.style=this.preference==='mixed'?(this.random()<.5?'spider':'upright'):this.preference;
@@ -62,6 +62,13 @@ export class FingerWalk {
   }
   if(!this.route.length)return false;
   let heading=this.random()*Math.PI*2;
+  // A gentle preference for the viewer-facing direction; the random heading
+  // still spans every bearing and obstacle avoidance keeps the final say.
+  const towardCamera=camera?.getWorldDirection(new T.Vector3()).negate().setY(0);
+  if(towardCamera&&towardCamera.lengthSq()>1e-6){
+   const direction=new T.Vector3(Math.sin(heading),0,Math.cos(heading)).addScaledVector(towardCamera.normalize(),.45);
+   heading=Math.atan2(direction.x,direction.z);
+  }
   const count=this.style==='upright'?12+Math.floor(this.random()*5):20+Math.floor(this.random()*14);
   for(let j=0;j<count;j++){
    const p=this.route[this.route.length-1];let next:T.Vector3|undefined;

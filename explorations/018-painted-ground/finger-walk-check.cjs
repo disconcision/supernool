@@ -19,6 +19,21 @@ for(let seed=1;seed<=30;seed++){
  assert(!walk.active,'Finite excursion');assert(walk.distance>1);
 }
 assert(successful>25);assert(starts.some(p=>p.x<0)&&starts.some(p=>p.x>0));assert(new Set(starts.map(p=>p.toArray().map(v=>v.toFixed(1)).join(','))).size>20,'Varied start positions');
+// Bias follows the camera's horizontal view, while preserving away-facing routes.
+for(const bearing of [0,Math.PI/2]){
+ const camera=new T.PerspectiveCamera();camera.position.set(Math.sin(bearing)*8,6,Math.cos(bearing)*8);camera.lookAt(0,0,0);
+ const toward=new T.Vector3(Math.sin(bearing),0,Math.cos(bearing));let biased=0,neutral=0,away=0;
+ for(let seed=1;seed<=600;seed++)for(const useCamera of [false,true]){
+  const walk=new FingerWalk(rng(seed*11033));walk.setTerrain(safe);assert(walk.startWalk(root,hands,seed%2,useCamera?camera:undefined));
+  const forward=walk.route[1].clone().sub(walk.route[0]).dot(toward)>0;
+  if(useCamera){if(forward)biased++;else away++;}else if(forward)neutral++;
+  assert(walk.route.every(safe),'Camera preference never overrides terrain clearance');
+ }
+ assert(biased>neutral+35,'Camera-facing headings become more common');assert(away>100,'The bias still allows other directions');
+ console.log('Camera route preference',{bearing,biased,neutral,away,total:600});
+}
+const overhead=new T.PerspectiveCamera();overhead.position.set(0,8,0);overhead.up.set(0,0,-1);overhead.lookAt(0,0,0);
+const overheadWalk=new FingerWalk(rng(6));overheadWalk.setTerrain(safe);assert(overheadWalk.startWalk(root,hands,0,overhead));assert(overheadWalk.route.every(p=>p.toArray().every(Number.isFinite)),'Overhead camera has a stable unbiased fallback');
 // Stumbles are occasional, happen once, freeze the route and recover in order.
 const mishap=['fall','fallen','recover','dazed'];let stumbles=0,stumbleSeed;
 for(let seed=1;seed<=100;seed++){

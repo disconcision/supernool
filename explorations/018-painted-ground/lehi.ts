@@ -57,7 +57,7 @@ export function createLehi(scene:T.Scene){
   if(request){
    if(request.kind==='catch'){catchGame.requestStart(request.hand);catchGame.update(dt,allowed,root,hands.map(h=>h.group),walking,true);}
    const walkHand=idleSchedule.handFor('walk');
-   if(!catchGame.active&&idleSchedule.mode!=='catch-only'&&fingerWalk.startWalk(root,hands.map(h=>h.group),walkHand))idleSchedule.started('walk',walkHand);
+   if(!catchGame.active&&idleSchedule.mode!=='catch-only'&&fingerWalk.startWalk(root,hands.map(h=>h.group),walkHand,camera))idleSchedule.started('walk',walkHand);
    else if(catchGame.active)idleSchedule.started('catch',request.hand);
   }
   if(!request||!catchGame.active)catchGame.update(dt,allowed,root,hands.map(h=>h.group),walking,false);
