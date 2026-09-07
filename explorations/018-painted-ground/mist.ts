@@ -31,16 +31,16 @@ export function createMist(renderer:T.WebGLRenderer){
     float depth=texture2D(sceneDepth,vUv).x;
     vec4 view=inverseProjection*vec4(vUv*2.-1.,depth*2.-1.,1.);
     vec3 world=(cameraWorld*vec4(view.xyz/view.w,1.)).xyz;
-    vec2 drift=vec2(mistTime*.12,mistTime*.045);
+    vec2 drift=vec2(mistTime*.35,mistTime*.13);
     vec2 p=world.xz-drift;
     // Broad moving banks with a finer, slower counter-drift. No screen-space grain.
     float broad=noise(p*.15+vec2(2.7,8.1));
-    float detail=noise(p*.39+vec2(-mistTime*.022,3.4));
+    float detail=noise(p*.39+vec2(-mistTime*.065,3.4));
     float wisp=broad*.72+detail*.28;
     float radius=length(world.xz);
-    float edge=(broad-.5)*3.2*textureAmount;
+    float edge=(broad-.5)*3.2*min(textureAmount,2.);
     float envelope=smoothstep(startRadius-1.,startRadius+21.,radius+edge);
-    float texture=mix(1.,.45+1.05*wisp,textureAmount);
+    float texture=clamp(1.+(wisp-.5)*1.7*textureAmount,.08,2.2);
     float amount=clamp(envelope*strength*texture,0.,.9);
     // Empty background pixels have no surface to anchor the mist to.
     if(depth>=.999999)amount=0.;
