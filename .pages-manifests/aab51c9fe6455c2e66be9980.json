@@ -1,0 +1,12 @@
+{
+  "app": "nool",
+  "branch": "flip",
+  "revision": "migrated-existing-build",
+  "prefix": "classic/flip",
+  "files": [
+    "classic/flip/assets/index-0f007d30.js",
+    "classic/flip/assets/index-8d4ef276.css",
+    "classic/flip/assets/nooltext6-06cc0a66.png",
+    "classic/flip/index.html"
+  ]
+}

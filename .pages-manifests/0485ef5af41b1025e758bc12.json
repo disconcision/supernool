@@ -1,0 +1,33 @@
+{
+  "app": "nool",
+  "branch": "flipping-working-before-view-transitions",
+  "revision": "migrated-existing-build",
+  "prefix": "classic/flipping-working-before-view-transitions",
+  "files": [
+    "classic/flipping-working-before-view-transitions/assets/chchiu-out-3bfd24bd.wav",
+    "classic/flipping-working-before-view-transitions/assets/eye-closed-ed9bf34e.svg",
+    "classic/flipping-working-before-view-transitions/assets/eye-open-dc29c2a1.svg",
+    "classic/flipping-working-before-view-transitions/assets/index-48a1f60e.css",
+    "classic/flipping-working-before-view-transitions/assets/index-742ec2c1.js",
+    "classic/flipping-working-before-view-transitions/assets/klohk-3322a8ac.m4a",
+    "classic/flipping-working-before-view-transitions/assets/motion-half-750c7d32.svg",
+    "classic/flipping-working-before-view-transitions/assets/motion-off-b5193ab2.svg",
+    "classic/flipping-working-before-view-transitions/assets/motion-on-08ce871e.svg",
+    "classic/flipping-working-before-view-transitions/assets/nooltext-light-db178404.png",
+    "classic/flipping-working-before-view-transitions/assets/noun-paint-6329583-ce943219.svg",
+    "classic/flipping-working-before-view-transitions/assets/noun-palette-1918496-cad526b7.svg",
+    "classic/flipping-working-before-view-transitions/assets/noun-sun-5362089-dc18b80a.svg",
+    "classic/flipping-working-before-view-transitions/assets/noun-sun-6322390-98009460.svg",
+    "classic/flipping-working-before-view-transitions/assets/noun-tree-1039106-716e87a8.svg",
+    "classic/flipping-working-before-view-transitions/assets/noun-tree-1052083-e50e6fbd.svg",
+    "classic/flipping-working-before-view-transitions/assets/noun-tree-1052096-5c4d2fa4.svg",
+    "classic/flipping-working-before-view-transitions/assets/pew-3edb3779.m4a",
+    "classic/flipping-working-before-view-transitions/assets/ps-toolbar-8cf9e3ff.png",
+    "classic/flipping-working-before-view-transitions/assets/pshew-f91bbecd.m4a",
+    "classic/flipping-working-before-view-transitions/assets/shwo-ph-out-d527e7c9.wav",
+    "classic/flipping-working-before-view-transitions/assets/sound-off-d4fbf1ed.svg",
+    "classic/flipping-working-before-view-transitions/assets/sound-on-73c398c1.svg",
+    "classic/flipping-working-before-view-transitions/assets/tiup-comm-out-01520652.wav",
+    "classic/flipping-working-before-view-transitions/index.html"
+  ]
+}
