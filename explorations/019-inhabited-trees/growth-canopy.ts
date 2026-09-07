@@ -1,9 +1,10 @@
 import * as T from 'three';
+import {paintPatch} from './painterly-foliage';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {material,cardsGeometry,palette,rng,hash,makeCluster,Settings} from './canopy';
 import {Pose} from '../018-painted-ground/layout';
 import {Options,prepare} from '../018-painted-ground/surface';
-export type GrowthSettings=Settings&{form:string;backing:number;offshoots:number};
+export type GrowthSettings=Settings&{form:string;backing:number;offshoots:number;finish:string;normalSharing:number;shadeDepth:number;brushScale:number};
 const textures=new Map<number,T.CanvasTexture>();
 // A directed, tapering leafy spray rather than a circular stamp. Kept code-native.
 function spray(seed:number){if(textures.has(seed))return textures.get(seed)!;const canvas=document.createElement('canvas');canvas.width=canvas.height=256;const ctx=canvas.getContext('2d')!,r=rng(seed+131);
@@ -11,13 +12,13 @@ function spray(seed:number){if(textures.has(seed))return textures.get(seed)!;con
  ctx.save();ctx.translate(x,y);ctx.rotate(side*.6+(r()-.5)*1.1);const g=.69+r()*.3;ctx.fillStyle=`rgb(${g*247},${g*255},${g*238})`;ctx.beginPath();ctx.moveTo(-size*.7,0);ctx.lineTo(-size*.22,-size*.47);ctx.lineTo(size*.45,-size*.32);ctx.lineTo(size*.7,.02);ctx.lineTo(size*.18,size*.4);ctx.lineTo(-size*.4,size*.32);ctx.closePath();ctx.fill();ctx.fillStyle='rgba(255,255,233,.10)';ctx.beginPath();ctx.moveTo(-size*.6,0);ctx.lineTo(size*.6,0);ctx.lineTo(size*.12,-size*.3);ctx.closePath();ctx.fill();ctx.restore();}
  const tex=new T.CanvasTexture(canvas);tex.colorSpace=T.SRGBColorSpace;tex.anisotropy=4;textures.set(seed,tex);return tex;}
 function branch(a:T.Vector3,b:T.Vector3,radius:number,mat:T.Material,down=false){const mid=a.clone().lerp(b,.5).add(new T.Vector3(0,down?.2:.12,0));const curve=new T.QuadraticBezierCurve3(a,mid,b);const mesh=new T.Mesh(new T.TubeGeometry(curve,7,radius,5,false),mat);return mesh;}
-export function makeGrowthCluster(id:string,o:GrowthSettings){if(o.form==='F5')return makeCluster(id,{...o,style:'F5'});
+export function makeGrowthCluster(id:string,o:GrowthSettings){if(o.form==='F5'){const g=makeCluster(id,{...o,style:'F5'});if(o.finish==='painted')g.traverse(m=>{if(m instanceof T.InstancedMesh)paintPatch(m,o,'F5');});return g;}
  const group=new T.Group(),r=rng(Math.floor(hash(id+o.seed)*4294967295)),base=new T.Color(palette[o.palette][0]),light=new T.Color(palette[o.palette][1]),mat=material(o,spray(o.seed%4)),woodMat=new T.MeshStandardMaterial({color:'#7c714d',roughness:1,wireframe:o.wire});
  const count=Math.round((o.form==='G3'?56:64)*o.density),patch=new T.InstancedMesh(cardsGeometry(o.normals),mat,count),obj=new T.Object3D();patch.frustumCulled=false;
  const tips:T.Vector3[]=[],directions:number[]=[];const coreMaterial=material(o);coreMaterial.color.copy(base).multiplyScalar(.86);
  const lobes=o.form==='G2'?3:o.form==='G3'?7:4;
  for(let i=0;i<lobes;i++){const angle=i*2.399963+hash(id)*6.28,reach=.9+r()*.8;
- let tip=new T.Vector3(Math.cos(angle)*reach,.15+(i%3)*.23,Math.sin(angle)*reach*.8);
+ let tip=new T.Vector3(Math.cos(angle)*reach,o.finish==='painted'&&o.form==='G1'?.35+(i%3)*.38:.15+(i%3)*.23,Math.sin(angle)*reach*.8);
  if(o.form==='G3')tip=new T.Vector3(Math.cos(angle)*(.65+r()*.45),-1.35-r()*.65,Math.sin(angle)*(.65+r()*.45));
  directions.push(angle);tips.push(tip);group.add(branch(new T.Vector3(0,0,0),tip,.026,woodMat,o.form==='G3'));
  if(o.form!=='G3'&&o.backing>.01){
@@ -35,9 +36,10 @@ export function makeGrowthCluster(id:string,o:GrowthSettings){if(o.form==='F5')r
   obj.position.copy(tip).multiplyScalar(t);obj.position.x-=Math.sin(angle)*side;obj.position.z+=Math.cos(angle)*side;obj.position.y+=(r()-.5)*(o.form==='G2'?.32:.7);
   const tilt=o.form==='G2'?.3:(i%3===0?.85:.45);const normal=new T.Vector3(Math.cos(angle)*tilt,.75,Math.sin(angle)*tilt).normalize();obj.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),normal);obj.rotateZ(-angle+(r()-.5)*.45);obj.scale.set(1.35+r()*.4,1.1+r()*.35,1);
  }
+ if(o.finish==='painted'&&o.form!=='G3'){obj.position.y+=(i%3-1)*(o.form==='G1'?.28:.16);obj.rotateZ(Math.sin(i*3.87)*.65);}
  obj.updateMatrix();patch.setMatrixAt(i,obj.matrix);patch.setColorAt(i,base.clone().lerp(light,.15+r()*.5));
  }
- patch.instanceMatrix.needsUpdate=true;batchMembers(group);group.add(patch);group.scale.setScalar(o.size);return group;
+ if(o.finish==='painted')paintPatch(patch,o,o.form);patch.instanceMatrix.needsUpdate=true;batchMembers(group);group.add(patch);group.scale.setScalar(o.size);return group;
 }
 export type Offshoot={id:string;member:string;t:number;root:T.Group;foliage:T.Group;tip:T.Vector3};
 export function makeOffshoots(p:Pose,o:GrowthSettings){const out:Offshoot[]=[];

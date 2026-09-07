@@ -36,3 +36,7 @@ The specimen selector covers a mature host, an uneven host and three actual expr
 The default new mature canopies add roughly 11–13k triangles including decorative wood, versus roughly 5k for the rounded comparison with lower offshoots. The whole scene includes a detailed character and many ground/rock draws; its draw count is not the canopy count. Local headless Chrome captures were around 50–60 fps, which is a spot check rather than a device-wide performance claim. Wood pose rebuilding still happens in a worker at a lower cadence than rendering; wind and camera motion update independently. This study does not solve that existing animation cadence limitation.
 
 Saved review frames live in `round-04/screens/`. Project type checks, algebra/interaction tests and the production build are also run before delivery.
+
+## Later refinement
+
+Round 06 adds a Painterly volume treatment to this page; choose Previous rendering for the round-04 material and construction. See `painterly-notes.md` for the later research and visual review. The historical limitations and counts above describe the earlier pass unless explicitly revisited there.
