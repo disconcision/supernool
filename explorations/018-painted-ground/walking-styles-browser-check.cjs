@@ -36,7 +36,7 @@ const output='.cache/walking-styles-review';mkdirSync(output,{recursive:true});
    await page.waitForTimeout(70);
   }
   const samples=await page.evaluate(()=>window.__fingerPivotSamples);assert(samples.length>8);assert(Math.max(...samples)<.002,'Rendered contact stays fixed between screenshots');assert(captured.has('fallen')&&captured.has('recover'));await wait('dazed',.3);await page.screenshot({path:output+'/'+prefix+'-dazed.png'});
-  if(live){await page.locator('#world canvas').focus();await page.keyboard.down('ArrowRight');await page.waitForTimeout(100);assert(['rise','rejoin'].includes((await state()).phase));await page.keyboard.up('ArrowRight');await wait('rest');}
+  if(live){await page.locator('#world canvas').focus();await page.keyboard.down('ArrowRight');await page.waitForTimeout(100);assert(['startle','rise','rejoin'].includes((await state()).phase));await page.keyboard.up('ArrowRight');await wait('rest');}
   else await wait('walk');
   console.log(prefix,'two alternating planted/swing fingers, upright palm, tucked spare digits, moving thumb and recovery passed');
  }

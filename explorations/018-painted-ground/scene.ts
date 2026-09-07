@@ -240,6 +240,7 @@ function updateHands(now:number,dt:number,moving:boolean){const g=grip?.chosen??
  lehi.update(now,dt,moving,camera,near?point:undefined,near?brace:undefined,activeHand,!!grip||!!animation,grip?.body?{velocity:walkVelocity,effort:.35+Math.min(1,Math.abs(grip.target-grip.progress))*.65}:undefined,handFocus,!!keys.size||!!navTarget);
  $('world').dataset.character=lehi.current();$('world').dataset.locomotion=lehi.locomotion();$('world').dataset.handActivity=avatar.userData.handActivity??'escort';
  const ends=lehi.linkEnds();ribbon.update(now,dt,value('bodyLink')==='ribbon',bodyMode()&&!!(grip||animation),ends.from,ends.to,camera,grip?Math.abs(grip.target-grip.progress):0);
+ $('world').dataset.idleRoam=JSON.stringify(avatar.userData.idleRoam);
  $('world').dataset.idleCatch=JSON.stringify(avatar.userData.idleCatch);
  $('world').dataset.fingerWalk=JSON.stringify(avatar.userData.fingerWalk);$('world').dataset.idleCooldown=String(avatar.userData.idleCooldown);
  $('world').dataset.handState=!near?'home':point?'tree':'home';

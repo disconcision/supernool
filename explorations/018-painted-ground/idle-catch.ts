@@ -1,9 +1,10 @@
+import {startledPose} from './idle-roam';
 import * as T from 'three';
 
 /** Explicit affordance: only loose, hand-sized stones; never scenery or gates. */
 export type CatchProp={object:T.Object3D;radius:number;groundY:number;touch:T.Vector3};
 type Pose={position:T.Vector3;orientation:T.Quaternion;grasp:number};
-type Phase='rest'|'scout'|'grip'|'lift'|'notice'|'spread'|'windup'|'throw'|'flight'|'catch'|'miss'|'return'|'place'|'depart'|'rejoin';
+type Phase='rest'|'scout'|'grip'|'lift'|'notice'|'spread'|'windup'|'throw'|'flight'|'catch'|'miss'|'return'|'place'|'startle'|'depart'|'rejoin';
 const socket=new T.Vector3(0,.12,.19),xAxis=new T.Vector3(1,0,0);
 const smooth=(t:number)=>T.MathUtils.smoothstep(t,0,1);
 const pose=(p:Pose):Pose=>({position:p.position.clone(),orientation:p.orientation.clone(),grasp:p.grasp});
@@ -26,7 +27,7 @@ export class IdleCatch {
  setProps(props:CatchProp[],safe?:(p:T.Vector3)=>boolean){this.cancel();this.props=props;this.safe=safe??(()=>true);}
  setEnabled(on:boolean){this.enabled=on;if(!on)this.cancel();}
  requestStart(hand:number){this.requestedHand=hand;this.idle=this.cooldown;}
- get disengaging(){return this.phase==='depart'||this.phase==='rejoin';}
+ get disengaging(){return this.phase==='startle'||this.phase==='depart'||this.phase==='rejoin';}
  get active(){return this.phase!=='rest';}
  get state(){return {phase:this.phase,holder:this.holder,separation:this.homes.length?this.homes[0].position.distanceTo(this.homes[1].position):0,stone:this.prop?.object.userData.rockSeed??null,held:this.held,loose:this.loose,throws:this.throws,catches:this.catches,misses:this.misses,sessions:this.sessions,age:this.age,flightTime:this.flightTime,position:this.prop?.object.position.toArray()??null};}
  private enter(phase:Phase){this.phase=phase;this.age=0;this.starts=this.poses.map(pose);}
@@ -64,8 +65,9 @@ export class IdleCatch {
  private spreadOut(){
   // Each successful exchange invites another step out. Preserve clear footprints
   // along the move; banks can constrain one hand without shrinking the game.
+  const apart=this.homes[1].position.clone().sub(this.homes[0].position).setY(0).normalize();
   for(let i=0;i<2;i++){
-   const direction=new T.Vector3(i?1:-1,0,0).applyQuaternion(this.heading);
+   const direction=apart.clone().multiplyScalar(i?1:-1);
    const step=.35+this.random()*.2,candidate=this.homes[i].position.clone().addScaledVector(direction,step);
    if(candidate.distanceTo(this.origin)<4.6&&[.25,.5,.75,1].every(t=>this.safe(this.homes[i].position.clone().lerp(candidate,t))))this.homes[i].position.copy(candidate);
   }
@@ -91,25 +93,39 @@ export class IdleCatch {
  update(dt:number,allowed:boolean,root:T.Object3D,hands:T.Object3D[],walking=false,canStart=true){
   dt=Math.min(Math.max(dt,0),.05);
   if(!allowed||!this.enabled){if(this.active)this.cancel();this.idle=0;this.drop(dt);return;}
-  if(walking){this.idle=0;if(this.active&&!this.disengaging)this.depart();else if(!this.active){this.drop(dt);return;}}
+  if(walking){this.idle=0;if(this.active&&!this.disengaging){if(this.phase==='flight'){this.velocity.y-=9.8*Math.min(this.age,this.flightTime);this.loose=true;this.bounces=0;}this.enter('startle');}else if(!this.active){this.drop(dt);return;}}
   if(this.phase==='rest'){
    this.drop(dt);if(this.loose)return;if(!canStart){this.idle=0;return;}
    this.idle+=dt;if(this.idle<this.cooldown)return;
-   const nearby=this.props.filter(p=>p.object.visible&&Math.hypot(p.object.position.x-root.position.x,p.object.position.z-root.position.z)<3.2&&this.safe(p.object.position));
+   let nearby=this.props.filter(p=>p.object.visible&&Math.hypot(p.object.position.x-root.position.x,p.object.position.z-root.position.z)<3.2&&this.safe(p.object.position));
+   const roamed=hands.some(h=>Math.hypot(h.position.x-root.position.x,h.position.z-root.position.z)>1.7);
+   if(roamed){const distant=nearby.filter(p=>Math.hypot(p.object.position.x-root.position.x,p.object.position.z-root.position.z)>1.7);if(distant.length)nearby=distant;}
    if(!nearby.length){this.idle=2;return;}
    this.prop=nearby[Math.floor(this.random()*nearby.length)];this.origin.copy(root.position);this.heading.copy(root.quaternion);
    this.home.copy(this.prop.object.position);this.restingRotation.copy(this.prop.object.quaternion);
    const side=this.home.clone().sub(this.origin).applyQuaternion(this.heading.clone().invert()).x;
    this.holder=this.requestedHand??(side<0?0:1);this.requestedHand=undefined;this.poses=hands.map(h=>({position:h.position.clone(),orientation:h.quaternion.clone(),grasp:0}));
-   // Stations sit forward of the body, clear of its head and each other.
-   this.homes=[0,1].map(i=>({position:this.local((i?1:-1)*(1.5+this.random()*.25),1.25,1.35),orientation:this.rotation(-Math.PI/2),grasp:0}));
-   if(this.homes.some(p=>!this.safe(p.position))){this.prop=undefined;this.idle=0;return;}
+   // Keep the roaming bearings; direct controller previews use the original forward stations.
+   this.homes=[0,1].map(i=>{const position=this.local((i?1:-1)*(1.5+this.random()*.25),1.25,1.35);if(roamed){const offset=hands[i].position.clone().sub(this.origin).setY(0);offset.setLength(T.MathUtils.clamp(offset.length(),2.5,3.2));position.copy(this.origin).add(offset).setY(1.25);}return {position,orientation:this.rotation(-Math.PI/2),grasp:0};});
+   if(roamed&&this.homes[0].position.distanceTo(this.homes[1].position)<3.2){
+    const receiver=1-this.holder,offset=this.homes[receiver].position.clone().sub(this.origin);
+    // Two drifting hands may end up on the same side. The receiver steps around
+    // the avatar to a clear, separated station before the first throw.
+    for(const turn of [.5,-.5,1,-1,1.5,-1.5,Math.PI]){
+     const candidate=offset.clone().applyAxisAngle(new T.Vector3(0,1,0),turn).add(this.origin);
+     if(candidate.distanceTo(this.homes[this.holder].position)>=3.2&&this.safe(candidate)){this.homes[receiver].position.copy(candidate);break;}
+    }
+   }
+   if(this.homes.some(p=>!this.safe(p.position))||(roamed&&this.homes[0].position.distanceTo(this.homes[1].position)<3.2)){this.prop=undefined;this.idle=0;return;}
    this.elapsed=0;this.throws=this.catches=this.misses=0;this.sessions++;this.enter('scout');
   }
   this.age+=dt;this.elapsed+=dt;
   const h=this.holder,r=1-h,o=this.prop!.object,down=this.rotation(Math.PI/2),palmUp=this.rotation(-Math.PI/2);
   const groundPalm=()=>this.palmAt(o.position,down);
   switch(this.phase){
+   case 'startle':
+    this.poses=this.starts.map((p,i)=>({...startledPose(p,this.age,i?1:-1),grasp:p.grasp}));this.drop(dt);
+    if(this.age>=.2){this.syncHeld();this.depart();}break;
    case 'scout':{
     const destination=groundPalm();destination.x+=Math.sin(this.age*4)*.1*(1-smooth(this.age/1.7));
     this.tween(h,destination,down,.04,this.age/1.7);

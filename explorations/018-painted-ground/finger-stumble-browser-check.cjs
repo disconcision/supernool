@@ -21,7 +21,7 @@ const output='.cache/finger-stumble-review';mkdirSync(output,{recursive:true});
    await page.screenshot({path:output+'/'+prefix+'-'+phase+'.png'});
   }
   await wait('walk');assert((await state()).distance>=distance);console.log(prefix,{minToe,distance});
-  if(live){await page.locator('#world canvas').focus();await page.keyboard.down('ArrowRight');await page.waitForTimeout(100);assert(['rise','rejoin'].includes((await state()).phase));await page.keyboard.up('ArrowRight');await wait('rest');assert(+(await page.locator('#world').getAttribute('data-idle-cooldown'))>11);}
+  if(live){await page.locator('#world canvas').focus();await page.keyboard.down('ArrowRight');await page.waitForTimeout(100);assert(['startle','rise','rejoin'].includes((await state()).phase));await page.keyboard.up('ArrowRight');await wait('rest');assert(+(await page.locator('#world').getAttribute('data-idle-cooldown'))>11);}
  }
  assert.deepEqual(errors,[]);console.log('Chrome: close-up and live-camera fall, pause, recovery, daze, resumed walk and movement return passed.');
  }finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1)});

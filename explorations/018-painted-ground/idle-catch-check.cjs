@@ -49,7 +49,7 @@ for(const phase of ['scout','grip','lift','windup','throw','flight','catch','mis
  for(let i=0;i<180;i++)f.tick(false);
  assert(Math.abs(f.stone.position.y-.08)<1e-8);
 }
-{const f=fixture();f.until('lift');f.tick(true,1/60,true);assert.equal(f.game.phase,'depart');f.tick(false);assert(!f.game.active&&!f.game.held,'Tree interaction preempts the walking exit');}
+{const f=fixture();f.until('lift');f.tick(true,1/60,true);assert.equal(f.game.phase,'startle');f.tick(false);assert(!f.game.active&&!f.game.held,'Tree interaction preempts the walking exit');}
 for(const cause of ['disabled','unreachable','hidden']){
  const f=fixture();if(cause==='disabled')f.game.setEnabled(false);if(cause==='unreachable')f.root.position.x=20;if(cause==='hidden')f.stone.visible=false;
  for(let i=0;i<1200;i++)f.tick();assert(!f.game.active,cause);
@@ -67,7 +67,7 @@ for(const cause of ['movement','contact','pin','rewrite','input']){
  }
  assert(actor.root.userData.idleCatch.held);
  actor.update(20000,1/60,cause==='movement',camera,cause==='contact'?new T.Vector3(0,2,-1):undefined,cause==='pin'?new T.Vector3(1,2,-1):undefined,0,cause==='rewrite',undefined,cause==='input');
- if(cause==='movement'){assert.equal(actor.root.userData.idleCatch.phase,'depart');assert(actor.root.userData.idleCatch.held,'Walking keeps the stone attached through set-down');}
+ if(cause==='movement'){assert.equal(actor.root.userData.idleCatch.phase,'startle');assert(actor.root.userData.idleCatch.held,'Walking keeps the stone attached through set-down');}
  else{assert.equal(actor.root.userData.idleCatch.phase,'rest',cause);assert(!actor.root.userData.idleCatch.held,cause);}
 }
 console.log(`Idle catch: ${catches} catches, ${misses} misses; widening rallies, first-miss endings, palm attachment, continuity, walking exits and urgent interruptions passed.`);

@@ -1,3 +1,4 @@
+import {startledPose} from './idle-roam';
 import * as T from 'three';
 export type WalkStyle='spider'|'upright';
 export type FingerStep={advance:number;lift:number};
@@ -35,7 +36,7 @@ export function walkingFingerAngles(a:number,b:number,base:T.Vector3,scale:numbe
 
 /** A little surface excursion; the path is sampled against a supplied footprint test. */
 export class FingerWalk {
- phase:'rest'|'land'|'walk'|'fall'|'fallen'|'recover'|'dazed'|'rise'|'rejoin'='rest';hand=0;age=0;distance=0;
+ phase:'rest'|'land'|'walk'|'fall'|'fallen'|'recover'|'dazed'|'startle'|'rise'|'rejoin'='rest';hand=0;age=0;distance=0;
  style:WalkStyle='spider';preference:WalkStyle|'mixed'='mixed';
  contactPose:WalkPose={position:new T.Vector3(),orientation:new T.Quaternion()};thumb=0;
  pose:WalkPose={position:new T.Vector3(),orientation:new T.Quaternion()};weight=0;steps=fingerSteps(0);
@@ -45,19 +46,19 @@ export class FingerWalk {
  private tripAt=Infinity;private tripSide=1;private upright!:WalkPose;private dazeDuration=1.8;
  constructor(private random:()=>number=Math.random){}
  get active(){return this.phase!=='rest';}
- get leaving(){return this.phase==='rise'||this.phase==='rejoin';}
+ get leaving(){return this.phase==='startle'||this.phase==='rise'||this.phase==='rejoin';}
  get state(){return {phase:this.phase,style:this.style,age:this.age,hand:this.hand,distance:this.distance,weight:this.weight,position:this.pose.position.toArray(),pivot:this.pivot.toArray(),pivotLocal:this.pivotLocal.toArray(),route:this.route.map(p=>p.toArray())};}
  get gait(){return {weight:this.weight,style:this.style,steps:this.steps,contactPose:this.contactPose,direction:this.direction,thumb:this.thumb,recordContacts:this.recordContacts};}
  private gaitSteps(distance:number){return this.style==='upright'?uprightSteps(distance):fingerSteps(distance);}
  setTerrain(safe:(p:T.Vector3)=>boolean){this.safe=safe;}
  startWalk(root:T.Object3D,hands:T.Object3D[],hand:number,camera?:T.Camera){
   if(!this.safe)return false;
-  const origin=root.position.clone(),valid=(p:T.Vector3)=>p.distanceTo(origin)>.95&&p.distanceTo(origin)<3.9&&this.safe!(p);
+  const origin=root.position.clone(),roamed=Math.hypot(hands[hand].position.x-origin.x,hands[hand].position.z-origin.z)>1.7,valid=(p:T.Vector3)=>p.distanceTo(origin)>(roamed?1.8:.95)&&p.distanceTo(origin)<(roamed?4.6:3.9)&&this.safe!(p);
   this.style=this.preference==='mixed'?(this.random()<.5?'spider':'upright'):this.preference;
   this.route=[];
   for(let attempt=0;attempt<16;attempt++){
    const angle=root.rotation.y+(hand?1:-1)*(.45+this.random()*2.4),radius=1.3+this.random()*1.2;
-   const p=origin.clone().add(new T.Vector3(Math.sin(angle)*radius,0,Math.cos(angle)*radius));p.y=0;
+   const p=roamed?hands[hand].position.clone().add(new T.Vector3(Math.sin(angle)*.25,0,Math.cos(angle)*.25)):origin.clone().add(new T.Vector3(Math.sin(angle)*radius,0,Math.cos(angle)*radius));p.y=0;
    if(valid(p)){this.route.push(p);break;}
   }
   if(!this.route.length)return false;
@@ -121,7 +122,7 @@ export class FingerWalk {
  }
  update(dt:number,allowed:boolean,walking:boolean,root:T.Object3D){
   if(!this.active)return;if(!allowed){this.cancel();return;}dt=Math.min(.05,dt);
-  if(walking&&!this.leaving)this.enter('rise');
+  if(walking&&!this.leaving)this.enter('startle');
   this.age+=dt;this.thumb=Math.sin(this.distance/(this.style==='upright'?.54:.27)*Math.PI*2);
   if(this.phase==='land'){
    const target=this.groundPose(this.route[0]),u=smooth(this.age/1.25);
@@ -169,6 +170,8 @@ export class FingerWalk {
    // Hesitant toe shuffles rather than continuing the route while disoriented.
    this.steps=this.gaitSteps(this.distance+Math.sin(this.age*5)*.018*envelope);
    if(t===1)this.enter('walk');
+  }else if(this.phase==='startle'){
+   this.pose=startledPose(this.start,this.age,this.hand?1:-1);if(this.age>=.2)this.enter('rise');
   }else if(this.phase==='rise'){
    const u=smooth(this.age/.45);this.pose.position.copy(this.start.position).add(new T.Vector3(0,.4*u,0));this.weight=this.startWeight*(1-u);
    // Even a fallen hand rights itself as it lifts to follow a moving avatar.

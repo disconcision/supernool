@@ -1,3 +1,4 @@
+import {IdleRoam} from './idle-roam';
 import {FingerWalk,walkingFingerAngles,WalkStyle} from './finger-walk';
 import {IdleSchedule,IdleMode} from './idle-schedule';
 import {IdleCatch} from './idle-catch';
@@ -43,7 +44,7 @@ export function createLehi(scene:T.Scene){
  }
  // The character faces local +Z: anatomical right is local -X.
  const hands=[hand(-1),hand(1)],orientation=new T.Quaternion();
- const catchGame=new IdleCatch(),fingerWalk=new FingerWalk(),idleSchedule=new IdleSchedule();
+ const catchGame=new IdleCatch(),fingerWalk=new FingerWalk(),idleSchedule=new IdleSchedule(),roam=new IdleRoam();
  const travel=new TravelHands();let travelSpeed=0,travelPhase=0;
  const fingerGrasps=hands.map(()=>[0,0,0,0,0]);
  let grasp=[0,0],idleTime=0;
@@ -53,20 +54,23 @@ export function createLehi(scene:T.Scene){
   root.userData.travelHandPose=travel.style;root.userData.travelHandWeight=travel.weight;
   const allowed=!grip&&!brace&&!engaged&&!pull&&!idleBlocked,walking=moving||walkingIntent;
   const wasBusy=catchGame.active||fingerWalk.active;
+  const wasRoaming=roam.active;roam.update(dt,allowed&&idleSchedule.mode!=='rest',walking,wasBusy,root,hands.map(h=>h.group));
   const request=idleSchedule.tick(dt,allowed&&!walking,wasBusy);
   if(request){
-   if(request.kind==='catch'){catchGame.requestStart(request.hand);catchGame.update(dt,allowed,root,hands.map(h=>h.group),walking,true);}
+   if(request.kind==='catch'&&roam.ready(request.hand,root)){catchGame.requestStart(request.hand);catchGame.update(dt,allowed,root,hands.map(h=>h.group),walking,true);}
    const walkHand=idleSchedule.handFor('walk');
-   if(!catchGame.active&&idleSchedule.mode!=='catch-only'&&fingerWalk.startWalk(root,hands.map(h=>h.group),walkHand,camera))idleSchedule.started('walk',walkHand);
+   if(!catchGame.active&&idleSchedule.mode!=='catch-only'&&roam.ready(walkHand,root)&&fingerWalk.startWalk(root,hands.map(h=>h.group),walkHand,camera))idleSchedule.started('walk',walkHand);
    else if(catchGame.active)idleSchedule.started('catch',request.hand);
   }
   if(!request||!catchGame.active)catchGame.update(dt,allowed,root,hands.map(h=>h.group),walking,false);
   fingerWalk.update(dt,allowed,walking,root);
   const busy=catchGame.active||fingerWalk.active;
-  if(wasBusy&&!busy)idleSchedule.rest();
+  if(wasBusy&&!busy){roam.finish(hands.map(h=>h.group));idleSchedule.rest();}
+  if(wasRoaming&&!roam.active&&!busy)idleSchedule.rest();
+  root.userData.idleRoam=roam.state;
   root.userData.idleCatch=catchGame.state;root.userData.fingerWalk=fingerWalk.state;root.userData.idleCooldown=idleSchedule.remaining;
   idleTime=walking||!allowed||busy?0:idleTime+dt;
-  root.userData.handActivity=catchGame.disengaging||fingerWalk.leaving?'disengaging':catchGame.active?'playing-catch':fingerWalk.active?'finger-walking':grip||brace?'tree':'escort';
+  root.userData.handActivity=roam.phase==='startle'||catchGame.disengaging||fingerWalk.leaving?'disengaging':catchGame.active?'playing-catch':fingerWalk.active?'finger-walking':roam.phase==='drift'?'roaming':grip||brace?'tree':'escort';
   const effort=pull?T.MathUtils.clamp(pull.effort,0,1):0;
   const localVelocity=pull?.velocity.clone().applyAxisAngle(new T.Vector3(0,1,0),-root.rotation.y);
   const gait=time*(pull?8:10),stride=pull?.23:.45;
@@ -107,6 +111,7 @@ export function createLehi(scene:T.Scene){
    h.group.userData.grasp=grasp[i];
    h.group.scale.setScalar(contact?1.15:1);
    h.group.userData.fingerWalk=undefined;h.joints.forEach((j,k)=>{j.scale.setScalar(1);j.rotation.z=(1-k)*.09;});
+   if(roam.active&&roam.poses[i]){h.group.position.copy(roam.poses[i].position);h.group.quaternion.copy(roam.poses[i].orientation);}
    if(catchGame.active){
     const play=catchGame.poses[i];h.group.position.copy(play.position);h.group.quaternion.copy(play.orientation);
     grasp[i]=play.grasp;
@@ -132,5 +137,5 @@ export function createLehi(scene:T.Scene){
    }
   });
  }
- return {root,body,hands,update,setIdleWalkStyle:(style:WalkStyle|'mixed')=>{fingerWalk.preference=style;fingerWalk.cancel();idleSchedule.rest();},setIdleTerrain:(safe:(p:T.Vector3)=>boolean)=>fingerWalk.setTerrain(safe),setIdleMode:(mode:IdleMode)=>{idleSchedule.mode=mode;catchGame.setEnabled(mode==='catch'||mode==='catch-only');if(mode==='rest'||mode==='catch-only')fingerWalk.cancel();idleSchedule.rest();},setCatchProps:(props:CatchProp[],safe?:(p:T.Vector3)=>boolean)=>catchGame.setProps(props,safe),setIdleCatch:(on:boolean)=>catchGame.setEnabled(on),setTravelStyle:(style:string)=>travel.setStyle(style),setTravelMotion(speed:number,phase:number){travelSpeed=speed;travelPhase=phase;},linkEnds(){root.updateMatrixWorld(true);hands[0].group.updateMatrixWorld(true);return {from:arms[0].localToWorld(new T.Vector3(0,-.34,0)),to:hands[0].group.localToWorld(new T.Vector3(0,-.20,0))};}};
+ return {root,body,hands,update,setIdleWalkStyle:(style:WalkStyle|'mixed')=>{fingerWalk.preference=style;fingerWalk.cancel();idleSchedule.rest();},setIdleTerrain:(safe:(p:T.Vector3)=>boolean)=>{fingerWalk.setTerrain(safe);roam.setTerrain(safe);},setIdleMode:(mode:IdleMode)=>{idleSchedule.mode=mode;if(mode==='rest')roam.cancel();catchGame.setEnabled(mode==='catch'||mode==='catch-only');if(mode==='rest'||mode==='catch-only')fingerWalk.cancel();idleSchedule.rest();},setCatchProps:(props:CatchProp[],safe?:(p:T.Vector3)=>boolean)=>catchGame.setProps(props,safe),setIdleCatch:(on:boolean)=>catchGame.setEnabled(on),setTravelStyle:(style:string)=>travel.setStyle(style),setTravelMotion(speed:number,phase:number){travelSpeed=speed;travelPhase=phase;},linkEnds(){root.updateMatrixWorld(true);hands[0].group.updateMatrixWorld(true);return {from:arms[0].localToWorld(new T.Vector3(0,-.34,0)),to:hands[0].group.localToWorld(new T.Vector3(0,-.20,0))};}};
 }

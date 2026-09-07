@@ -20,7 +20,7 @@ const output='.cache/finger-walk-review';mkdirSync(output,{recursive:true});
  await page.waitForTimeout(10000);assert.equal((await state()).phase,'rest','Shared quiet interval');
  await walking();const second=await state();assert.notEqual(first.hand,second.hand,'Both hands take walks');assert.notDeepEqual(first.route,second.route,'Routes vary');
  await page.screenshot({path:output+'/other-hand.png'});
- await page.locator('#world canvas').focus();await page.keyboard.down('ArrowRight');await page.waitForTimeout(120);assert(['rise','rejoin'].includes((await state()).phase));await page.keyboard.up('ArrowRight');
+ await page.locator('#world canvas').focus();await page.keyboard.down('ArrowRight');await page.waitForTimeout(120);assert(['startle','rise','rejoin'].includes((await state()).phase));await page.keyboard.up('ArrowRight');
  await page.waitForFunction(()=>JSON.parse(document.querySelector('#world').dataset.fingerWalk).phase==='rest');
  // Same walking gait on the second figure.
  await page.getByRole('button',{name:'Open Inspect',exact:true}).click();await page.locator('#character').selectOption('olive-cape');await page.locator('#closeSettings').click();
