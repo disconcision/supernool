@@ -45,11 +45,11 @@ export function createLehi(scene:T.Scene){
  const travel=new TravelHands();let travelSpeed=0,travelPhase=0;
  const fingerGrasps=hands.map(()=>[0,0,0,0,0]);
  let grasp=[0,0],idleTime=0,idleTurn=0;let idleTargets:T.Vector3[]=[];let curiosity:{target:T.Vector3;hand:number;age:number}|undefined;
- function update(now:number,dt:number,moving:boolean,camera:T.Camera,grip?:T.Vector3,brace?:T.Vector3,active=0,engaged=true,pull?:{velocity:T.Vector3;effort:number},idleBlocked=false){
+ function update(now:number,dt:number,moving:boolean,camera:T.Camera,grip?:T.Vector3,brace?:T.Vector3,active=0,engaged=true,pull?:{velocity:T.Vector3;effort:number},idleBlocked=false,walkingIntent=false){
   const time=now/1000;
   travel.update(dt,travelSpeed,moving,!grip&&!brace&&!engaged&&!pull);
   root.userData.travelHandPose=travel.style;root.userData.travelHandWeight=travel.weight;
-  catchGame.update(dt,!moving&&!grip&&!brace&&!engaged&&!pull&&!idleBlocked,root,hands.map(h=>h.group));
+  catchGame.update(dt,!grip&&!brace&&!engaged&&!pull&&!idleBlocked,root,hands.map(h=>h.group),moving||walkingIntent);
   root.userData.idleCatch=catchGame.state;
   if(moving||grip||brace||engaged||idleBlocked||catchGame.active){idleTime=0;curiosity=undefined;}else{
    idleTime+=dt;
@@ -59,7 +59,7 @@ export function createLehi(scene:T.Scene){
     if(nearby.length){const target=nearby[idleTurn%Math.min(nearby.length,4)].clone();const local=target.clone().sub(root.position).applyQuaternion(root.quaternion.clone().invert());curiosity={target,hand:local.x<0?0:1,age:0};idleTurn++;}else idleTime=2;
    }
   }
-  root.userData.handActivity=catchGame.active?'playing-catch':curiosity?'inspecting':grip||brace?'tree':'escort';
+  root.userData.handActivity=catchGame.disengaging?'disengaging':catchGame.active?'playing-catch':curiosity?'inspecting':grip||brace?'tree':'escort';
   const effort=pull?T.MathUtils.clamp(pull.effort,0,1):0;
   const localVelocity=pull?.velocity.clone().applyAxisAngle(new T.Vector3(0,1,0),-root.rotation.y);
   const gait=time*(pull?8:10),stride=pull?.23:.45;

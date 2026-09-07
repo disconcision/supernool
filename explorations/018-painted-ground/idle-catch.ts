@@ -3,7 +3,7 @@ import * as T from 'three';
 /** Explicit affordance: only loose, hand-sized stones; never scenery or gates. */
 export type CatchProp={object:T.Object3D;radius:number;groundY:number;touch:T.Vector3};
 type Pose={position:T.Vector3;orientation:T.Quaternion;grasp:number};
-type Phase='rest'|'scout'|'grip'|'lift'|'notice'|'spread'|'windup'|'throw'|'flight'|'catch'|'miss'|'retrieve'|'return'|'place';
+type Phase='rest'|'scout'|'grip'|'lift'|'notice'|'spread'|'windup'|'throw'|'flight'|'catch'|'miss'|'return'|'place'|'depart'|'rejoin';
 const socket=new T.Vector3(0,.12,.19),xAxis=new T.Vector3(1,0,0);
 const smooth=(t:number)=>T.MathUtils.smoothstep(t,0,1);
 const pose=(p:Pose):Pose=>({position:p.position.clone(),orientation:p.orientation.clone(),grasp:p.grasp});
@@ -15,16 +15,18 @@ export class IdleCatch {
  enabled=true;prop?:CatchProp;held=false;holder=0;
  private props:CatchProp[]=[];private starts:Pose[]=[];private homes:Pose[]=[];
  private origin=new T.Vector3();private home=new T.Vector3();private heading=new T.Quaternion();
- private elapsed=0;private budget=4;private flightTime=1;private reaction=.2;private reachSpeed=4;
+ private elapsed=0;private flightTime=1;private reaction=.2;private reachSpeed=4;
  private target=new T.Vector3();private velocity=new T.Vector3();private spin=new T.Vector3(1,2,.7).normalize();
  private launch=new T.Vector3();private restingRotation=new T.Quaternion();private attachedRotation=new T.Quaternion();
- private loose=false;private bounces=0;private cooldown=4.5;
+ private loose=false;private bounces=0;private cooldown=7;
+ private throwDirection=new T.Vector3();private throwRotation=new T.Quaternion();private departureCenter=new T.Vector3();
  private safe:(p:T.Vector3)=>boolean=()=>true;
  constructor(private random:()=>number=Math.random){}
  setProps(props:CatchProp[],safe?:(p:T.Vector3)=>boolean){this.cancel();this.props=props;this.safe=safe??(()=>true);}
  setEnabled(on:boolean){this.enabled=on;if(!on)this.cancel();}
+ get disengaging(){return this.phase==='depart'||this.phase==='rejoin';}
  get active(){return this.phase!=='rest';}
- get state(){return {phase:this.phase,stone:this.prop?.object.userData.rockSeed??null,held:this.held,loose:this.loose,throws:this.throws,catches:this.catches,misses:this.misses,sessions:this.sessions,age:this.age,flightTime:this.flightTime,position:this.prop?.object.position.toArray()??null};}
+ get state(){return {phase:this.phase,separation:this.homes.length?this.homes[0].position.distanceTo(this.homes[1].position):0,stone:this.prop?.object.userData.rockSeed??null,held:this.held,loose:this.loose,throws:this.throws,catches:this.catches,misses:this.misses,sessions:this.sessions,age:this.age,flightTime:this.flightTime,position:this.prop?.object.position.toArray()??null};}
  private enter(phase:Phase){this.phase=phase;this.age=0;this.starts=this.poses.map(pose);}
  private local(x:number,y:number,z:number){return new T.Vector3(x,y,z).applyQuaternion(this.heading).add(this.origin);}
  private rotation(pitch:number){return this.heading.clone().multiply(new T.Quaternion().setFromAxisAngle(xAxis,pitch));}
@@ -40,7 +42,7 @@ export class IdleCatch {
  cancel(){
   if(this.phase==='flight'){this.velocity.y-=9.8*Math.min(this.age,this.flightTime);this.loose=true;this.bounces=0;}
   if(this.held){this.syncHeld();this.held=false;this.loose=true;this.velocity.set(0,0,0);this.bounces=0;}
-  this.phase='rest';this.idle=0;this.cooldown=5+this.random()*4;
+  this.phase='rest';this.idle=0;this.cooldown=7+this.random()*4;
  }
  private drop(dt:number){
   if(!this.loose||!this.prop)return;
@@ -53,21 +55,41 @@ export class IdleCatch {
    else{this.loose=false;this.velocity.setScalar(0);o.quaternion.copy(this.restingRotation);this.prop.touch.set(o.position.x,this.prop.groundY+this.prop.radius,o.position.z);}
   }
  }
+ private facing(direction:T.Vector3){
+  const forward=direction.clone().setY(0).normalize(),up=new T.Vector3(0,1,0);
+  return new T.Quaternion().setFromRotationMatrix(new T.Matrix4().makeBasis(new T.Vector3().crossVectors(forward,up),forward,up));
+ }
+ private spreadOut(){
+  // Each successful exchange invites another step out. Preserve clear footprints
+  // along the move; banks can constrain one hand without shrinking the game.
+  for(let i=0;i<2;i++){
+   const direction=new T.Vector3(i?1:-1,0,0).applyQuaternion(this.heading);
+   const step=.35+this.random()*.2,candidate=this.homes[i].position.clone().addScaledVector(direction,step);
+   if(candidate.distanceTo(this.origin)<4.6&&[.25,.5,.75,1].every(t=>this.safe(this.homes[i].position.clone().lerp(candidate,t))))this.homes[i].position.copy(candidate);
+  }
+  this.enter('spread');
+ }
  private planThrow(){
-  const receiver=1-this.holder;
-  this.flightTime=.8+this.random()*.6;
-  // The hand starts at its station; the stone is aimed off-centre. Late reactions
-  // can genuinely fail the spatial catch test, rather than teleporting a catch.
-  this.reaction=this.random()<.22?this.flightTime*.9:.14+this.random()*.15;
-  this.reachSpeed=2.6+this.random()*2;
-  const centre=catchSocket(this.homes[receiver]);
-  this.target.copy(centre).add(new T.Vector3((this.random()-.5)*1.55,(this.random()-.5)*.65,(this.random()-.5)*1.2));
+  const receiver=1-this.holder,separation=this.homes[0].position.distanceTo(this.homes[1].position);
+  this.flightTime=.85+this.random()*.3+Math.min(.35,(separation-3)*.07);
+  const difficulty=Math.min(1,this.catches/6),late=this.random()<.08+difficulty*.52;
+  this.reaction=late?this.flightTime*(.80+difficulty*.13):.14+this.random()*.15;
+  this.reachSpeed=2.7+this.random()*1.6;
+  const centre=catchSocket(this.homes[receiver]),scatter=1+difficulty*1.8;
+  this.target.copy(centre).add(new T.Vector3((this.random()-.5)*1.25*scatter,(this.random()-.5)*.5,(this.random()-.5)*scatter));
   if(!this.safe(this.target))this.target.copy(centre);
+  this.throwDirection.copy(this.target).sub(this.poses[this.holder].position).setY(0).normalize();
+  this.throwRotation.copy(this.facing(this.throwDirection));
   this.enter('windup');
  }
- update(dt:number,allowed:boolean,root:T.Object3D,hands:T.Object3D[]){
+ private depart(){
+  if(this.phase==='flight'){this.velocity.y-=9.8*Math.min(this.age,this.flightTime);this.loose=true;this.bounces=0;}
+  this.departureCenter.copy(this.prop!.object.position);this.enter(this.held?'depart':'rejoin');
+ }
+ update(dt:number,allowed:boolean,root:T.Object3D,hands:T.Object3D[],walking=false){
   dt=Math.min(Math.max(dt,0),.05);
   if(!allowed||!this.enabled){if(this.active)this.cancel();this.idle=0;this.drop(dt);return;}
+  if(walking){this.idle=0;if(this.active&&!this.disengaging)this.depart();else if(!this.active){this.drop(dt);return;}}
   if(this.phase==='rest'){
    this.drop(dt);if(this.loose)return;
    this.idle+=dt;if(this.idle<this.cooldown)return;
@@ -78,9 +100,9 @@ export class IdleCatch {
    const side=this.home.clone().sub(this.origin).applyQuaternion(this.heading.clone().invert()).x;
    this.holder=side<0?0:1;this.poses=hands.map(h=>({position:h.position.clone(),orientation:h.quaternion.clone(),grasp:0}));
    // Stations sit forward of the body, clear of its head and each other.
-   this.homes=[0,1].map(i=>({position:this.local((i?1:-1)*(1.05+this.random()*.35),1.25,.95),orientation:this.rotation(-Math.PI/2),grasp:0}));
+   this.homes=[0,1].map(i=>({position:this.local((i?1:-1)*(1.5+this.random()*.25),1.25,1.35),orientation:this.rotation(-Math.PI/2),grasp:0}));
    if(this.homes.some(p=>!this.safe(p.position))){this.prop=undefined;this.idle=0;return;}
-   this.elapsed=0;this.budget=3+Math.floor(this.random()*5);this.throws=this.catches=this.misses=0;this.sessions++;this.enter('scout');
+   this.elapsed=0;this.throws=this.catches=this.misses=0;this.sessions++;this.enter('scout');
   }
   this.age+=dt;this.elapsed+=dt;
   const h=this.holder,r=1-h,o=this.prop!.object,down=this.rotation(Math.PI/2),palmUp=this.rotation(-Math.PI/2);
@@ -101,17 +123,20 @@ export class IdleCatch {
     this.tween(r,perk,this.rotation(-.7),.02,this.age/.3);if(this.age>=.65)this.enter('spread');break;
    }
    case 'spread':
-    this.tween(r,this.homes[r].position,palmUp,0,this.age/.85);if(this.age>=.85)this.planThrow();break;
+    for(let i=0;i<2;i++)this.tween(i,this.homes[i].position,palmUp,i===h?.88:0,this.age/.95);
+    if(this.age>=.95)this.planThrow();break;
    case 'windup':{
-    const away=this.target.clone().sub(this.starts[h].position).setY(0).normalize().multiplyScalar(-.36);
-    this.tween(h,this.starts[h].position.clone().add(away).add(new T.Vector3(0,-.17,0)),this.rotation(-2.05),.92,this.age/.55);
-    this.tween(r,this.homes[r].position,palmUp,0,this.age/.55);
-    if(this.age>=.55)this.enter('throw');break;
+    const backswing=this.starts[h].position.clone().addScaledVector(this.throwDirection,-.58).add(new T.Vector3(0,-.38,0));
+    this.tween(h,backswing,this.throwRotation.clone().multiply(new T.Quaternion().setFromAxisAngle(xAxis,-.25)),.92,this.age/.65);
+    this.tween(r,this.homes[r].position,palmUp,0,this.age/.65);
+    if(this.age>=.65)this.enter('throw');break;
    }
    case 'throw':{
-    const forward=this.target.clone().sub(this.starts[h].position).setY(0).normalize().multiplyScalar(.48);
-    this.tween(h,this.starts[h].position.clone().add(forward).add(new T.Vector3(0,.30,0)),palmUp,T.MathUtils.lerp(.9,0,smooth((this.age-.07)/.11)),this.age/.18);
-    if(this.age>=.18){
+    // Accelerate through the release instead of stopping at the apex of a flick.
+    const u=Math.min(1,this.age/.24),p=this.poses[h];
+    p.position.copy(this.starts[h].position).addScaledVector(this.throwDirection,.95*u*u);p.position.y+=.6*u*u;
+    p.orientation.copy(this.starts[h].orientation).slerp(this.throwRotation,u*u);p.grasp=.92*(1-smooth((u-.6)/.4));
+    if(this.age>=.24){
      this.syncHeld();this.launch.copy(o.position);this.velocity.copy(this.target).sub(this.launch).divideScalar(this.flightTime);this.velocity.y+=4.9*this.flightTime;
      this.held=false;this.throws++;this.enter('flight');
     }break;
@@ -119,7 +144,9 @@ export class IdleCatch {
    case 'flight':{
     const t=Math.min(this.age,this.flightTime);o.position.copy(this.launch).addScaledVector(this.velocity,t);o.position.y-=4.9*t*t;
     o.quaternion.premultiply(new T.Quaternion().setFromAxisAngle(this.spin,dt*(4+this.throws)));
-    this.tween(h,this.homes[h].position,palmUp,0,this.age/.35);
+    const follow=this.starts[h].position.clone().addScaledVector(this.throwDirection,.35).add(new T.Vector3(0,.18,0));
+    if(this.age<.25){const u=1-Math.pow(1-this.age/.25,3);this.poses[h].position.copy(this.starts[h].position).lerp(follow,u);this.poses[h].orientation.copy(this.throwRotation);this.poses[h].grasp=0;}
+    else{this.poses[h].position.copy(follow).lerp(this.homes[h].position,smooth((this.age-.25)/.45));this.poses[h].orientation.copy(this.throwRotation).slerp(palmUp,smooth((this.age-.25)/.45));}
     const receiver=this.poses[r],destination=this.palmAt(this.target,palmUp);
     if(this.age>this.reaction){const delta=destination.sub(receiver.position);receiver.position.addScaledVector(delta,Math.min(1,this.reachSpeed*dt/Math.max(delta.length(),.001)));}
     receiver.orientation.slerp(palmUp,1-Math.exp(-dt*12));receiver.grasp=0;
@@ -130,20 +157,32 @@ export class IdleCatch {
    }
    case 'catch':
     this.tween(h,this.starts[h].position.clone().add(new T.Vector3(0,-.12,0)),palmUp,.88,this.age/.28);
-    if(this.age>=.55){if(this.throws>=this.budget||this.elapsed>24)this.enter('return');else this.planThrow();}break;
+    if(this.age>=.55){if(this.elapsed>30)this.enter('return');else this.spreadOut();}break;
    case 'miss':
     this.drop(dt);
-    // The reaching hand hangs open for a beat, then goes after the dropped stone.
-    if(!this.loose&&this.age>.65){this.holder=r;if(this.safe(o.position)&&o.position.distanceTo(this.origin)<4.5)this.enter('retrieve');else this.cancel();}break;
-   case 'retrieve':
-    this.tween(h,groundPalm(),down,.04,this.age/1.15);
-    if(this.age>=1.15){if(this.elapsed>24){this.cancel();}else this.enter('grip');}break;
+    // A miss ends the increasingly ambitious rally. Linger over the fallen
+    // stone, then disengage; no immediate new rally at the same distance.
+    if(!this.loose&&this.age>.9)this.enter('rejoin');break;
    case 'return':
     this.tween(h,this.palmAt(this.home,down),down,.88,this.age/1.3);
     if(this.age>=1.3){this.syncHeld();this.held=false;o.position.copy(this.home);o.quaternion.copy(this.restingRotation);this.prop!.touch.set(o.position.x,this.prop!.groundY+this.prop!.radius,o.position.z);this.enter('place');}break;
    case 'place':
     this.tween(h,this.starts[h].position.clone().add(new T.Vector3(0,.22,0)),down,0,this.age/.6);
-    if(this.age>=.6){this.cancel();this.cooldown=9+this.random()*9;}break;
+    if(this.age>=.6)this.enter('rejoin');break;
+   case 'depart':{
+    const u=smooth(this.age/.65),center=this.departureCenter.clone();center.y=T.MathUtils.lerp(center.y,this.prop!.groundY,u);
+    const hand=this.poses[h];hand.orientation.copy(this.starts[h].orientation).slerp(down,u);hand.position.copy(this.palmAt(center,hand.orientation));
+    hand.grasp=this.starts[h].grasp*(1-smooth((this.age-.55)/.25));
+    this.syncHeld();
+    if(this.age>=.8){this.held=false;o.position.y=this.prop!.groundY;o.quaternion.copy(this.restingRotation);this.prop!.touch.set(o.position.x,this.prop!.groundY+this.prop!.radius,o.position.z);this.enter('rejoin');}break;
+   }
+   case 'rejoin':
+    this.drop(dt);
+    for(let i=0;i<2;i++){
+     const escort=new T.Vector3((i?1:-1)*.9,1.03,.22).applyQuaternion(root.quaternion).add(root.position);
+     this.tween(i,escort,root.quaternion,0,this.age/1.05);
+    }
+    if(this.age>=1.05){this.cancel();this.cooldown=12+this.random()*10;}break;
   }
   this.syncHeld();
  }

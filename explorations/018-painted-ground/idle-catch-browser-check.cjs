@@ -1,5 +1,5 @@
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),{mkdirSync}=require('node:fs');
-const output='.cache/idle-catch-review';mkdirSync(output,{recursive:true});
+const output='.cache/idle-catch-v2-review';mkdirSync(output,{recursive:true});
 (async()=>{
  const browser=await chromium.launch({channel:'chrome',headless:true});
  try{
@@ -12,12 +12,15 @@ const output='.cache/idle-catch-review';mkdirSync(output,{recursive:true});
  const state=()=>page.evaluate(()=>JSON.parse(document.querySelector('#world').dataset.idleCatch));
  const phase=async(name,min=0)=>page.waitForFunction(([n,t])=>{const s=JSON.parse(document.querySelector('#world').dataset.idleCatch);return s.phase===n&&s.age>=t;},[name,min],{timeout:60000});
  await phase('grip',.25);await page.screenshot({path:output+'/grip.png',clip:{x:430,y:700,width:580,height:230}});
- await phase('notice');await page.screenshot({path:output+'/lift-and-notice.png',clip:{x:430,y:650,width:580,height:280}});
+ await phase('notice');const initialSeparation=(await state()).separation;await page.screenshot({path:output+'/lift-and-notice.png',clip:{x:430,y:650,width:580,height:280}});
  await phase('flight',.25);await page.screenshot({path:output+'/flight-live.png'});
  await phase('catch',.12);await page.screenshot({path:output+'/catch.png',clip:{x:430,y:650,width:580,height:280}});
  assert((await state()).catches>0);
- await phase('flight',.2);const before=await state();
+ await phase('flight',.2);const before=await state();assert(before.separation>initialSeparation+.5,'Successful catch spreads both hands outward');
+ await page.screenshot({path:output+'/wider-rally.png'});
  await page.locator('#world canvas').focus();await page.keyboard.down('ArrowUp');
+ await page.waitForFunction(()=>document.querySelector('#world').dataset.handActivity==='disengaging');
+ await page.screenshot({path:output+'/walking-rejoin.png'});await page.keyboard.up('ArrowUp');
  await page.waitForFunction(()=>document.querySelector('#world').dataset.handActivity==='escort');
  assert.equal((await state()).phase,'rest');await page.waitForTimeout(180);await page.keyboard.up('ArrowUp');
  await page.waitForFunction(()=>{const s=JSON.parse(document.querySelector('#world').dataset.idleCatch);return !s.loose&&!s.held;});
@@ -35,7 +38,11 @@ const output='.cache/idle-catch-review';mkdirSync(output,{recursive:true});
  await page.waitForFunction(()=>document.querySelector('#world').dataset.character==='olive-cape');
  await page.locator('#closeSettings').click();await phase('lift',.5);
  await page.screenshot({path:output+'/cape-lift.png',clip:{x:430,y:650,width:580,height:280}});
- await page.locator('#world canvas').focus();await page.keyboard.down('ArrowDown');await page.waitForTimeout(100);assert.equal((await state()).phase,'rest');await page.keyboard.up('ArrowDown');
- assert.deepEqual(errors,[]);console.log('Chrome: both art figures, pickup / notice / flight / catch, airborne and held movement interruptions, grounded settling and Explore-only comparison passed. Screenshots:',output);
+ await page.locator('#world canvas').focus();await page.keyboard.down('ArrowDown');
+ await phase('depart',.2);assert((await state()).held,'Stone stays gripped during set-down');
+ await page.screenshot({path:output+'/walking-set-down.png',clip:{x:350,y:620,width:750,height:400}});
+ await page.keyboard.up('ArrowDown');await page.waitForFunction(()=>JSON.parse(document.querySelector('#world').dataset.idleCatch).phase==='rest');
+ assert(!(await state()).held);
+ assert.deepEqual(errors,[]);console.log('Chrome: both art figures, pickup / notice / flight / catch, widening separation, airborne and held walking exits, grounded settling and Explore-only comparison passed. Screenshots:',output);
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1)});

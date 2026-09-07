@@ -238,7 +238,7 @@ function updateHands(now:number,dt:number,moving:boolean){const g=grip?.chosen??
  if(bodyMode()&&!handFocus&&!grip&&!animation)point=undefined;
  const brace=pin?worldPoint(pin.id):undefined;
  if(stanceMoving||(bodyMode()&&(grip||animation))||(near&&!moving))avatar.rotation.y=Math.atan2(treeOrigin.x-avatar.position.x,treeOrigin.z-avatar.position.z);
- lehi.update(now,dt,moving,camera,near?point:undefined,near?brace:undefined,activeHand,!!grip||!!animation,grip?.body?{velocity:walkVelocity,effort:.35+Math.min(1,Math.abs(grip.target-grip.progress))*.65}:undefined,!!keys.size||!!navTarget||handFocus);
+ lehi.update(now,dt,moving,camera,near?point:undefined,near?brace:undefined,activeHand,!!grip||!!animation,grip?.body?{velocity:walkVelocity,effort:.35+Math.min(1,Math.abs(grip.target-grip.progress))*.65}:undefined,handFocus,!!keys.size||!!navTarget);
  $('world').dataset.character=lehi.current();$('world').dataset.locomotion=lehi.locomotion();$('world').dataset.handActivity=avatar.userData.handActivity??'escort';
  const ends=lehi.linkEnds();ribbon.update(now,dt,value('bodyLink')==='ribbon',bodyMode()&&!!(grip||animation),ends.from,ends.to,camera,grip?Math.abs(grip.target-grip.progress):0);
  $('world').dataset.idleCatch=JSON.stringify(avatar.userData.idleCatch);
