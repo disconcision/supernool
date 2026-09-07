@@ -1,1 +1,20 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><title>supernool</title><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0;url=./explorations/018-painted-ground/?mode=body"></head><body><a href="./explorations/018-painted-ground/?mode=body">Play supernool</a> · <a href="./explorations/index.html">Study catalogue</a></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>supernool</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <script>
+    const destination = new URL('./explorations/018-painted-ground/', location.href);
+    destination.search = location.search;
+    if (!destination.searchParams.has('mode')) destination.searchParams.set('mode', 'body');
+    destination.hash = location.hash;
+    location.replace(destination.href);
+  </script>
+  <noscript><meta http-equiv="refresh" content="0;url=./explorations/018-painted-ground/?mode=body"></noscript>
+</head>
+<body>
+  <a href="./explorations/018-painted-ground/?mode=body">Play supernool</a>
+  · <a href="./explorations/index.html">Study catalogue</a>
+</body>
+</html>
