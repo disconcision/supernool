@@ -55,9 +55,17 @@ function finishSettling(){
  if(exitAfterSettle){exitAfterSettle=false;clearMovement();handFocus=false;pin=undefined;hoverId=undefined;spotlight=undefined;lingerPoint=undefined;lastGesture=undefined;}
  ui();
 }
-// Slow framing in both directions, capped at the user’s chosen zoom.
+// Slow framing during tree interaction only; wandering preserves the current zoom.
 function frameTree(dt:number){
  if(!poseNow||new URLSearchParams(location.search).has('matteCapture'))return;
+ const active=bodyMode()?handFocus:!!grip||!!animation;
+ $('world').dataset.autoFraming=String(active);
+ if(!active){
+  $('world').dataset.cameraZoom=camera.zoom.toFixed(5);
+  $('world').dataset.fitZoom=camera.zoom.toFixed(5);
+  $('world').dataset.preferredZoom=preferredZoom.toFixed(5);
+  return;
+ }
  const poses=[poseNow];
  // Anticipate the chosen endpoint, so the camera starts making room during the pull.
  const after=grip?.chosen?.after??animation?.after;

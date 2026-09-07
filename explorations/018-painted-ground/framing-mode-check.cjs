@@ -1,0 +1,22 @@
+const {chromium}=require('playwright');
+const assert=require('node:assert/strict');
+(async()=>{const browser=await chromium.launch({channel:'chrome',headless:true});try{
+ const page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];
+ page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('http://127.0.0.1:3100/explorations/018-painted-ground/?mode=body');
+ await page.waitForFunction(()=>document.querySelector('#world')?.dataset.meshing==='ready');
+ const zoom=async()=>Number(await page.locator('#world').getAttribute('data-camera-zoom'));
+ await page.mouse.move(640,450);for(let i=0;i<8;i++)await page.mouse.wheel(0,-100);
+ await page.waitForTimeout(300);const close=await zoom();assert.ok(close>1.3);
+ await page.waitForTimeout(1500);assert.equal(await zoom(),close,'Wandering must not override manual zoom');
+ await page.getByRole('button',{name:'Open Encounter',exact:true}).click();await page.locator('#approach').click();
+ await page.waitForFunction(()=>document.querySelector('#world').dataset.near==='true');await page.waitForTimeout(1000);
+ assert.equal(await zoom(),close,'Proximity alone must not enable framing');
+ await page.locator('#world canvas').focus();await page.keyboard.press('Space');
+ await page.waitForFunction(()=>document.querySelector('#world').dataset.autoFraming==='true');
+ await page.waitForTimeout(1600);const engaged=await zoom();assert.ok(engaged<close-.1,'Interaction should ease out to fit the tree');
+ await page.keyboard.press('Escape');await page.waitForFunction(()=>document.querySelector('#world').dataset.autoFraming==='false');
+ const exit=await zoom();await page.waitForTimeout(1200);assert.equal(await zoom(),exit,'Escape stops automatic camera movement');
+ await page.locator('#inputMode').selectOption('mouse');await page.waitForTimeout(100);assert.equal(await page.locator('#world').getAttribute('data-auto-framing'),'false','Idle mouse mode should leave zoom alone');
+ assert.deepEqual(errors,[]);console.log({wanderingZoom:close,engagedZoom:engaged,exitZoom:exit,errors});
+ }finally{await browser.close();}})();
