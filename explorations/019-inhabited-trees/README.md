@@ -75,3 +75,7 @@ Latest clarification supersedes foliage-like texture in earlier shadow paintings
 ## Round 06 · painterly living foliage refinement
 
 The existing `canopy-growth.html` now compares Painterly volume with Previous rendering, following the user's request for research and further actual-render iteration against the original F5/F2/F6 images. The new treatment uses shared cluster normals, grouped colour/shading, procedural brush textures and somewhat fuller G1 fans. No new concept paintings or main-scene changes. See `painterly-notes.md` for first-hand artist sources, the inspection loop, remaining differences and validation. The prior rendering remains directly accessible with `?finish=previous`.
+
+## Round 07 · roiling shadow comparisons
+
+Latest feedback asks for more cloud-like billowing, a little more texture, brief forked lightning around the cloud exterior, and animated grazing-angle bark emission. `shadow.html` now compares three new constructions with the original three methods. Depth-only, lifted-skeleton and clear-host visibility modes explicitly test how much the cloud should obscure the algebra. See [storm-notes.md](storm-notes.md) for implementation, inspection, limits and remaining encounter integration.
