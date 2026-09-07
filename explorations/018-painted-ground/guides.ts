@@ -13,7 +13,7 @@ export class ScreenGuides {
   const material=new T.ShaderMaterial({side:T.DoubleSide,transparent:true,depthTest:false,depthWrite:false,toneMapped:false,uniforms:{viewport:{value:new T.Vector2()}},vertexShader:`uniform vec2 viewport; attribute vec4 shade; varying vec4 tint; void main(){tint=shade;gl_Position=vec4(position.x/viewport.x*2.-1.,1.-position.y/viewport.y*2.,0.,1.);}`,fragmentShader:`varying vec4 tint;void main(){gl_FragColor=tint;
    #include <colorspace_fragment>
   }`});
-  this.mesh=new T.Mesh(this.geometry,material);this.mesh.renderOrder=30;this.mesh.frustumCulled=false;scene.add(this.mesh);
+  this.mesh=new T.Mesh(this.geometry,material);this.mesh.userData.mistOverlay=true;this.mesh.renderOrder=30;this.mesh.frustumCulled=false;scene.add(this.mesh);
  }
  begin(){this.count=0;}
  private triangle(points:number[],color:string,alpha:number){if(this.count+3>this.positions.length/2)throw Error('Guide vertex capacity exceeded');this.color.set(color);

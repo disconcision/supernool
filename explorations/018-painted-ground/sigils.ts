@@ -23,7 +23,7 @@ const auraGeometry=new T.PlaneGeometry(1.8,1.8);
 const ring=new T.TorusGeometry(.43,.024,5,32),setting=new T.CylinderGeometry(.45,.45,.07,12),hit=new T.PlaneGeometry(.95,1.05);
 setting.rotateX(Math.PI/2);
 export function makeSigil(text:string,operator:boolean,selected:boolean,mode:string){
- const group=new T.Group();
+ const group=new T.Group();group.userData.mistOverlay=true;
  const aura=new T.ShaderMaterial({transparent:true,depthTest:false,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false,uniforms:{tint:{value:new T.Color('#b6eff0')},strength:{value:0}},vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:'varying vec2 vUv;uniform vec3 tint;uniform float strength;void main(){float r=length(vUv-.5)*2.;float a=pow(max(0.,1.-r),2.)*strength;gl_FragColor=vec4(tint,a); #include <colorspace_fragment> }'.replace(' #include','\n #include').replace('> }','>\n }')});
  const halo=new T.Mesh(auraGeometry,aura);halo.visible=false;group.userData.halo=halo;halo.raycast=()=>{};halo.renderOrder=8;halo.position.z=-.03;group.add(halo);group.userData.aura=aura;
 

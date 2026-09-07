@@ -14,7 +14,7 @@ export function createRibbon(scene:T.Scene){
  gl_FragColor=vec4(tint,ends*strength*ghost*(halo+core*.7));
  #include <colorspace_fragment>
  }`});
- const mesh=new T.Mesh(geometry,material);mesh.frustumCulled=false;mesh.renderOrder=15;mesh.visible=false;scene.add(mesh);let opacity=0,taut=0;
+ const mesh=new T.Mesh(geometry,material);mesh.userData.mistOverlay=true;mesh.frustumCulled=false;mesh.renderOrder=15;mesh.visible=false;scene.add(mesh);let opacity=0,taut=0;
  return {update(now:number,dt:number,enabled:boolean,engaged:boolean,from:T.Vector3,to:T.Vector3,camera:T.Camera,lag:number){
   if(!enabled){opacity=0;mesh.visible=false;return;}
   opacity=T.MathUtils.lerp(opacity,engaged?.86:0,1-Math.exp(-dt*12));mesh.visible=opacity>.008;if(!mesh.visible)return;

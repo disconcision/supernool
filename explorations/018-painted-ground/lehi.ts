@@ -18,7 +18,7 @@ export function createLehi(scene:T.Scene){
  const arms=[-1,1].map(side=>{const g=new T.Group();g.position.set(side*.26,.98,0);body.add(g);part(new T.CylinderGeometry(.062,.047,.34,5),coat,g,[0,-.15,0]);part(new T.IcosahedronGeometry(.07,0),skin,g,[0,-.34,0]);return g;});
  const halo=part(new T.RingGeometry(.42,.47,32),new T.MeshBasicMaterial({color:'#eee0b4',side:T.DoubleSide}),root,[0,.025,0]);halo.rotation.x=-Math.PI/2;
  function hand(side:number){
-  const group=new T.Group();group.userData.hand=side<0?'right':'left';scene.add(group);
+  const group=new T.Group();group.userData.mistOverlay=true;group.userData.hand=side<0?'right':'left';scene.add(group);
   const stone=new T.MeshStandardMaterial({color:side<0?'#6d918c':'#93aba0',roughness:.75,flatShading:true,transparent:true});
   const glow=new T.MeshBasicMaterial({color:side<0?'#a6e3d5':'#f1dba0',transparent:true});
   part(new T.BoxGeometry(.38,.4,.14),stone,group);

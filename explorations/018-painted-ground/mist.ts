@@ -15,7 +15,9 @@ export function createMist(renderer:T.WebGLRenderer){
   mistTime:{value:0},strength:{value:.62},startRadius:{value:10.5},textureAmount:{value:.65},
   mistColor:{value:new T.Color('#c5cfc5')}
  };
- const material=new T.ShaderMaterial({uniforms,depthTest:false,depthWrite:false,toneMapped:false,
+ // Restore world depth along with its fogged color, so the later hands still
+ // disappear behind real rocks/branches. A color-only composite loses that depth.
+ const material=new T.ShaderMaterial({uniforms,depthTest:true,depthFunc:T.AlwaysDepth,depthWrite:true,toneMapped:false,
   vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}`,
   fragmentShader:`
    varying vec2 vUv;
@@ -45,6 +47,7 @@ export function createMist(renderer:T.WebGLRenderer){
     // Empty background pixels have no surface to anchor the mist to.
     if(depth>=.999999)amount=0.;
     gl_FragColor=vec4(mix(color.rgb,mistColor,amount),color.a);
+    gl_FragDepth=depth;
     #include <colorspace_fragment>
    }`
  });
@@ -58,11 +61,33 @@ export function createMist(renderer:T.WebGLRenderer){
    uniforms.strength.value=settings.strength;uniforms.startRadius.value=settings.radius;uniforms.textureAmount.value=settings.texture;
    renderer.getDrawingBufferSize(size);if(target.width!==size.x||target.height!==size.y)target.setSize(size.x,size.y);
    uniforms.inverseProjection.value.copy(view.projectionMatrixInverse);uniforms.cameraWorld.value.copy(view.matrixWorld);
-   const previous=renderer.getRenderTarget(),autoReset=renderer.info.autoReset;
+   const previous=renderer.getRenderTarget(),autoReset=renderer.info.autoReset,autoClear=renderer.autoClear;
+   const cameraMask=view.layers.mask,background=scene.background,shadowAutoUpdate=renderer.shadowMap.autoUpdate;
+   // Explicit overlay roots include sigils, guides, ribbon and tool hands.
+   // Keep layer 0 for ordinary rendering/picking and temporarily reserve 31
+   // for this pass. Descendants added asynchronously (imported hands) work too.
+   const roots:T.Object3D[]=[],layerMasks:[T.Object3D,number][]=[];
+   scene.traverseVisible(o=>{if(o.userData.mistOverlay)roots.push(o);});
+   const include=(o:T.Object3D)=>{layerMasks.push([o,o.layers.mask]);o.layers.enable(31);};
+   roots.forEach(root=>root.traverseVisible(include));
+   scene.traverseVisible(o=>{if((o as T.Light).isLight)include(o);});
    renderer.info.autoReset=false;renderer.info.reset();
-   renderer.setRenderTarget(target);renderer.render(scene,view);
-   renderer.setRenderTarget(previous);renderer.render(screen,camera);
-   renderer.info.autoReset=autoReset;
+   try{
+    roots.forEach(o=>o.visible=false);
+    renderer.setRenderTarget(target);renderer.render(scene,view);
+    roots.forEach(o=>o.visible=true);
+    renderer.setRenderTarget(previous);renderer.render(screen,camera);
+    // Preserve the established sigil → ribbon → hand → guide draw order.
+    // These legibility aids intentionally remain clear, rather than inheriting
+    // fog computed from whatever landscape happens to lie behind their pixels.
+    renderer.autoClear=false;renderer.shadowMap.autoUpdate=false;scene.background=null;view.layers.set(31);
+    renderer.render(scene,view);
+   }finally{
+    roots.forEach(o=>o.visible=true);
+    layerMasks.forEach(([o,mask])=>o.layers.mask=mask);
+    view.layers.mask=cameraMask;scene.background=background;
+    renderer.setRenderTarget(previous);renderer.autoClear=autoClear;renderer.info.autoReset=autoReset;renderer.shadowMap.autoUpdate=shadowAutoUpdate;
+   }
   }
  };
 }
