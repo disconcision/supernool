@@ -92,7 +92,7 @@ export function createTraveller(scene:T.Scene,status:(message:string)=>void){
   active.lean=T.MathUtils.lerp(active.lean,pull?-.08-effort*.08:running?.09:0,1-Math.exp(-dt*10));active.model.rotation.x=0;active.stride.lean(active.lean);
   active.digits.forEach((digits,i)=>{const hand=controller.hands[i].group;for(const d of digits){const curl=(hand.userData.fingerGrasps as number[])[d.index]??hand.userData.grasp;d.node.quaternion.copy(d.rest).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(1,0,0),curl*d.amount));}});
  }
- return {root,update,setTravelStyle:controller.setTravelStyle,setIdleTargets:controller.setIdleTargets,choose:select,setPalette(name:string){palette=name;variants.forEach(paint);},current:()=>current,locomotion:()=>running?'Run':active?.motion??'procedural',linkEnds(){
+ return {root,update,setCatchProps:controller.setCatchProps,setIdleCatch:controller.setIdleCatch,setTravelStyle:controller.setTravelStyle,setIdleTargets:controller.setIdleTargets,choose:select,setPalette(name:string){palette=name;variants.forEach(paint);},current:()=>current,locomotion:()=>running?'Run':active?.motion??'procedural',linkEnds(){
   const ends=controller.linkEnds();if(active){root.updateMatrixWorld(true);const m=active.wrist;if(m instanceof T.SkinnedMesh)m.skeleton.update();const p=new T.Vector3(),sum=new T.Vector3();const n=m.geometry.attributes.position.count;for(let i=0;i<n;i++)sum.add(m.getVertexPosition(i,p));ends.from.copy(m.localToWorld(sum.divideScalar(n)));ends.to.copy(active.hands[0].localToWorld(new T.Vector3(0,0,0)));}return ends;
  }};
 }

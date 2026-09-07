@@ -1,3 +1,5 @@
+import {IdleCatch} from './idle-catch';
+import type {CatchProp} from './idle-catch';
 import {TravelHands} from './hand-travel';
 import * as T from 'three';
 // Provisional short-mantle silhouette informed by reference-lab/avatar-scale A.
@@ -39,14 +41,17 @@ export function createLehi(scene:T.Scene){
  }
  // The character faces local +Z: anatomical right is local -X.
  const hands=[hand(-1),hand(1)],orientation=new T.Quaternion();
+ const catchGame=new IdleCatch();
  const travel=new TravelHands();let travelSpeed=0,travelPhase=0;
  const fingerGrasps=hands.map(()=>[0,0,0,0,0]);
  let grasp=[0,0],idleTime=0,idleTurn=0;let idleTargets:T.Vector3[]=[];let curiosity:{target:T.Vector3;hand:number;age:number}|undefined;
- function update(now:number,dt:number,moving:boolean,camera:T.Camera,grip?:T.Vector3,brace?:T.Vector3,active=0,engaged=true,pull?:{velocity:T.Vector3;effort:number}){
+ function update(now:number,dt:number,moving:boolean,camera:T.Camera,grip?:T.Vector3,brace?:T.Vector3,active=0,engaged=true,pull?:{velocity:T.Vector3;effort:number},idleBlocked=false){
   const time=now/1000;
   travel.update(dt,travelSpeed,moving,!grip&&!brace&&!engaged&&!pull);
   root.userData.travelHandPose=travel.style;root.userData.travelHandWeight=travel.weight;
-  if(moving||grip||brace||engaged){idleTime=0;curiosity=undefined;}else{
+  catchGame.update(dt,!moving&&!grip&&!brace&&!engaged&&!pull&&!idleBlocked,root,hands.map(h=>h.group));
+  root.userData.idleCatch=catchGame.state;
+  if(moving||grip||brace||engaged||idleBlocked||catchGame.active){idleTime=0;curiosity=undefined;}else{
    idleTime+=dt;
    if(curiosity){curiosity.age+=dt;if(curiosity.age>4.5){curiosity=undefined;idleTime=0;}}
    else if(idleTime>3.5){
@@ -54,7 +59,7 @@ export function createLehi(scene:T.Scene){
     if(nearby.length){const target=nearby[idleTurn%Math.min(nearby.length,4)].clone();const local=target.clone().sub(root.position).applyQuaternion(root.quaternion.clone().invert());curiosity={target,hand:local.x<0?0:1,age:0};idleTurn++;}else idleTime=2;
    }
   }
-  root.userData.handActivity=curiosity?'inspecting':grip||brace?'tree':'escort';
+  root.userData.handActivity=catchGame.active?'playing-catch':curiosity?'inspecting':grip||brace?'tree':'escort';
   const effort=pull?T.MathUtils.clamp(pull.effort,0,1):0;
   const localVelocity=pull?.velocity.clone().applyAxisAngle(new T.Vector3(0,1,0),-root.rotation.y);
   const gait=time*(pull?8:10),stride=pull?.23:.45;
@@ -100,7 +105,15 @@ export function createLehi(scene:T.Scene){
    h.group.userData.fingerGrasps=digits;
    h.group.userData.grasp=grasp[i];
    h.group.scale.setScalar(contact?1.15:1);
+   if(catchGame.active){
+    const play=catchGame.poses[i];h.group.position.copy(play.position);h.group.quaternion.copy(play.orientation);
+    grasp[i]=play.grasp;
+    for(let k=0;k<digits.length;k++)digits[k]=play.grasp;
+    h.joints.forEach((j,k)=>{j.rotation.x=.06+digits[k]*(.48+k*.045);h.tips[k].rotation.x=digits[k]*(1+k*.06);});
+    h.thumb.rotation.x=digits[4]*.65;h.thumb.rotation.z=(i?1:-1)*(.8-digits[4]*.25);
+    h.group.userData.grasp=play.grasp;
+   }
   });
  }
- return {root,body,hands,update,setTravelStyle:(style:string)=>travel.setStyle(style),setTravelMotion(speed:number,phase:number){travelSpeed=speed;travelPhase=phase;},setIdleTargets(points:T.Vector3[]){idleTargets=points.map(p=>p.clone());},linkEnds(){root.updateMatrixWorld(true);hands[0].group.updateMatrixWorld(true);return {from:arms[0].localToWorld(new T.Vector3(0,-.34,0)),to:hands[0].group.localToWorld(new T.Vector3(0,-.20,0))};}};
+ return {root,body,hands,update,setCatchProps:(props:CatchProp[],safe?:(p:T.Vector3)=>boolean)=>catchGame.setProps(props,safe),setIdleCatch:(on:boolean)=>catchGame.setEnabled(on),setTravelStyle:(style:string)=>travel.setStyle(style),setTravelMotion(speed:number,phase:number){travelSpeed=speed;travelPhase=phase;},setIdleTargets(points:T.Vector3[]){idleTargets=[...points];},linkEnds(){root.updateMatrixWorld(true);hands[0].group.updateMatrixWorld(true);return {from:arms[0].localToWorld(new T.Vector3(0,-.34,0)),to:hands[0].group.localToWorld(new T.Vector3(0,-.20,0))};}};
 }
