@@ -59,3 +59,41 @@ Sound brief only: roughly 80–90 BPM, sparse electronic pulse with wooden/pluck
 ## Scope and continuity
 
 This is the beginning of 019 as a concept study. It does not duplicate or replace 018, alter its controls, implement knockback, change the math engine or add permanent new lore that spirits are malicious. Existing tactile mouse/body interaction, hewn geometry, both characters, fog, and the concurrent art work remain in 018. The gallery is included in the production build and linked from the study catalogue.
+
+## Round 04 · direction correction and actual canopy refinement
+
+The original F5 remains primary; F2/F6 and other accepted F alternatives stay in the mix. A new living concept sheet was unnecessary and is archived, not substituted for those references. The request was to iterate the actual 3D study and compare it to the existing paintings.
+
+The first round-04 shadow sheet went too wispy. The correction, `round-04/shadow-body.png`, restores cumulonimbus-like body, defined irregular borders and somewhat brighter coloured edges. Purple and blue remain separate alternatives. This is not yet approved, and its background transmission is weaker than requested. Do not replace the target of dark translucent mass with either opaque foliage or thin tendrils. Preserve readable branches. Increasing anger can produce larger arcs reaching rocks or neighbouring scenery; fine webs and tendrils are secondary possibilities.
+
+`canopy-growth.html` is the new 3D iteration; `canopy.html` preserves the previous comparison. See `growth-notes.md` for construction, visual review, performance limits and attachment checks. These studies share the controller and 018's rewrite/wood implementation. No new playable encounter or shadow rendering is implied.
+
+## Round 05 · nearly black translucent mantle
+
+Latest clarification supersedes foliage-like texture in earlier shadow paintings: near-black, mostly untextured cloud silhouettes, visible branches and sigils through them, a coloured fringe and arcs, subtle coloured wood glow. `shadow.html` tests this directly in 3D on the existing host/motion workshop. No additional living or shadow concept images were generated. See `shadow-notes.md` for depth/compositing, sigil readability, actual local light versus overlaid arcs, validation and limits. This does not change the current playable encounter or select a final cloud style.
+
+## Round 06 · painterly living foliage refinement
+
+The existing `canopy-growth.html` now compares Painterly volume with Previous rendering, following the user's request for research and further actual-render iteration against the original F5/F2/F6 images. The new treatment uses shared cluster normals, grouped colour/shading, procedural brush textures and somewhat fuller G1 fans. No new concept paintings or main-scene changes. See `painterly-notes.md` for first-hand artist sources, the inspection loop, remaining differences and validation. The prior rendering remains directly accessible with `?finish=previous`.
+
+## Round 07 · roiling shadow comparisons
+
+Latest feedback asks for more cloud-like billowing, a little more texture, brief forked lightning around the cloud exterior, and animated grazing-angle bark emission. `shadow.html` now compares three new constructions with the original three methods. Depth-only, lifted-skeleton and clear-host visibility modes explicitly test how much the cloud should obscure the algebra. See [storm-notes.md](storm-notes.md) for implementation, inspection, limits and remaining encounter integration.
+
+## Round 08 · shadow versions of living canopy constructions
+
+S7–S9 in `shadow.html` explore the living G1/G3/G2 patch layouts as shadow coverage: painted canopy, fibrous hanging shade and turbulent upright banks. The prior volume clouds remain. See [patch-shadow-notes.md](patch-shadow-notes.md) for the separate coverage pass, comparisons, visual revisions and limitations. No new generated paintings or playable-scene changes.
+
+### Round 08 · mixed lightning scales
+
+The user wants frequent small discharges, occasional medium arcs and substantially rarer large strikes. `Lightning mix` in `shadow.html` now exposes independent base rates (1.2 / .16 / .035 per second), three reach controls, rock-contact fraction and flash duration. Agitation multiplies rates by 1 + 1.5 × agitation. Preview buttons freeze small/medium/branch/rock examples; Resume animation restores the mixture. S1–S3 retain their historical renderer with these controls disabled.
+
+Small paths follow exposed canopy borders; medium forked paths bridge cloud groups; large paths connect projected points along current host members to other members or one of the study rocks. Reach chooses contact distance rather than shortening a bolt before it arrives. Strokes are a screen-space effect attached to 3D contacts, with host/sigil masking; they are not a physical discharge solver and do not yet produce transient environment lighting or strike arbitrary scene objects. The current two point lights and mock terrain remain unchanged pending discussion.
+
+Read-only browser inspection captured only defaults after the user's reset; the earlier preferred settings were not recovered. Do not describe the defaults as user-selected.
+
+Validation: `lightning-mix-check.cjs` checks independent event counts, disabled streams, short flashes, finite fork geometry and endpoint contact. Browser review compared all four previews and a rock strike during a regroup tween; no WebGL errors observed. Small strokes retain a faint contribution over canopy gaps so the patch mask does not erase them entirely. Medium/large strokes can cross open air, but still protect wood/sigils. Renderer loops are bounded at 80 segments, and exposed-border candidates are cached per event.
+
+### Temporal correction
+
+The initial lightning mix's jittered periodic clocks were rejected as unnatural. They are superseded by shared storm lulls/active spells with conditional Poisson arrivals and separately randomized intraflash strokes. New controls: Storm burstiness (zero = Poisson), Lull / active-spell timescale, Re-flash tendency. The frequency sliders retain their long-run mean meaning. See [lightning-timing-notes.md](lightning-timing-notes.md) for research, model choices, validation and limitations.
