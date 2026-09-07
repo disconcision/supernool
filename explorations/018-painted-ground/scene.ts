@@ -1,3 +1,4 @@
+import {createStartup} from './startup';
 import {createInhabitation} from './inhabited';
 import type {IdlePreview} from './lehi';
 import {addTravelHandControl} from './hand-travel';
@@ -7,6 +8,7 @@ import {fitZoom} from './framing';
 import * as T from 'three';import {createPerformanceStats} from './stats';import {StanceAdjustment} from './stance';import {createRibbon} from './ribbon';import {ScreenGuides} from './guides';import {addBackdrop} from './backdrop';import {makeClearing} from './terrain';import {makeSigil,disposeSigil} from './sigils';import {setupHUD} from './hud';import {createSound} from './sound';import {directionalContact} from './navigation';import {rules,ruleId,ruleColor,Pin,allowsPin,advanceSpring,catchPull} from './interaction';import {createTraveller} from './traveller';import {Gesture,gestures,scoreDrag} from './gestures';import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {Term,Action,initial,walk,count,format,readable,find,actions,replace,solved,hint} from './algebra';import {Pose,layout,transition} from './layout';import {Options,prepare} from './surface';import {makeShading} from './shading';
 const $=(id:string)=>document.getElementById(id)!,value=(id:string)=>($(id) as HTMLInputElement).value;
+const startup=createStartup();
 const inhabitedStudy=new URLSearchParams(location.search).get('inhabited')==='1';let freeStudyCamera=false;
 if(inhabitedStudy){document.title='supernool · 019 · Inhabited clearing';document.querySelector('header a')!.textContent='supernool · 019';document.querySelector('header h1')!.textContent='Inhabited clearing';document.body.dataset.study='019';}
 const renderer=new T.WebGLRenderer({antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setClearColor('#bac7c1');renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;$('world').append(renderer.domElement);
@@ -50,12 +52,12 @@ type Job={id:number;kind:'hero'|'deco';epoch:number;pose:Pose;options:Options;re
 let queue:Job[]=[],inflight:Job|undefined;const worker=new Worker(new URL('./mesh.worker.ts',import.meta.url),{type:'module'});
 function pump(){if(inflight||!queue.length)return;inflight=queue.shift()!;worker.postMessage({id:inflight.id,edges:inflight.pose.edges,options:inflight.options,resolution:inflight.resolution});}
 function submit(job:Job){if(job.kind==='hero')queue=queue.filter(j=>j.kind!=='hero');queue.push(job);pump();}
-worker.onmessage=event=>{const job=inflight;inflight=undefined;const data=event.data;if(!job||data.id!==job.id){pump();return;}if(data.error){$('message').textContent='The surface could not be rebuilt: '+data.error;animation=undefined;ui();pump();return;}
+worker.onmessage=event=>{const job=inflight;inflight=undefined;const data=event.data;if(!job||data.id!==job.id){pump();return;}if(data.error){if(!loaded)startup.fail('The tree could not be built. Please try again.');$('message').textContent='The surface could not be rebuilt: '+data.error;animation=undefined;ui();pump();return;}
  const geo=new T.BufferGeometry();geo.setAttribute('position',new T.BufferAttribute(data.position,3));geo.setAttribute('normal',new T.BufferAttribute(data.normal,3));geo.computeBoundingSphere();
- if(job.kind==='hero'&&job.epoch===epoch){treeMesh.geometry.dispose();treeMesh.geometry=geo;const members=data.edges.map((e:any)=>prepare({...e,a:new T.Vector3(e.a.x,e.a.y,e.a.z),b:new T.Vector3(e.b.x,e.b.y,e.b.z)},job.options));const shifted=members.map((m:any)=>({...m,r:m.r*treeScale,tip:m.tip*treeScale,e:{...m.e,a:treeWorld(m.e.a),b:treeWorld(m.e.b)},points:m.points.map(treeWorld)}));treeShade.feed(shifted,{...job.options,blend:job.options.blend*treeScale});poseNow=job.pose;updateRunes(job.pose);loaded=true;$('loading').hidden=true;$('cost').textContent=`${data.position.length/9|0} triangles · ${Math.round(data.ms)} ms worker rebuild. Camera and walking stay on the main thread.`;$('world').dataset.nodes=String(count(tree));$('world').dataset.term=format(tree);$('world').dataset.meshing='ready';
+ if(job.kind==='hero'&&job.epoch===epoch){treeMesh.geometry.dispose();treeMesh.geometry=geo;const members=data.edges.map((e:any)=>prepare({...e,a:new T.Vector3(e.a.x,e.a.y,e.a.z),b:new T.Vector3(e.b.x,e.b.y,e.b.z)},job.options));const shifted=members.map((m:any)=>({...m,r:m.r*treeScale,tip:m.tip*treeScale,e:{...m.e,a:treeWorld(m.e.a),b:treeWorld(m.e.b)},points:m.points.map(treeWorld)}));treeShade.feed(shifted,{...job.options,blend:job.options.blend*treeScale});poseNow=job.pose;updateRunes(job.pose);loaded=true;$('cost').textContent=`${data.position.length/9|0} triangles · ${Math.round(data.ms)} ms worker rebuild. Camera and walking stay on the main thread.`;$('world').dataset.nodes=String(count(tree));$('world').dataset.term=format(tree);$('world').dataset.meshing='ready';
   if(job.final&&animation){finishSettling();}else if(!animation&&!grip)ui(false);
  }else if(job.kind==='deco'){const s=job.scale!;const mat=new T.MeshStandardMaterial({color:'#7d8b77',roughness:1});const obj=new T.Mesh(geo,mat);obj.scale.setScalar(6*s);obj.position.copy(job.origin!).add(new T.Vector3(0,5*s,0));obj.castShadow=true;obj.userData.matteExclude=true;scene.add(obj);}else geo.dispose();pump();};
-worker.onerror=e=>{$('loading').textContent='Tree renderer error: '+e.message;};
+worker.onerror=e=>{startup.fail('The tree renderer could not start. Please try again.');$('message').textContent='Tree renderer error: '+e.message;};
 function finishSettling(){
  animation=undefined;selected=find(tree,selected)?selected:tree.id;
  if(exitAfterSettle){exitAfterSettle=false;clearMovement();handFocus=false;pin=undefined;hoverId=undefined;spotlight=undefined;lingerPoint=undefined;lastGesture=undefined;}
@@ -287,6 +289,12 @@ function tick(now:number){requestAnimationFrame(tick);const frameMs=now-last;con
  if(near!==nearOld){nearOld=near;if(!near&&grip)releaseGrip(false);ui();}runes.visible=near;(ring.material as T.MeshBasicMaterial).color.set(solved(tree)?'#f1ce79':near?'#e6ddb7':'#bac8a8');
  if(!animation&&!grip&&spread===0&&near&&document.querySelector<HTMLButtonElement>('#actions button')?.disabled)ui(false);
  requestPose(now);controls.update();frameTree(dt);updateHands(now,dt,moving);drawGuides();inhabitation.update(dt,poseNow,shapeSeed);mist.render(scene,camera,dt,{enabled:value('mistMode')==='on'&&value('backdrop')!=='plain'&&!new URLSearchParams(location.search).has('matteCapture'),strength:+value('mistDensity'),radius:+value('mistRadius'),texture:+value('mistTexture'),speed:+value('mistSpeed')},inhabitation.active?()=>inhabitation.render():undefined);stats.update(now,frameMs);
+ if(startup.pending){
+  // Both the original and current rock controls enable layout after loading;
+  // failed optional art retains the procedural scenery beneath it.
+  const rocksReady=!($('rockLayout') as HTMLSelectElement).disabled||/failed/i.test($('rockLoad').textContent??'');
+  startup.frameReady(loaded&&!inflight&&queue.length===0&&backdrop.ready&&lehi.ready()&&rocksReady);
+ }
  if(new URLSearchParams(location.search).has('matteCapture')){hero.visible=false;ring.visible=false;avatar.visible=false;scene.traverse(o=>{if(o.userData.matteExclude)o.visible=false;});}
  clearing.update(solved(tree)&&!grip&&!animation,dt);$('world').dataset.caught=String(grip?.caught??false);$('world').dataset.goal=String(solved(tree));
  $('world').dataset.near=String(near);$('world').dataset.busy=String(!!animation||!!grip);$('world').dataset.grip=grip?.chosen?.action.key??(grip?'holding':'none');$('world').dataset.gestureProgress=String(grip?.progress??0);$('world').dataset.springTarget=String(grip?.target??0);$('world').dataset.player=`${avatar.position.x.toFixed(2)},${avatar.position.z.toFixed(2)}`;

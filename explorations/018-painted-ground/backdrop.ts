@@ -30,7 +30,7 @@ export function addBackdrop(scene:T.Scene,world:HTMLElement,renderer:T.WebGLRend
  let shadows=true;
  const status=document.getElementById('backdropStatus')!;status.textContent='Camera-matched terrain blockout';
  let painted:T.Material|undefined,mode='block';
- const capture=new URLSearchParams(location.search).has('matteCapture');
+ const capture=new URLSearchParams(location.search).has('matteCapture');let ready=capture;
  if(!capture){const loader=new T.TextureLoader();Promise.all([new URL('./assets/clearing-dirt-v6.png',import.meta.url).href,new URL('./assets/clearing-dirt-v5.png',import.meta.url).href].map(url=>loader.loadAsync(url))).then(([map,margin])=>{
   for(const texture of [map,margin]){texture.colorSpace=T.SRGBColorSpace;texture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());}
   painted=new T.ShaderMaterial({uniforms:{paint:{value:map},marginPaint:{value:margin},localPositions:localLight.positions,localTint:localLight.tint,localReach:localLight.reach,localGain:localLight.gain},vertexShader:`varying vec2 vUv; varying vec3 vColor; varying vec3 vWorld;varying vec3 vGroundNormal; attribute vec3 color;
@@ -51,6 +51,6 @@ export function addBackdrop(scene:T.Scene,world:HTMLElement,renderer:T.WebGLRend
     #include <colorspace_fragment>
    }`,toneMapped:false});
   if(mode!=='block')terrain.material=painted;status.textContent='Original-scale dirt painting · separate outer margin';
- }).catch(()=>{status.textContent='Terrain blockout · painting unavailable';});}
- return {setLocalLight(lights:{position:T.Vector3;intensity:number}[],tint:T.Color,reach:number,gain:number){localLight.positions.value.forEach((p,i)=>{const l=lights[i];if(l)p.set(l.position.x,l.position.y,l.position.z,l.intensity);else p.w=0;});localLight.tint.value.copy(tint);localLight.reach.value=reach;localLight.gain.value=gain;},setGroundShadows(on:boolean){shadows=on;terrain.receiveShadow=on;contact.visible=on&&mode==='painted';},set(next:string){mode=next;group.visible=next!=='plain';terrain.material=next==='block'||!painted?block:painted;contact.visible=shadows&&next==='painted';}};
+ }).catch(()=>{status.textContent='Terrain blockout · painting unavailable';}).finally(()=>{ready=true;});}
+ return {get ready(){return ready;},setLocalLight(lights:{position:T.Vector3;intensity:number}[],tint:T.Color,reach:number,gain:number){localLight.positions.value.forEach((p,i)=>{const l=lights[i];if(l)p.set(l.position.x,l.position.y,l.position.z,l.intensity);else p.w=0;});localLight.tint.value.copy(tint);localLight.reach.value=reach;localLight.gain.value=gain;},setGroundShadows(on:boolean){shadows=on;terrain.receiveShadow=on;contact.visible=on&&mode==='painted';},set(next:string){mode=next;group.visible=next!=='plain';terrain.material=next==='block'||!painted?block:painted;contact.visible=shadows&&next==='painted';}};
 }
