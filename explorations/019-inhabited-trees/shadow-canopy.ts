@@ -4,7 +4,7 @@ import {hash} from './canopy';
 import {makeShadowPatches,isPatchForm} from './shadow-patches';
 import {makeShadowCanopy as makeLegacy,ShadowOptions as LegacyOptions} from './shadow-legacy';
 import {mixedLightning,ProjectedLobe,ArcSettings,ArcPreview,LightningMemory} from './storm-lightning';
-export type ShadowOptions=LegacyOptions&{visibility:string;roil:number;seed:number;density:number;fray:number;lightning:ArcSettings;arcPreview?:ArcPreview;strikePoints:T.Vector3[]};
+export type ShadowOptions=LegacyOptions&{visibility:string;roil:number;seed:number;density:number;fray:number;lightning:ArcSettings;arcPreview?:ArcPreview;strikePoints:T.Vector3[];arcGlow?:number;cloudFlash?:number};
 const MAX=64,ARC=80;
 export function makeShadowCanopy(renderer:T.WebGLRenderer){
  const smallMemory:LightningMemory={};let lastEvents:ReturnType<typeof mixedLightning>['events']=[];let lastForm='';const patches=makeShadowPatches();
@@ -12,11 +12,11 @@ export function makeShadowCanopy(renderer:T.WebGLRenderer){
  const target=new T.WebGLRenderTarget(1,1,{type:T.HalfFloatType,depthBuffer:true,samples:4});target.depthTexture=new T.DepthTexture(1,1,T.UnsignedIntType);
  // A separate silhouette mask is an explicit readability treatment, not physical transmission.
  const host=new T.WebGLRenderTarget(1,1,{depthBuffer:true,samples:4});const maskMat=new T.MeshBasicMaterial({color:'white',side:T.DoubleSide});
- const u={patchCoverage:{value:patches.target.texture},patchMode:{value:0},sceneColour:{value:target.texture},sceneDepth:{value:target.depthTexture},hostMask:{value:host.texture},invProjection:{value:new T.Matrix4()},cameraWorld:{value:new T.Matrix4()},centres:{value:Array.from({length:MAX},()=>new T.Vector4())},radii:{value:Array.from({length:MAX},()=>new T.Vector3())},count:{value:0},opacity:{value:.72},fringe:{value:.55},textureAmount:{value:.18},clock:{value:0},roil:{value:.65},preserveHost:{value:.65},tint:{value:new T.Color('#9260d9')},resolution:{value:new T.Vector2()},segments:{value:Array.from({length:ARC},()=>new T.Vector4())},weights:{value:new Float32Array(ARC)},powers:{value:new Float32Array(ARC)},freeArcs:{value:new Float32Array(ARC)},arcCount:{value:0},arcPower:{value:0}};
- const mat=new T.ShaderMaterial({depthTest:false,depthWrite:false,uniforms:u,vertexShader:'varying vec2 uv0;void main(){uv0=uv;gl_Position=vec4(position.xy,0.,1.);}',fragmentShader:`
+ const u={patchCoverage:{value:patches.target.texture},patchMode:{value:0},sceneColour:{value:target.texture},sceneDepth:{value:target.depthTexture},hostMask:{value:host.texture},invProjection:{value:new T.Matrix4()},cameraWorld:{value:new T.Matrix4()},centres:{value:Array.from({length:MAX},()=>new T.Vector4())},radii:{value:Array.from({length:MAX},()=>new T.Vector3())},count:{value:0},opacity:{value:.72},fringe:{value:.55},textureAmount:{value:.18},clock:{value:0},roil:{value:.65},preserveHost:{value:.65},tint:{value:new T.Color('#9260d9')},resolution:{value:new T.Vector2()},segments:{value:Array.from({length:ARC},()=>new T.Vector4())},weights:{value:new Float32Array(ARC)},powers:{value:new Float32Array(ARC)},freeArcs:{value:new Float32Array(ARC)},arcGlow:{value:1},cloudFlash:{value:0},arcCount:{value:0},arcPower:{value:0}};
+ const mat=new T.ShaderMaterial({depthTest:true,depthFunc:T.AlwaysDepth,depthWrite:true,uniforms:u,vertexShader:'varying vec2 uv0;void main(){uv0=uv;gl_Position=vec4(position.xy,0.,1.);}',fragmentShader:`
  varying vec2 uv0;uniform sampler2D sceneColour,sceneDepth,hostMask,patchCoverage;uniform float patchMode;uniform mat4 invProjection,cameraWorld;
  uniform vec4 centres[64];uniform vec3 radii[64];uniform int count;uniform float opacity,fringe,textureAmount,clock,roil,preserveHost;uniform vec3 tint;uniform vec2 resolution;
- uniform vec4 segments[80];uniform float weights[80],powers[80],freeArcs[80];uniform int arcCount;uniform float arcPower;
+ uniform vec4 segments[80];uniform float weights[80],powers[80],freeArcs[80];uniform int arcCount;uniform float arcPower,arcGlow,cloudFlash;
  vec3 unproject(float depth){vec4 p=invProjection*vec4(uv0*2.-1.,depth*2.-1.,1.);return (cameraWorld*vec4(p.xyz/p.w,1.)).xyz;}
  float h(vec3 p){return fract(sin(dot(p,vec3(17.1,113.7,41.3)))*43758.5453);}
  float noise(vec3 p){vec3 a=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(mix(h(a),h(a+vec3(1,0,0)),f.x),mix(h(a+vec3(0,1,0)),h(a+vec3(1,1,0)),f.x),f.y),mix(mix(h(a+vec3(0,0,1)),h(a+vec3(1,0,1)),f.x),mix(h(a+vec3(0,1,1)),h(a+vec3(1,1,1)),f.x),f.y),f.z);}
@@ -49,17 +49,18 @@ export function makeShadowCanopy(renderer:T.WebGLRenderer){
  float edgeVariation=.65+.35*surfaceNoise;float rim=exp(-abs(edge-1.)*24.)*fringe*edgeVariation;float halo=exp(-abs(edge-1.)*8.)*fringe*.07;
  if(patchMode>.5){vec2 px=2./resolution;float around=max(max(texture2D(patchCoverage,uv0+vec2(px.x,0)).r,texture2D(patchCoverage,uv0-vec2(px.x,0)).r),max(texture2D(patchCoverage,uv0+vec2(0,px.y)).r,texture2D(patchCoverage,uv0-vec2(0,px.y)).r));
  rim=abs(around-coverage.r)*fringe*1.15;halo=0.;}
- colour+=tint*(rim*.26+halo)*preserve;
- float bolt=0.;for(int j=0;j<80;j++){if(j>=arcCount)break;vec2 a=segments[j].xy*resolution,b=segments[j].zw*resolution,p=uv0*resolution;vec2 d=b-a;float t=clamp(dot(p-a,d)/max(dot(d,d),.0001),0.,1.);float dist=length(p-a-d*t),width=weights[j];bolt=max(bolt,(exp(-dist*dist/max(.2,width*.8))+.1*exp(-dist*dist/14.))*width*powers[j]*(patchMode>.5&&freeArcs[j]<.5?(.25+.75*smoothstep(.015,.12,coverage.r)):1.));}
+ colour+=tint*((rim*.26+halo)*preserve+body*cloudFlash*.055*(.4+surfaceNoise));
+ float bolt=0.;for(int j=0;j<80;j++){if(j>=arcCount)break;vec2 a=segments[j].xy*resolution,b=segments[j].zw*resolution,p=uv0*resolution;vec2 d=b-a;float t=clamp(dot(p-a,d)/max(dot(d,d),.0001),0.,1.);float dist=length(p-a-d*t),width=weights[j];bolt=max(bolt,(exp(-dist*dist/max(.2,width*.8))+.1*arcGlow*exp(-dist*dist/(14.+arcGlow*12.)))*width*powers[j]*(patchMode>.5&&freeArcs[j]<.5?(.25+.75*smoothstep(.015,.12,coverage.r)):1.));}
  // Even Depth-only mode keeps discharge strokes off the algebra and wood.
  colour+=mix(tint,vec3(1.),.35)*bolt*arcPower*(1.-mask);
- gl_FragColor=vec4(colour,1.);
+ gl_FragColor=vec4(colour,1.);gl_FragDepth=texture2D(sceneDepth,uv0).r;
  #include <tonemapping_fragment>
  #include <colorspace_fragment>
  }`});
  const screen=new T.Scene();screen.add(new T.Mesh(new T.PlaneGeometry(2,2),mat));const screenCamera=new T.Camera();let anchors:{id:string;point:T.Vector3;scale:number}[]=[];
  function setPose(p:Pose){pose=p;legacy?.setPose(p);anchors=[];for(const e of p.edges){if(e.id==='stem')continue;const node=p.nodes.get(e.id);if(node?.kind!=='op'||hash(e.id+'cloud')>.6)anchors.push({id:e.id,point:e.b.clone(),scale:Math.min(1,e.a.distanceTo(e.b)/.75)*(node?.kind==='op'?.64:1)});}}
  function render(scene:T.Scene,camera:T.OrthographicCamera,o:ShadowOptions){
+ const destination=renderer.getRenderTarget();u.arcGlow.value=o.arcGlow??1;u.cloudFlash.value=o.cloudFlash??0;
  lastLegacy=['S1','S2','S3'].includes(o.form);if(lastLegacy){lastForm=o.form;if(!legacy){legacy=makeLegacy(renderer);if(pose)legacy.setPose(pose);}legacy.render(scene,camera,o);return;}
  const patchMode=isPatchForm(o.form);u.patchMode.value=patchMode?1:0;
  const size=renderer.getDrawingBufferSize(new T.Vector2());if(target.width!==size.x||target.height!==size.y){target.setSize(size.x,size.y);host.setSize(size.x,size.y);}u.resolution.value.copy(size);
@@ -88,14 +89,14 @@ export function makeShadowCanopy(renderer:T.WebGLRenderer){
  projected.push({x:p.x*.5+.5,y:p.y*.5+.5,rx:Math.hypot(px.x,py.x,pz.x)*.5,ry:Math.hypot(px.y,py.y,pz.y)*.5});
  }}
  u.count.value=o.enabled?n:0;
- renderer.info.reset();renderer.info.autoReset=false;renderer.setRenderTarget(target);renderer.render(scene,camera);
+ const autoReset=renderer.info.autoReset;if(autoReset)renderer.info.reset();renderer.info.autoReset=false;renderer.setRenderTarget(target);renderer.render(scene,camera);
  if(patchMode&&pose){projected=patches.render(renderer,camera,target.depthTexture,pose,o);if(!o.enabled){renderer.setRenderTarget(patches.target);renderer.clear();u.patchMode.value=0;}}
  if(lastForm!==o.form){smallMemory.key=undefined;smallMemory.events?.clear();}lastForm=o.form;const project=(p:T.Vector3)=>{const q=p.clone().project(camera);return new T.Vector2(q.x*.5+.5,q.y*.5+.5);};
  const branchPoints=(pose?.edges??[]).filter(e=>e.id!=='stem').map(e=>project(e.a.clone().lerp(e.b,.72)));
  const bolt=mixedLightning(projected,branchPoints,o.strikePoints.map(project),o.time,o.anger,o.lightning,o.arcPreview,smallMemory);lastEvents=bolt.events;u.arcCount.value=o.enabled&&o.arcs?Math.min(ARC,bolt.segments.length):0;u.arcPower.value=bolt.segments.length?1:0;
  for(let i=0;i<u.arcCount.value;i++){const s=bolt.segments[i];u.segments.value[i].set(s.a.x,s.a.y,s.b.x,s.b.y);u.weights.value[i]=s.weight;u.powers.value[i]=s.power;u.freeArcs.value[i]=s.free?1:0;}
- const background=scene.background,override=scene.overrideMaterial,layers=camera.layers.mask;scene.background=new T.Color('black');scene.overrideMaterial=maskMat;camera.layers.set(1);renderer.setRenderTarget(host);renderer.render(scene,camera);scene.background=background;scene.overrideMaterial=override;camera.layers.mask=layers;
- renderer.setRenderTarget(null);renderer.render(screen,screenCamera);renderer.info.autoReset=true;
+ const background=scene.background,override=scene.overrideMaterial,layers=camera.layers.mask,shadowUpdate=renderer.shadowMap.autoUpdate;renderer.shadowMap.autoUpdate=false;scene.background=new T.Color('black');scene.overrideMaterial=maskMat;camera.layers.set(1);renderer.setRenderTarget(host);renderer.render(scene,camera);scene.background=background;scene.overrideMaterial=override;camera.layers.mask=layers;renderer.shadowMap.autoUpdate=shadowUpdate;
+ renderer.setRenderTarget(destination);renderer.render(screen,screenCamera);renderer.info.autoReset=autoReset;
  }
  function inspect(){const data=lastLegacy?legacy!.inspect():{volumes:u.count.value,arcs:u.arcCount.value,arcPower:u.arcPower.value,opacity:u.opacity.value,protection:u.preserveHost.value,time:u.clock.value,centres:u.centres.value.slice(0,u.count.value).map(c=>c.toArray()),radii:u.radii.value.slice(0,u.count.value).map(r=>r.toArray())};return {...data,events:lastEvents,patches:isPatchForm(lastForm)?patches.inspect():undefined};}
  return {setPose,render,inspect};

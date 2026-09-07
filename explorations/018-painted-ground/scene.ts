@@ -1,3 +1,4 @@
+import {createInhabitation} from './inhabited';
 import type {IdlePreview} from './lehi';
 import {addTravelHandControl} from './hand-travel';
 import {setupControlReadouts} from './control-readouts';
@@ -32,6 +33,7 @@ const wood=()=>new T.MeshStandardMaterial({color:'#bba078',roughness:.9});const 
 const materials={carved:treeShade.carved(wood()),cel:treeShade.carved(cel()),smooth:wood(),smoothCel:cel()};
 const treeMesh=new T.Mesh<T.BufferGeometry,T.Material>(new T.BufferGeometry(),materials.carved);treeMesh.position.y=5;treeMesh.scale.setScalar(6);treeMesh.castShadow=true;treeMesh.receiveShadow=true;hero.add(treeMesh);
 const runes=new T.Group();hero.add(runes);
+const inhabitation=createInhabitation(renderer,scene,camera,treeMesh,Object.values(materials),treeWorld,treeScale,clearing.touchPoints,backdrop,sun);
 let tree=initial(),selected=tree.id,steps=0,history:{tree:Term;steps:number}[]=[],future:{tree:Term;steps:number}[]=[],near=false,loaded=false,epoch=0,shapeSeed=2,spread=1,navTarget:T.Vector3|undefined,suggested:{id:string;key:string}|undefined;
 let exitAfterSettle=false;
 let animation:{before:Term;after:Term;start:number;kind:string;merge:Record<string,string>;from:number;to:number;duration:number}|undefined,poseNow:Pose|undefined,lastKey='',idCounter=0;
@@ -282,7 +284,7 @@ function tick(now:number){requestAnimationFrame(tick);const frameMs=now-last;con
  const target=near?0:+value('spread'),next=spread+(target-spread)*(1-Math.exp(-dt*4));spread=Math.abs(next-target)<.008?target:Math.round(next*1000)/1000;
  if(near!==nearOld){nearOld=near;if(!near&&grip)releaseGrip(false);ui();}runes.visible=near;(ring.material as T.MeshBasicMaterial).color.set(solved(tree)?'#f1ce79':near?'#e6ddb7':'#bac8a8');
  if(!animation&&!grip&&spread===0&&near&&document.querySelector<HTMLButtonElement>('#actions button')?.disabled)ui(false);
- requestPose(now);controls.update();frameTree(dt);updateHands(now,dt,moving);drawGuides();mist.render(scene,camera,dt,{enabled:value('mistMode')==='on'&&value('backdrop')!=='plain'&&!new URLSearchParams(location.search).has('matteCapture'),strength:+value('mistDensity'),radius:+value('mistRadius'),texture:+value('mistTexture'),speed:+value('mistSpeed')});stats.update(now,frameMs);
+ requestPose(now);controls.update();frameTree(dt);updateHands(now,dt,moving);drawGuides();inhabitation.update(dt,poseNow,shapeSeed);mist.render(scene,camera,dt,{enabled:value('mistMode')==='on'&&value('backdrop')!=='plain'&&!new URLSearchParams(location.search).has('matteCapture'),strength:+value('mistDensity'),radius:+value('mistRadius'),texture:+value('mistTexture'),speed:+value('mistSpeed')},inhabitation.active?()=>inhabitation.render():undefined);stats.update(now,frameMs);
  if(new URLSearchParams(location.search).has('matteCapture')){hero.visible=false;ring.visible=false;avatar.visible=false;scene.traverse(o=>{if(o.userData.matteExclude)o.visible=false;});}
  clearing.update(solved(tree)&&!grip&&!animation,dt);$('world').dataset.caught=String(grip?.caught??false);$('world').dataset.goal=String(solved(tree));
  $('world').dataset.near=String(near);$('world').dataset.busy=String(!!animation||!!grip);$('world').dataset.grip=grip?.chosen?.action.key??(grip?'holding':'none');$('world').dataset.gestureProgress=String(grip?.progress??0);$('world').dataset.springTarget=String(grip?.target??0);$('world').dataset.player=`${avatar.position.x.toFixed(2)},${avatar.position.z.toFixed(2)}`;
@@ -314,4 +316,8 @@ const idlePreviewHelp=document.createElement('small');idlePreviewHelp.textConten
 const idlePreviewStatus=document.createElement('small');idlePreviewStatus.id='idlePreviewStatus';idlePreviewStatus.setAttribute('role','status');idlePreviewStatus.textContent='Choose an animation, then play.';
 idleTest.append(idlePreviewPlay,idlePreviewStop,idlePreviewHelp,idlePreviewStatus);travellerPanel.append(idleTest);
 const handReview=document.createElement('a');handReview.href='avatar-review.html?hands';handReview.target='_blank';handReview.rel='noopener';handReview.textContent='Compare travelling hands up close ↗';handReview.style.display='block';travellerPanel.append(handReview);
+inhabitation.mount($('settings'));
 setupControlReadouts();ui();requestAnimationFrame(tick);
+
+// Read-only integration diagnostics; rendering uses the displayed worker pose.
+(window as any).__inhabited=()=>({ ...inhabitation.inspect(),displayedIds:poseNow?[...poseNow.nodes.keys()]:[],treeIds:walk(tree).map(n=>n.id)});

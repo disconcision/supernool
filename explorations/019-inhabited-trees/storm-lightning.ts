@@ -49,6 +49,12 @@ function forkedPath(a:T.Vector2,b:T.Vector2,key:string,weight:number):BoltSegmen
  for(let i=1;i<=4;i++){const p=origin.clone().lerp(end,i/4).addScaledVector(normal,(hash(key+j+':'+i)-.5)*length*.035*Math.sin(Math.PI*i/4));segments.push({a:last,b:p,weight:weight*(.42-i*.065)});last=p;}}
  return segments;
 }
+export function largeContact(branches:T.Vector2[],rocks:T.Vector2[],slot:number,scale:number,rockShare:number,preview?:ArcPreview){
+ if(!branches.length)return;
+ const key='large'+slot,rock=preview==='rock'||(preview!=='branch'&&hash(key+'target')<rockShare),from=Math.floor(hash(key+'origin')*branches.length),a=branches[from];
+ const choices=(rock?rocks:branches).map((p,index)=>({p,index})).filter(({p})=>p.distanceTo(a)>.025).sort((x,y)=>x.p.distanceTo(a)-y.p.distanceTo(a));if(!choices.length)return;
+ const b=choices[Math.min(choices.length-1,Math.floor(T.MathUtils.clamp(.45+scale*.275,0,1)*(choices.length-1)))];return {from,to:b.index,rock,a,b:b.p};
+}
 export function mixedLightning(lobes:ProjectedLobe[],branches:T.Vector2[],rocks:T.Vector2[],time:number,anger:number,o:ArcSettings,preview?:ArcPreview,memory:LightningMemory={}){
  const segments:MixedSegment[]=[],events:{kind:ArcClass;target:string;power:number}[]=[];
  if(!lobes.length)return {segments,events};
@@ -69,11 +75,8 @@ export function mixedLightning(lobes:ProjectedLobe[],branches:T.Vector2[],rocks:
  }else{
  let a=at(source,hash(key+'angle')*Math.PI*2),b:T.Vector2;
  if(kind==='large'){
- const rock=preview==='rock'||(preview!=='branch'&&hash(key+'target')<o.rockShare);
- const origins=branches.length?branches:[a];a=origins[Math.floor(hash(key+'origin')*origins.length)].clone();
- const choices=(rock?rocks:branches).filter(p=>p.distanceTo(a)>.025).sort((x,y)=>x.distanceTo(a)-y.distanceTo(a));
- if(!choices.length)continue;
- b=choices[Math.min(choices.length-1,Math.floor(T.MathUtils.clamp(.45+scale*.275,0,1)*(choices.length-1)))].clone();target=rock?'rock':'branch';
+ const contact=largeContact(branches.length?branches:[a],rocks,event.slot,scale,o.rockShare,preview);if(!contact)continue;
+ a=contact.a.clone();b=contact.b.clone();target=contact.rock?'rock':'branch';
  }else{
  const choices=lobes.filter(l=>l!==source).sort((x,y)=>Math.hypot(x.x-a.x,x.y-a.y)-Math.hypot(y.x-a.x,y.y-a.y));
  const dest=choices[Math.min(choices.length-1,Math.floor(choices.length*.3*scale))]??source;

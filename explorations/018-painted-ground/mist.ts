@@ -55,10 +55,10 @@ export function createMist(renderer:T.WebGLRenderer){
  const quad=new T.Mesh(new T.PlaneGeometry(2,2),material);quad.frustumCulled=false;screen.add(quad);
  let time=0;
  return {
-  render(scene:T.Scene,view:T.Camera,dt:number,settings:{enabled:boolean;strength:number;radius:number;texture:number;speed:number}){
-   if(!settings.enabled||settings.strength===0){renderer.render(scene,view);return;}
+  render(scene:T.Scene,view:T.Camera,dt:number,settings:{enabled:boolean;strength:number;radius:number;texture:number;speed:number},drawWorld?:()=>void){
+   if((!settings.enabled||settings.strength===0)&&!drawWorld){renderer.render(scene,view);return;}
    time+=dt*settings.speed;uniforms.mistTime.value=time;
-   uniforms.strength.value=settings.strength;uniforms.startRadius.value=settings.radius;uniforms.textureAmount.value=settings.texture;
+   uniforms.strength.value=settings.enabled?settings.strength:0;uniforms.startRadius.value=settings.radius;uniforms.textureAmount.value=settings.texture;
    renderer.getDrawingBufferSize(size);if(target.width!==size.x||target.height!==size.y)target.setSize(size.x,size.y);
    uniforms.inverseProjection.value.copy(view.projectionMatrixInverse);uniforms.cameraWorld.value.copy(view.matrixWorld);
    const previous=renderer.getRenderTarget(),autoReset=renderer.info.autoReset,autoClear=renderer.autoClear;
@@ -74,7 +74,7 @@ export function createMist(renderer:T.WebGLRenderer){
    renderer.info.autoReset=false;renderer.info.reset();
    try{
     roots.forEach(o=>o.visible=false);
-    renderer.setRenderTarget(target);renderer.render(scene,view);
+    renderer.setRenderTarget(target);if(drawWorld)drawWorld();else renderer.render(scene,view);
     roots.forEach(o=>o.visible=true);
     renderer.setRenderTarget(previous);renderer.render(screen,camera);
     // Preserve the established sigil → ribbon → hand → guide draw order.
