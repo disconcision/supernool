@@ -1,0 +1,60 @@
+{
+  "source": "018-painted-ground",
+  "viewport": {
+    "width": 1600,
+    "height": 1000
+  },
+  "notes": "Actual mouse rewrites; header/docks hidden for reference; mist drift frozen. Live automatic framing retained.",
+  "states": [
+    {
+      "step": 0,
+      "term": "((((2 × x) + 0) + y) + ((3 × x) + 0))",
+      "nodes": "13",
+      "zoom": "1.00000",
+      "goal": "false"
+    },
+    {
+      "step": 1,
+      "term": "(((3 × x) + 0) + (((2 × x) + 0) + y))",
+      "nodes": "13",
+      "zoom": "0.99543",
+      "goal": "false"
+    },
+    {
+      "step": 2,
+      "term": "((((3 × x) + 0) + ((2 × x) + 0)) + y)",
+      "nodes": "13",
+      "zoom": "0.95870",
+      "goal": "false"
+    },
+    {
+      "step": 3,
+      "term": "(((3 × x) + ((2 × x) + 0)) + y)",
+      "nodes": "11",
+      "zoom": "0.96258",
+      "goal": "false"
+    },
+    {
+      "step": 4,
+      "term": "(((3 × x) + (2 × x)) + y)",
+      "nodes": "9",
+      "zoom": "0.97310",
+      "goal": "false"
+    },
+    {
+      "step": 5,
+      "term": "(((3 + 2) × x) + y)",
+      "nodes": "7",
+      "zoom": "0.98051",
+      "goal": "false"
+    },
+    {
+      "step": 6,
+      "term": "((5 × x) + y)",
+      "nodes": "5",
+      "zoom": "0.98578",
+      "goal": "true"
+    }
+  ],
+  "errors": []
+}

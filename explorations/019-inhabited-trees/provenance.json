@@ -1,0 +1,62 @@
+[
+  {
+    "id": "01-arrival",
+    "method": "Built-in image_gen imagegen",
+    "sourceOutput": "/Users/andrewblinn/.codex/generated_images/01a07563-399b-7f62-8731-6ed1b6a17b48/exec-b4e98b80-964f-4270-ba12-b26cc0eb8231.png",
+    "file": "concepts/01-arrival.png",
+    "prompt": "concepts/01-arrival-prompt.txt",
+    "status": "Provisional concept, awaiting user feedback",
+    "reference": "references/state-0.png",
+    "additionalStyleReference": null
+  },
+  {
+    "id": "02-concentration-rejected",
+    "method": "Built-in image_gen imagegen",
+    "sourceOutput": "/Users/andrewblinn/.codex/generated_images/01a07563-399b-7f62-8731-6ed1b6a17b48/exec-4e7b40a2-6396-49a0-a54f-f9e2d8926760.png",
+    "file": "concepts/02-concentration-rejected.png",
+    "prompt": "concepts/02-concentration-rejected-prompt.txt",
+    "status": "Rejected: copied earlier topology, reintroduced removed nodes",
+    "reference": "references/state-4.png",
+    "additionalStyleReference": "concepts/01-arrival.png"
+  },
+  {
+    "id": "02-concentration",
+    "method": "Built-in image_gen imagegen",
+    "sourceOutput": "/Users/andrewblinn/.codex/generated_images/01a07563-399b-7f62-8731-6ed1b6a17b48/exec-49bf2b21-644a-4fe0-a438-4be0657939ea.png",
+    "file": "concepts/02-concentration.png",
+    "prompt": "concepts/02-concentration-prompt.txt",
+    "status": "Provisional concept, awaiting user feedback",
+    "reference": "references/state-4.png",
+    "additionalStyleReference": null
+  },
+  {
+    "id": "03-release",
+    "method": "Built-in image_gen imagegen",
+    "sourceOutput": "/Users/andrewblinn/.codex/generated_images/01a07563-399b-7f62-8731-6ed1b6a17b48/exec-7cf4b324-640e-4a91-9d9b-6bad255759c4.png",
+    "file": "concepts/03-release.png",
+    "prompt": "concepts/03-release-prompt.txt",
+    "status": "Provisional concept, awaiting user feedback",
+    "reference": "references/state-6.png",
+    "additionalStyleReference": null
+  },
+  {
+    "id": "04-first-leaves",
+    "method": "Built-in image_gen imagegen",
+    "sourceOutput": "/Users/andrewblinn/.codex/generated_images/01a07563-399b-7f62-8731-6ed1b6a17b48/exec-aeb789b2-d44d-4b23-98e2-4d8f71918b00.png",
+    "file": "concepts/04-first-leaves.png",
+    "prompt": "concepts/04-first-leaves-prompt.txt",
+    "status": "Provisional concept, awaiting user feedback",
+    "reference": "references/state-6.png",
+    "additionalStyleReference": null
+  },
+  {
+    "id": "05-recovered",
+    "method": "Built-in image_gen imagegen",
+    "sourceOutput": "/Users/andrewblinn/.codex/generated_images/01a07563-399b-7f62-8731-6ed1b6a17b48/exec-0c266724-7443-46b3-a058-ac1f2e5b0875.png",
+    "file": "concepts/05-recovered.png",
+    "prompt": "concepts/05-recovered-prompt.txt",
+    "status": "Provisional concept, awaiting user feedback",
+    "reference": "references/state-6.png",
+    "additionalStyleReference": null
+  }
+]

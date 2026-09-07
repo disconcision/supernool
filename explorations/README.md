@@ -46,3 +46,5 @@ Study 006 implements the next 3D surface experiment. It remeshes a capsule field
 | 017 | [Resonant clearing](017-resonant-clearing/index.html) | Latched catch, audio, collapsible white UI, seed/operator sigils, mossy rocks and glowing exit routes. 016 retained. |
 
 | 018 | [Painted ground](018-painted-ground/index.html) | Camera-guided matte loop, projected terrain, dimensional sigils, input feedback and goal release. 017 preserved. |
+
+| 019 | [Inhabited trees · concept phase](019-inhabited-trees/index.html) | Five screenshot-led keyframes: spectral foliage, concentration, release, first leaves and biological regrowth. 018 remains playable. |
