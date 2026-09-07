@@ -21,23 +21,23 @@ export class IdleCatch {
  private launch=new T.Vector3();private restingRotation=new T.Quaternion();private attachedRotation=new T.Quaternion();
  private loose=false;private bounces=0;private cooldown=7;
  private throwDirection=new T.Vector3();private throwRotation=new T.Quaternion();private departureCenter=new T.Vector3();
- private requestedHand?:number;
+ private requestedHand?:number;private pickupRadius=1.6;
  private windupTime=1.3;private feintSide=1;private feintWidth=.3;private readCue=0;private cue=0;private shufflePhase=0;
  private throwSide=new T.Vector3();
  private safe:(p:T.Vector3)=>boolean=()=>true;
  constructor(private random:()=>number=Math.random){}
  setProps(props:CatchProp[],safe?:(p:T.Vector3)=>boolean){this.cancel();this.props=props;this.safe=safe??(()=>true);}
  setEnabled(on:boolean){this.enabled=on;if(!on)this.cancel();}
- requestStart(hand:number){this.requestedHand=hand;this.idle=this.cooldown;}
+ requestStart(hand:number,radius=1.6){this.pickupRadius=radius;this.requestedHand=hand;this.idle=this.cooldown;}
  /** Catch is an opportunity at the wandering hand, not a trip across the body. */
- private pickupFor(hand:number,root:T.Object3D,hands:T.Object3D[]){
+ private pickupFor(hand:number,root:T.Object3D,hands:T.Object3D[],radius=1.6){
   const from=hands[hand].position;
-  return this.props.filter(p=>p.object.visible&&Math.hypot(p.object.position.x-from.x,p.object.position.z-from.z)<=1.6&&
+  return this.props.filter(p=>p.object.visible&&Math.hypot(p.object.position.x-from.x,p.object.position.z-from.z)<=radius&&
    Math.hypot(p.object.position.x-root.position.x,p.object.position.z-root.position.z)<4.6&&
    [0,.2,.4,.6,.8,1].every(t=>{const at=from.clone().lerp(p.object.position,t);return Math.hypot(at.x-root.position.x,at.z-root.position.z)>.8&&this.safe(at);}))
    .sort((a,b)=>Math.hypot(a.object.position.x-from.x,a.object.position.z-from.z)-Math.hypot(b.object.position.x-from.x,b.object.position.z-from.z))[0];
  }
- nearbyHand(root:T.Object3D,hands:T.Object3D[],eligible:boolean[],preferred:number){return [preferred,1-preferred].find(i=>eligible[i]&&!!this.pickupFor(i,root,hands));}
+ nearbyHand(root:T.Object3D,hands:T.Object3D[],eligible:boolean[],preferred:number,radius=1.6){return [preferred,1-preferred].find(i=>eligible[i]&&!!this.pickupFor(i,root,hands,radius));}
  get disengaging(){return this.phase==='startle'||this.phase==='depart'||this.phase==='rejoin';}
  get active(){return this.phase!=='rest';}
  get state(){return {phase:this.phase,holder:this.holder,separation:this.homes.length?this.homes[0].position.distanceTo(this.homes[1].position):0,stone:this.prop?.object.userData.rockSeed??null,held:this.held,loose:this.loose,throws:this.throws,catches:this.catches,misses:this.misses,sessions:this.sessions,age:this.age,flightTime:this.flightTime,position:this.prop?.object.position.toArray()??null,windupTime:this.windupTime,cue:this.cue,readCue:this.readCue,hands:this.poses.map(p=>({position:p.position.toArray(),orientation:p.orientation.toArray(),grasp:p.grasp}))};}
@@ -56,7 +56,7 @@ export class IdleCatch {
  cancel(){
   if(this.phase==='flight'){this.velocity.y-=9.8*Math.min(this.age,this.flightTime);this.loose=true;this.bounces=0;}
   if(this.held){this.syncHeld();this.held=false;this.loose=true;this.velocity.set(0,0,0);this.bounces=0;}
-  this.phase='rest';this.idle=0;this.cooldown=7+this.random()*4;
+  this.phase='rest';this.idle=0;this.requestedHand=undefined;this.pickupRadius=1.6;this.cooldown=7+this.random()*4;
  }
  private drop(dt:number){
   if(!this.loose||!this.prop)return;
@@ -125,8 +125,9 @@ export class IdleCatch {
   if(this.phase==='rest'){
    this.drop(dt);if(this.loose)return;if(!canStart){this.idle=0;return;}
    this.idle+=dt;if(this.idle<this.cooldown)return;
+   const radius=this.pickupRadius;this.pickupRadius=1.6;
    const candidate=this.requestedHand??this.nearbyHand(root,hands,[true,true],0);this.requestedHand=undefined;
-   const prop=candidate===undefined?undefined:this.pickupFor(candidate,root,hands);
+   const prop=candidate===undefined?undefined:this.pickupFor(candidate,root,hands,radius);
    if(!prop){this.idle=2;return;}
    const roamed=hands.some(h=>Math.hypot(h.position.x-root.position.x,h.position.z-root.position.z)>1.7);
    this.prop=prop;this.holder=candidate!;this.origin.copy(root.position);this.heading.copy(root.quaternion);

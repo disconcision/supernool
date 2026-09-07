@@ -17,6 +17,7 @@ export class IdleRoam {
  get active(){return this.phase!=='rest';}
  get state(){return {phase:this.phase,age:this.age,thresholds:this.thresholds,positions:this.poses.map(p=>p.position.toArray()),velocities:this.velocities.map(v=>v.toArray())};}
  setTerrain(safe:(p:T.Vector3)=>boolean){this.safe=safe;}
+ preview(root:T.Object3D,hands:T.Object3D[]){this.cancel();this.age=2.2;this.update(0,true,false,false,root,hands);}
  cancel(){this.phase='rest';this.age=0;}
  ready(hand:number,root:T.Object3D){return this.phase==='drift'&&Math.hypot(this.poses[hand].position.x-root.position.x,this.poses[hand].position.z-root.position.z)>=this.thresholds[hand];}
  finish(hands:T.Object3D[]){if(this.phase==='drift'){this.poses=hands.map(h=>({position:h.position.clone(),orientation:h.quaternion.clone()}));this.enter('return');}}

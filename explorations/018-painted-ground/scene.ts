@@ -1,3 +1,4 @@
+import type {IdlePreview} from './lehi';
 import {addTravelHandControl} from './hand-travel';
 import {setupControlReadouts} from './control-readouts';
 import {createMist} from './mist';
@@ -240,6 +241,7 @@ function updateHands(now:number,dt:number,moving:boolean){const g=grip?.chosen??
  lehi.update(now,dt,moving,camera,near?point:undefined,near?brace:undefined,activeHand,!!grip||!!animation,grip?.body?{velocity:walkVelocity,effort:.35+Math.min(1,Math.abs(grip.target-grip.progress))*.65}:undefined,handFocus,!!keys.size||!!navTarget);
  $('world').dataset.character=lehi.current();$('world').dataset.locomotion=lehi.locomotion();$('world').dataset.handActivity=avatar.userData.handActivity??'escort';
  const ends=lehi.linkEnds();ribbon.update(now,dt,value('bodyLink')==='ribbon',bodyMode()&&!!(grip||animation),ends.from,ends.to,camera,grip?Math.abs(grip.target-grip.progress):0);
+ const idlePreviewStatus=document.getElementById('idlePreviewStatus');if(idlePreviewStatus&&avatar.userData.idlePreviewStatus&&idlePreviewStatus.textContent!==avatar.userData.idlePreviewStatus)idlePreviewStatus.textContent=avatar.userData.idlePreviewStatus;
  $('world').dataset.idleRoam=JSON.stringify(avatar.userData.idleRoam);
  $('world').dataset.idleCatch=JSON.stringify(avatar.userData.idleCatch);
  $('world').dataset.fingerWalk=JSON.stringify(avatar.userData.fingerWalk);$('world').dataset.idleCooldown=String(avatar.userData.idleCooldown);
@@ -302,5 +304,14 @@ const walkStyleLabel=document.createElement('label');walkStyleLabel.textContent=
 const walkStyleSelect=document.createElement('select');walkStyleSelect.id='idleWalkStyle';
 for(const [label,value] of [['Both walks','mixed'],['Quick spider walk','spider'],['Awkward upright walk','upright']])walkStyleSelect.add(new Option(label,value));
 walkStyleSelect.onchange=()=>lehi.setIdleWalkStyle(walkStyleSelect.value as 'mixed'|'spider'|'upright');walkStyleLabel.append(walkStyleSelect);travellerPanel.append(walkStyleLabel);
+const idleTest=document.createElement('details'),idleTestTitle=document.createElement('summary');idleTest.id='idleAnimationTest';idleTestTitle.textContent='Test idle animations';idleTest.append(idleTestTitle);
+const idlePreviewLabel=document.createElement('label');idlePreviewLabel.textContent='Animation';const idlePreviewSelect=document.createElement('select');idlePreviewSelect.id='idlePreview';
+for(const [label,value] of [['Wandering hands','roam'],['Play catch','catch'],['Spider walk','spider'],['Upright two-finger walk','upright'],['Spider walk + stumble','spider-stumble'],['Upright walk + stumble','upright-stumble']])idlePreviewSelect.add(new Option(label,value));
+idlePreviewLabel.append(idlePreviewSelect);idleTest.append(idlePreviewLabel);
+const idlePreviewPlay=document.createElement('button');idlePreviewPlay.id='playIdlePreview';idlePreviewPlay.textContent='Play animation';idlePreviewPlay.onclick=()=>lehi.previewIdle(idlePreviewSelect.value as IdlePreview,camera);
+const idlePreviewStop=document.createElement('button');idlePreviewStop.id='stopIdlePreview';idlePreviewStop.textContent='Stop preview';idlePreviewStop.onclick=()=>lehi.stopIdlePreview();
+const idlePreviewHelp=document.createElement('small');idlePreviewHelp.textContent='Skips the idle wait. Catch needs a nearby small rock; walks and stumbles need clear ground. Movement still brings the hands back.';
+const idlePreviewStatus=document.createElement('small');idlePreviewStatus.id='idlePreviewStatus';idlePreviewStatus.setAttribute('role','status');idlePreviewStatus.textContent='Choose an animation, then play.';
+idleTest.append(idlePreviewPlay,idlePreviewStop,idlePreviewHelp,idlePreviewStatus);travellerPanel.append(idleTest);
 const handReview=document.createElement('a');handReview.href='avatar-review.html?hands';handReview.target='_blank';handReview.rel='noopener';handReview.textContent='Compare travelling hands up close ↗';handReview.style.display='block';travellerPanel.append(handReview);
 setupControlReadouts();ui();requestAnimationFrame(tick);

@@ -52,7 +52,7 @@ export class FingerWalk {
  get gait(){return {weight:this.weight,style:this.style,steps:this.steps,contactPose:this.contactPose,direction:this.direction,thumb:this.thumb,recordContacts:this.recordContacts};}
  private gaitSteps(distance:number){return this.style==='upright'?uprightSteps(distance):fingerSteps(distance);}
  setTerrain(safe:(p:T.Vector3)=>boolean){this.safe=safe;}
- startWalk(root:T.Object3D,hands:T.Object3D[],hand:number,camera?:T.Camera){
+ startWalk(root:T.Object3D,hands:T.Object3D[],hand:number,camera?:T.Camera,forceStumble=false){
   if(!this.safe)return false;
   const origin=root.position.clone(),roamed=Math.hypot(hands[hand].position.x-origin.x,hands[hand].position.z-origin.z)>1.7,valid=(p:T.Vector3)=>p.distanceTo(origin)>(roamed?1.8:.95)&&p.distanceTo(origin)<(roamed?4.6:3.9)&&this.safe!(p);
   this.style=this.preference==='mixed'?(this.random()<.5?'spider':'upright'):this.preference;
@@ -86,7 +86,7 @@ export class FingerWalk {
   this.planted=-1;this.plantOffset.setScalar(0);this.groundedPose=undefined;
   this.hand=hand;this.index=0;this.distance=0;this.steps=this.gaitSteps(0);this.weight=0;this.speed=this.style==='upright'?.18+this.random()*.025:.38+this.random()*.10;
   // One possible mishap per excursion, after the gait has had time to establish itself.
-  this.tripAt=this.random()<(this.style==='upright'?.48:.24)?Math.max(1.2,(this.route.length-1)*.16*(.35+this.random()*.3)):Infinity;
+  this.tripAt=forceStumble||this.random()<(this.style==='upright'?.48:.24)?Math.max(1.2,(this.route.length-1)*.16*(.35+this.random()*.3)):Infinity;
   this.tripSide=this.random()<.5?-1:1;this.dazeDuration=1.6+this.random()*.7;
   this.pose={position:hands[hand].position.clone(),orientation:hands[hand].quaternion.clone()};
   this.direction.copy(this.route[1]).sub(this.route[0]).normalize();this.contactPose=this.groundPose(this.route[0]);this.enter('land');return true;

@@ -70,4 +70,18 @@ for(let seed=1;seed<=30;seed++){
  }
 }
 assert(widening>10,'Roaming stations support progressively wider rallies');
+// Manual previews skip the wait but preserve interaction priority and restore
+// resting mode after completion. Forced stumble previews use the ordinary fall.
+for(const kind of ['roam','catch','spider','upright','spider-stumble','upright-stumble']){
+ const actor=createLehi(new T.Scene()),camera=new T.PerspectiveCamera(),stone=new T.Object3D();stone.position.set(1.8,.08,0);
+ actor.setIdleTerrain(()=>true);actor.setCatchProps([{object:stone,radius:.2,groundY:.08,touch:new T.Vector3()}]);actor.setIdleMode('rest');
+ let frame=0;const tick=(engaged=false)=>actor.update(frame++*1000/60,1/60,false,camera,undefined,undefined,0,engaged);
+ for(let i=0;i<120;i++)tick();const message=actor.previewIdle(kind,camera);assert(message.startsWith('Preview playing'),kind+': '+message);
+ let fell=false;for(let i=0;i<(kind.endsWith('stumble')?2400:120);i++){tick();fell||=actor.root.userData.fingerWalk.phase==='fall';}
+ if(kind.endsWith('stumble'))assert(fell,'Stumble preview performs the fall on clear ground');
+ actor.stopIdlePreview();tick();assert.equal(actor.root.userData.idleCatch.phase,'rest');assert.equal(actor.root.userData.fingerWalk.phase,'rest');assert.equal(actor.root.userData.idleRoam.phase,'rest');
+ for(let i=0;i<800;i++)tick();assert.equal(actor.root.userData.idleRoam.phase,'rest','Resting idle setting is preserved');
+ tick(true);assert(actor.previewIdle(kind,camera).startsWith('Stop moving'),'Previews cannot steal an interaction');
+}
+{const actor=createLehi(new T.Scene()),camera=new T.PerspectiveCamera();actor.update(0,1/60,false,camera,undefined,undefined,0,false);assert(actor.previewIdle('catch',camera).startsWith('No available stone'),'Missing prop gets an actionable message');}
 console.log('Idle roaming: gradual obstacle-safe departure, varied distances, side/rear preference, distance-gated activities, all movement startles and urgent overrides passed.',{arrivals,rear,front});
