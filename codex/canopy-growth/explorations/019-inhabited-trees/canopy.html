@@ -1,0 +1,26 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>supernool · 019 · Canopy workshop</title><link rel="icon" href="data:,">  <script type="module" crossorigin src="../../assets/modulepreload-polyfill-3cfb730f.js"></script>
+  <script type="module" crossorigin src="../../assets/traveller-9f394e67.js"></script>
+  <script type="module" crossorigin src="../../assets/sigils-fcc38c62.js"></script>
+  <script type="module" crossorigin src="../../assets/canopy-view-34db0b6d.js"></script>
+  <link rel="stylesheet" href="../../assets/canopy-view-7c94fbe3.css">
+</head><body>
+<main id="view" aria-label="Interactive 3D canopy"></main>
+<header><a href="./">supernool · 019</a><h1>Canopy workshop</h1><p>Drag to orbit · scroll to zoom</p></header>
+<aside><details open><summary>Canopy & host</summary><div class="controls">
+<label>Construction<select id="style"><option value="F5">F5 · Textured clusters</option><option value="F1">F1 · Cut masses</option><option value="F2">F2 · Layered shelves</option><option value="F3">F3 · Rounded clusters</option><option value="F6">F6 · Hanging curtains</option></select></label>
+<label>Host / motion<select id="specimen"><option value="mature">Mature branching host</option><option value="uneven">Uneven branching host</option><option value="swap">Expression · swap</option><option value="group">Expression · regroup</option><option value="zero">Expression · remove zero</option></select></label>
+<label>Shape seed <output id="seedValue"></output><input id="seed" type="range" min="1" max="12" step="1" value="3"></label>
+<label>Crown extent <output id="sizeValue"></output><input id="size" type="range" min=".45" max="1.65" step=".05" value="1.3"></label>
+<label>Foliage density <output id="densityValue"></output><input id="density" type="range" min=".3" max="1.8" step=".1" value="1"></label>
+<label>Spatial spread <output id="spreadValue"></output><input id="spread" type="range" min="0" max="1" step=".01" value="1"></label>
+<label>Branch pose <output id="poseValue"></output><input id="pose" type="range" min="0" max="1" step=".01" value="0"></label>
+<div class="row"><button id="play">Play pose</button><button id="resetView">Reset view</button></div>
+<label>Wind <output id="windValue"></output><input id="wind" type="range" min="0" max="1" step=".05" value=".25"></label>
+<label>Colour<select id="palette"><option value="upland">Upland green</option><option value="fresh">Fresh green</option><option value="gold">Late summer</option></select></label>
+<label class="tick"><input id="normals" type="checkbox" checked>Cluster-shaped normals (F5)</label>
+<label class="tick"><input id="foliage" type="checkbox" checked>Show canopy</label><label class="tick"><input id="sigils" type="checkbox">Show expression sigils</label><label class="tick"><input id="wire" type="checkbox">Wireframe</label>
+</div></details>
+<details><summary>Light spill experiment</summary><div class="controls"><label>Local light<select id="spill"><option value="off">Off · living tree</option><option value="violet">Violet only</option><option value="blue">Blue only</option></select></label><label>Light strength <output id="lightValue"></output><input id="light" type="range" min="0" max="120" step="2" value="55"></label><p>Actual point lights on 3D ground and rocks. This tests illumination, not the new shadow-canopy effect.</p></div></details>
+<details><summary>Concept & method</summary><div class="controls"><a href="round-02/foliage.png" id="conceptLink" target="_blank"><div id="concept" role="img" aria-label="Selected generated canopy reference"></div></a><p id="method"></p><p>Same host and attachment seeds across constructions. Decorative twigs follow terminal members. The expression examples use 018's real rewrite layouts; this is a material study, not the playable encounter.</p><a href="./#round-03">New shadow concepts</a></div></details>
+</aside><footer><span id="status">Building hewn host…</span><span id="stats"></span><button id="hide">Hide UI · H</button></footer>
+</body></html>
