@@ -8,7 +8,15 @@ Initial art assumption: the spirit departs. A spirit that settles peacefully ins
 
 Reference frames were captured from 018 by performing its six legal mouse rewrites. See references/states.json for actual expressions, node counts and camera zoom at every step. The production page and the user’s browser settings were not changed. Header/docks are hidden only in the capture browser; mist drift is frozen.
 
-## Round 02 — collective forms (latest feedback)
+## Round 03 — latest selection and studies
+
+User preference: F5 closest, with F2/F6/F3 retained and F1 a less tree-like geometric alternative. F4 is rejected. The new `canopy.html` workshop attempts F1/F2/F3/F5/F6 in 3D, emphasizing F5. See [canopy-notes.md](canopy-notes.md) for construction, validation and remaining gaps. 018 stays unchanged.
+
+Spirit feedback: reject S4 (liquid crystal) and S6 (stink-line reading). S1's cloud and arcs have interest but are too bulbous; S2's tendrils should be dark, matte and secondary; S3's drape has some interest, but the overall prior treatment was too cheesy. New direction is semi-transparent dark shadow foliage with cumulonimbus-like texture and restrained single-hue rim energy. Purple and blue are alternatives, not a combined palette. Local corresponding light on ground and rocks is required.
+
+`round-03/shadow-canopies.png` explores four new candidates: V1/V2 violet storm/layered crown, B1/B2 blue storm/wind-scoured crown. Still images do not prove transparency or real light transport; they guide those experiments. Review: the shadow foliage is markedly more restrained, distinct hue families and light spill achieved; V1/B1 still show fairly prominent arcs, V2 exposes the dark secondary tendrils, B2 is more windblown and sparse. No candidate selected by the user yet.
+
+## Round 02 — collective forms (earlier feedback)
 
 The user finds round 01 interesting but rejects the small diamond/shard-like spectral leaves as the direction for arrival/concentration. Wants substantial amorphous bodies between tendrils, storm and crystal, plus blue/violet shimmer attached to bark and stronger near the silhouette. The recovered tree needs a much denser, mature crown; explore collective geometry as well as texture-based density. Release remains promising. Do not carry forward the old individual-leaf prescription as approved direction.
 

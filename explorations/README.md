@@ -47,4 +47,4 @@ Study 006 implements the next 3D surface experiment. It remeshes a capsule field
 
 | 018 | [Painted ground](018-painted-ground/index.html) | Camera-guided matte loop, projected terrain, dimensional sigils, input feedback and goal release. 017 preserved. |
 
-| 019 | [Inhabited trees · concept phase](019-inhabited-trees/index.html) | Five screenshot-led keyframes: spectral foliage, concentration, release, first leaves and biological regrowth. 018 remains playable. |
+| 019 | [Inhabited trees · canopy & spirit](019-inhabited-trees/index.html) | [3D canopy workshop](019-inhabited-trees/canopy.html): F1/F2/F3/F5/F6, member attachments and light spill. New single-hue shadow-foliage concepts. 018 remains playable. |

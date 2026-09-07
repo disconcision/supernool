@@ -17,3 +17,8 @@ $('spirit-full').href=new URL('./round-02/spirit.png',import.meta.url).href;
 $('foliage-prompt').href=new URL('./round-02/foliage-prompt.txt',import.meta.url).href;
 $('spirit-prompt').href=new URL('./round-02/spirit-prompt.txt',import.meta.url).href;
 $('round-two-provenance').href=new URL('./round-02/provenance.json',import.meta.url).href;
+
+$('shadow-full').href=new URL('./round-03/shadow-canopies.png',import.meta.url).href;
+$('shadow-prompt').href=new URL('./round-03/shadow-prompt.txt',import.meta.url).href;
+$('shadow-provenance').href=new URL('./round-03/provenance.json',import.meta.url).href;
+$('canopy-brief').href=new URL('./canopy-notes.md',import.meta.url).href;

@@ -1,0 +1,12 @@
+{
+  "date": "2026-09-07",
+  "method": "Built-in image_gen",
+  "output": "shadow-canopies.png",
+  "prompt": "shadow-prompt.txt",
+  "original": "/Users/andrewblinn/.codex/generated_images/01a07563-399b-7f62-8731-6ed1b6a17b48/exec-5ac1ebb9-7e41-4808-939e-6e147075302a.png",
+  "references": [
+    {"path": "../references/state-0.png", "role": "Actual camera, wood, scale, landscape reference; not locked edit target"},
+    {"path": "../round-02/foliage.png", "role": "F5 and F2 canopy silhouette reference"}
+  ],
+  "review": "Violet and blue separated; shadow foliage and local light spill achieved. Arcs may still be too prominent in storm variants. No exact algebraic topology or physically simulated light claim. User has not selected a candidate."
+}
