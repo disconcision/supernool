@@ -59,6 +59,7 @@ function createGrowthLayer(atlas:T.Texture,kind:GrowthKind){
  function rebuild(){
   for(const p of patches){p.removeFromParent();p.geometry.dispose();}patches.length=0;
   formations.forEach(({group,tall,surfaces,index})=>{
+   if(group.userData.formation?.deleted)return;
    group.updateWorldMatrix(true,true);
    // Each formation owns a stable random stream. Changing color/opacity never moves patches.
    let state=(settings.seed*9301+index*49297+233280+(kind==='lichen'?71093:0))>>>0;

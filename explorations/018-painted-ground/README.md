@@ -234,3 +234,8 @@ The object list separates formations, 17 loose stones, and 36 individual mushroo
 The isolated scene editor now exposes Copy, Paste and Duplicate below the object selector, with Cmd/Ctrl+C, V and D shortcuts while editing scenery. Pasted objects are selected and offset one unit on each ground axis per successive paste, ready for placement. Copy captures the current transform; later edits to the original do not change the clipboard. Text inputs keep their normal clipboard behavior.
 
 The scenery clipboard persists in browser storage across reload and works between scenes on the same editor origin. It is separate from the OS text clipboard. Copied formations, loose stones and mushrooms participate in undo/redo, saved versions and defaults. Formation copies share geometry/shading assets, retain the source growth pattern seed, and have independent projected growth, collision footprints and hand contacts. Copies of copies store the original asset reference, and earlier saves remain readable. `npm run test:clipboard` exercises these paths in Chrome.
+
+
+### Delete scenery
+
+In Edit scenery, Delete beside Copy/Paste/Duplicate removes the selected formation, loose stone, mushroom or copied instance. Delete and Backspace are keyboard equivalents; text fields and Play mode retain their usual behavior. Undo restores and selects the object; Redo removes it again. Save version/default retains deletions, and loading an older version restores its objects. Attached growth, collision footprints and hand contacts follow removals. Original-source deletion does not invalidate a copied object or the scenery clipboard. `npm run test:delete` checks these behaviors in Chrome.

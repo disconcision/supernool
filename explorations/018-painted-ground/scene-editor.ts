@@ -15,7 +15,7 @@ export function mountSceneEditor(scene:T.Scene,camera:T.Camera,renderer:T.WebGLR
  <div class="editorButtons"><button id="editScene">Edit scenery</button><button id="undoScene" disabled>Undo</button><button id="redoScene" disabled>Redo</button></div>
  <fieldset id="rockTools" disabled hidden><legend>Scenery layout</legend>
  <label>Object<select id="editorSelection"><option value="">Select scenery in the scene</option></select></label>
- <div class="editorButtons"><button id="copyScenery" disabled title="Copy selected scenery · Cmd/Ctrl+C">Copy</button><button id="pasteScenery" disabled title="Paste a copy nearby · Cmd/Ctrl+V">Paste</button><button id="duplicateScenery" disabled title="Copy and paste selected scenery · Cmd/Ctrl+D">Duplicate</button></div>
+ <div class="editorButtons"><button id="copyScenery" disabled title="Copy selected scenery · Cmd/Ctrl+C">Copy</button><button id="pasteScenery" disabled title="Paste a copy nearby · Cmd/Ctrl+V">Paste</button><button id="duplicateScenery" disabled title="Copy and paste selected scenery · Cmd/Ctrl+D">Duplicate</button><button id="deleteScenery" disabled title="Delete selected scenery · Delete / Backspace">Delete</button></div>
  <small id="sceneryClipboard" role="status">Scenery clipboard empty · Cmd/Ctrl+C to copy, V to paste, D to duplicate.</small>
  <label>Tool<select id="editorTool"><option value="combined">All handles · Q</option><option value="translate">Move · W</option><option value="rotate">Rotate · E</option><option value="scale">Scale · R</option></select></label>
  <label><span>Snap to increments</span><input id="editorSnap" type="checkbox" checked></label>
@@ -98,7 +98,7 @@ export function mountSceneEditor(scene:T.Scene,camera:T.Camera,renderer:T.WebGLR
   return clipboard;
  }
  function clipboardButtons(){
-  input('copyScenery').disabled=input('duplicateScenery').disabled=!editing||!selected;
+  input('deleteScenery').disabled=input('copyScenery').disabled=input('duplicateScenery').disabled=!editing||!selected;
   input('pasteScenery').disabled=!editing||!readClipboard();
   $('sceneryClipboard').textContent=clipboard?'Copied '+(active().find(g=>g.userData.formation.id===(clipboard!.source??clipboard!.id))?.name??clipboard.kind)+' · Cmd/Ctrl+V pastes nearby.':'Scenery clipboard empty · Cmd/Ctrl+C to copy, V to paste, D to duplicate.';
  }
@@ -118,6 +118,12 @@ export function mountSceneEditor(scene:T.Scene,camera:T.Camera,renderer:T.WebGLR
   try{const g=rockAuthoring!.paste(placement);pasteCount=step;refreshSelection();choose(g);record(before);message('Pasted '+g.name+' · drag to place it. Save version to keep this addition.');}
   catch(e){message((e as Error).message);}
  }
+ function deleteSelection(){
+  if(!editing||!selected||gizmo.dragging)return;
+  const before=rockAuthoring!.capture(),name=selected.name,id=selected.userData.formation.id;
+  rockAuthoring!.remove(id);choose();refreshSelection();record(before);message('Deleted '+name+' · Undo restores it. Save version to keep this change.');
+ }
+ input('deleteScenery').onclick=deleteSelection;
  input('copyScenery').onclick=copySelection;input('pasteScenery').onclick=pasteSelection;
  input('duplicateScenery').onclick=()=>{if(!selected)return;copySelection();pasteSelection();};
  addEventListener('storage',e=>{if(e.key===clipboardKey)clipboardButtons();});
@@ -125,7 +131,7 @@ export function mountSceneEditor(scene:T.Scene,camera:T.Camera,renderer:T.WebGLR
   if(gizmo.dragging)return;const from=redo?future:past,to=redo?past:future,state=from.pop();if(!state)return;
   const before=rockAuthoring!.capture(),id=selected?.userData.formation.id,source=selected?.userData.formation.source;
   to.push(before);rockAuthoring!.apply(state);refreshSelection();
-  const added=state.find(r=>!before.some(p=>p.id===r.id));choose(active().find(g=>g.userData.formation.id===(added?.id??id))??active().find(g=>g.userData.formation.id===source));history();markDirty();
+  const added=state.find(r=>!r.deleted&&!before.some(p=>p.id===r.id&&!p.deleted));choose(active().find(g=>g.userData.formation.id===(added?.id??id))??active().find(g=>g.userData.formation.id===source));history();markDirty();
  }
  input('undoScene').onclick=()=>undo();input('redoScene').onclick=()=>undo(true);
  addEventListener('keydown',e=>{
@@ -136,6 +142,7 @@ export function mountSceneEditor(scene:T.Scene,camera:T.Camera,renderer:T.WebGLR
     if(key==='c')copySelection();else if(key==='v')pasteSelection();else if(key==='d'){if(selected){copySelection();pasteSelection();}}else undo(e.shiftKey);
    }return;
   }
+  if((e.key==='Delete'||e.key==='Backspace')&&!e.altKey){e.preventDefault();if(!e.repeat)deleteSelection();return;}
   if(target.matches('select'))return;
   if(e.key==='Escape'){e.preventDefault();setEditing(false);}else if(['q','w','e','r'].includes(key)){input('editorTool').value=({q:'combined',w:'translate',e:'rotate',r:'scale'} as any)[key];mode();}
  });
