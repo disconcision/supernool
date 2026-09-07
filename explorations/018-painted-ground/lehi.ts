@@ -1,3 +1,5 @@
+import {FingerWalk,solveFinger} from './finger-walk';
+import {IdleSchedule,IdleMode} from './idle-schedule';
 import {IdleCatch} from './idle-catch';
 import type {CatchProp} from './idle-catch';
 import {TravelHands} from './hand-travel';
@@ -41,25 +43,30 @@ export function createLehi(scene:T.Scene){
  }
  // The character faces local +Z: anatomical right is local -X.
  const hands=[hand(-1),hand(1)],orientation=new T.Quaternion();
- const catchGame=new IdleCatch();
+ const catchGame=new IdleCatch(),fingerWalk=new FingerWalk(),idleSchedule=new IdleSchedule();
  const travel=new TravelHands();let travelSpeed=0,travelPhase=0;
  const fingerGrasps=hands.map(()=>[0,0,0,0,0]);
- let grasp=[0,0],idleTime=0,idleTurn=0;let idleTargets:T.Vector3[]=[];let curiosity:{target:T.Vector3;hand:number;age:number}|undefined;
+ let grasp=[0,0],idleTime=0;
  function update(now:number,dt:number,moving:boolean,camera:T.Camera,grip?:T.Vector3,brace?:T.Vector3,active=0,engaged=true,pull?:{velocity:T.Vector3;effort:number},idleBlocked=false,walkingIntent=false){
   const time=now/1000;
   travel.update(dt,travelSpeed,moving,!grip&&!brace&&!engaged&&!pull);
   root.userData.travelHandPose=travel.style;root.userData.travelHandWeight=travel.weight;
-  catchGame.update(dt,!grip&&!brace&&!engaged&&!pull&&!idleBlocked,root,hands.map(h=>h.group),moving||walkingIntent);
-  root.userData.idleCatch=catchGame.state;
-  if(moving||grip||brace||engaged||idleBlocked||catchGame.active){idleTime=0;curiosity=undefined;}else{
-   idleTime+=dt;
-   if(curiosity){curiosity.age+=dt;if(curiosity.age>4.5){curiosity=undefined;idleTime=0;}}
-   else if(idleTime>3.5){
-    const nearby=idleTargets.filter(p=>{const d=Math.hypot(p.x-root.position.x,p.z-root.position.z);return d>.7&&d<2.8&&p.y<3.2;}).sort((a,b)=>a.distanceToSquared(root.position)-b.distanceToSquared(root.position));
-    if(nearby.length){const target=nearby[idleTurn%Math.min(nearby.length,4)].clone();const local=target.clone().sub(root.position).applyQuaternion(root.quaternion.clone().invert());curiosity={target,hand:local.x<0?0:1,age:0};idleTurn++;}else idleTime=2;
-   }
+  const allowed=!grip&&!brace&&!engaged&&!pull&&!idleBlocked,walking=moving||walkingIntent;
+  const wasBusy=catchGame.active||fingerWalk.active;
+  const request=idleSchedule.tick(dt,allowed&&!walking,wasBusy);
+  if(request){
+   if(request.kind==='catch'){catchGame.requestStart(request.hand);catchGame.update(dt,allowed,root,hands.map(h=>h.group),walking,true);}
+   const walkHand=idleSchedule.handFor('walk');
+   if(!catchGame.active&&idleSchedule.mode!=='catch-only'&&fingerWalk.startWalk(root,hands.map(h=>h.group),walkHand))idleSchedule.started('walk',walkHand);
+   else if(catchGame.active)idleSchedule.started('catch',request.hand);
   }
-  root.userData.handActivity=catchGame.disengaging?'disengaging':catchGame.active?'playing-catch':curiosity?'inspecting':grip||brace?'tree':'escort';
+  if(!request||!catchGame.active)catchGame.update(dt,allowed,root,hands.map(h=>h.group),walking,false);
+  fingerWalk.update(dt,allowed,walking,root);
+  const busy=catchGame.active||fingerWalk.active;
+  if(wasBusy&&!busy)idleSchedule.rest();
+  root.userData.idleCatch=catchGame.state;root.userData.fingerWalk=fingerWalk.state;root.userData.idleCooldown=idleSchedule.remaining;
+  idleTime=walking||!allowed||busy?0:idleTime+dt;
+  root.userData.handActivity=catchGame.disengaging||fingerWalk.leaving?'disengaging':catchGame.active?'playing-catch':fingerWalk.active?'finger-walking':grip||brace?'tree':'escort';
   const effort=pull?T.MathUtils.clamp(pull.effort,0,1):0;
   const localVelocity=pull?.velocity.clone().applyAxisAngle(new T.Vector3(0,1,0),-root.rotation.y);
   const gait=time*(pull?8:10),stride=pull?.23:.45;
@@ -76,27 +83,21 @@ export function createLehi(scene:T.Scene){
    const cameraRight=new T.Vector3(1,0,0).applyQuaternion(camera.quaternion);
    const sideOnScreen=new T.Vector3(i?1:-1,0,0).applyQuaternion(root.quaternion).dot(cameraRight);
    const contactOffset=new T.Vector3(sideOnScreen*.10-.52,-.30,.80).applyQuaternion(camera.quaternion);
-   const exploring=curiosity?.hand===i?curiosity:undefined;
-   const peek=exploring?exploring.target.clone().add(new T.Vector3(Math.sin(time*1.5)*.035,.48+Math.sin(time*1.8)*.018,Math.cos(time*1.5)*.035)):rest;
-   const inspectWeight=exploring?Math.min(1,exploring.age/1.2,(4.5-exploring.age)/.7):0;
-   const destination=contact?contact.clone().add(contactOffset):rest.clone().lerp(peek,Math.max(0,inspectWeight));
+   const destination=contact?contact.clone().add(contactOffset):rest;
    h.group.position.lerp(destination,1-Math.exp(-dt*(contact?25:moving?18:8)));
    // Anatomical sides and palm direction follow the body, including at work.
    // Camera-facing palms used to swap apparent handedness when the body turned.
    orientation.copy(root.quaternion);
    orientation.multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,0,1),contact?(i?.18:-.18):(i?-.22:.22)));
    if(travelWeight>0)orientation.slerp(root.quaternion.clone().multiply(travelling.orientation),travelWeight);
-   if(exploring)orientation.multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(1,0,0),2.65*Math.max(0,inspectWeight)));
    h.group.quaternion.slerp(orientation,1-Math.exp(-dt*14));
-   grasp[i]=T.MathUtils.lerp(grasp[i],contact&&(engaged||i!==active)?1:exploring?.25:travelling.grasp*travelWeight,1-Math.exp(-dt*12));
-   // Relax one finger after another at rest; a more deliberate ripple feels
-   // around nearby props. These are bounded curls, not fingertip contact IK.
+   grasp[i]=T.MathUtils.lerp(grasp[i],contact&&(engaged||i!==active)?1:travelling.grasp*travelWeight,1-Math.exp(-dt*12));
+   // Restrained resting fidgets between the larger idle activities.
    const free=!moving&&!contact&&!engaged&&!pull?T.MathUtils.smoothstep(idleTime,.6,1.8):0;
    const digits=fingerGrasps[i];
    for(let k=0;k<digits.length;k++){
     const idlePulse=Math.pow(.5+.5*Math.sin(time*1.35+i*2.3-k*.72),4);
-    const feelPulse=Math.pow(.5+.5*Math.sin((exploring?.age??0)*4.2-k*.85),2);
-    const fidget=T.MathUtils.lerp(.025+.16*idlePulse,.08+.34*feelPulse,Math.max(0,inspectWeight));
+    const fidget=.025+.16*idlePulse;
     const target=grasp[i]+free*fidget*(k===4?.55:1);
     digits[k]=contact?grasp[i]:T.MathUtils.lerp(digits[k],target,1-Math.exp(-dt*10));
    }
@@ -105,6 +106,7 @@ export function createLehi(scene:T.Scene){
    h.group.userData.fingerGrasps=digits;
    h.group.userData.grasp=grasp[i];
    h.group.scale.setScalar(contact?1.15:1);
+   h.group.userData.fingerWalk=undefined;
    if(catchGame.active){
     const play=catchGame.poses[i];h.group.position.copy(play.position);h.group.quaternion.copy(play.orientation);
     grasp[i]=play.grasp;
@@ -113,7 +115,14 @@ export function createLehi(scene:T.Scene){
     h.thumb.rotation.x=digits[4]*.65;h.thumb.rotation.z=(i?1:-1)*(.8-digits[4]*.25);
     h.group.userData.grasp=play.grasp;
    }
+   if(fingerWalk.active&&fingerWalk.hand===i){
+    h.group.position.copy(fingerWalk.pose.position);h.group.quaternion.copy(fingerWalk.pose.orientation);
+    const weight=fingerWalk.weight;h.group.userData.fingerWalk={weight,steps:fingerWalk.steps};
+    h.joints.forEach((j,k)=>{const step=fingerWalk.steps[k],angles=solveFinger(.21,.17,.13+step.advance,.32-step.lift);
+     j.rotation.x=T.MathUtils.lerp(j.rotation.x,angles.base,weight);h.tips[k].rotation.x=T.MathUtils.lerp(h.tips[k].rotation.x,angles.middle,weight);
+    });
+   }
   });
  }
- return {root,body,hands,update,setCatchProps:(props:CatchProp[],safe?:(p:T.Vector3)=>boolean)=>catchGame.setProps(props,safe),setIdleCatch:(on:boolean)=>catchGame.setEnabled(on),setTravelStyle:(style:string)=>travel.setStyle(style),setTravelMotion(speed:number,phase:number){travelSpeed=speed;travelPhase=phase;},setIdleTargets(points:T.Vector3[]){idleTargets=[...points];},linkEnds(){root.updateMatrixWorld(true);hands[0].group.updateMatrixWorld(true);return {from:arms[0].localToWorld(new T.Vector3(0,-.34,0)),to:hands[0].group.localToWorld(new T.Vector3(0,-.20,0))};}};
+ return {root,body,hands,update,setIdleTerrain:(safe:(p:T.Vector3)=>boolean)=>fingerWalk.setTerrain(safe),setIdleMode:(mode:IdleMode)=>{idleSchedule.mode=mode;catchGame.setEnabled(mode==='catch'||mode==='catch-only');if(mode==='rest'||mode==='catch-only')fingerWalk.cancel();idleSchedule.rest();},setCatchProps:(props:CatchProp[],safe?:(p:T.Vector3)=>boolean)=>catchGame.setProps(props,safe),setIdleCatch:(on:boolean)=>catchGame.setEnabled(on),setTravelStyle:(style:string)=>travel.setStyle(style),setTravelMotion(speed:number,phase:number){travelSpeed=speed;travelPhase=phase;},linkEnds(){root.updateMatrixWorld(true);hands[0].group.updateMatrixWorld(true);return {from:arms[0].localToWorld(new T.Vector3(0,-.34,0)),to:hands[0].group.localToWorld(new T.Vector3(0,-.20,0))};}};
 }

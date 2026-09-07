@@ -194,3 +194,8 @@ Inspected normal, later-time, orbit and active-grip screenshots (`assets/mist-*.
 ## Idle hands playing catch · branch experiment
 
 The ordinary route now lets idle hands pick up a nearby small loose stone and play a short, varied game of catch, with an underhand wind-up and follow-through. Successful catches move the hands farther apart until a miss ends the rally. Walking gets a brief set-down and return animation; tree work takes priority immediately. Starts and repeat attempts are slightly less frequent. **Inspect → Appearance → Traveller → Idle hands → Explore only** keeps the earlier inspection comparison. See [IDLE-CATCH.md](IDLE-CATCH.md) for object eligibility, motion limits and validation. This is an experiment awaiting user feedback.
+
+
+## Finger-walking idle hands
+
+The earlier scenery inspection is replaced by a grounded finger walk with varied routes around rocks and fungi. Both hands take turns in each activity; a shared 12–22 second quiet interval prevents an ended catch from immediately starting a walk. Traveller → Idle hands offers mixed, walking-only, catch-only and resting comparisons. See [IDLE-HANDS.md](IDLE-HANDS.md) for gait, obstacle clearance, scheduling and checks. Rock climbing remains outside this ground-walking pass.

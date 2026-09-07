@@ -60,7 +60,8 @@ const {createLehi}=require('../../.cache/idle-catch-lehi.cjs');
 for(const cause of ['movement','contact','pin','rewrite','input']){
  const actor=createLehi(new T.Scene()),stone=new T.Object3D(),camera=new T.PerspectiveCamera();stone.position.set(1.8,.08,0);
  actor.setCatchProps([{object:stone,radius:.2,groundY:.08,touch:new T.Vector3()}]);
- for(let i=0;i<1100;i++){
+ actor.setIdleMode('catch-only');
+ for(let i=0;i<3500;i++){
   actor.update(i*16,1/60,false,camera,undefined,undefined,0,false);
   if(actor.root.userData.idleCatch.held)break;
  }

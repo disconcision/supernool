@@ -1,4 +1,5 @@
 import * as T from 'three';
+import {solveFinger} from './finger-walk';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {createArmSwing} from './arm-swing';
 import {createStride} from './gait';
@@ -11,7 +12,7 @@ export function createTraveller(scene:T.Scene,status:(message:string)=>void){
  const gradient=new T.DataTexture(new Uint8Array([65,145,220,255]),4,1,T.RedFormat);
  gradient.minFilter=gradient.magFilter=T.NearestFilter;gradient.needsUpdate=true;
  const scale=.72;
- type Digit={node:T.Object3D;rest:T.Quaternion;amount:number;index:number};
+ type Digit={node:T.Object3D;rest:T.Quaternion;amount:number;index:number;walk?:{a:number;b:number;segment:'base'|'middle'|'tip'}};
  type Variant={model:T.Group;mixer:T.AnimationMixer;actions:Record<string,T.AnimationAction>;hands:T.Object3D[];digits:Digit[][];wrist:T.Mesh;arms:ReturnType<typeof createArmSwing>;motion:string;lean:number;stride:ReturnType<typeof createStride>;colors:{material:T.MeshToonMaterial;original:T.Color;role:number}[]};
  const variants=new Map<string,Variant>();let requested='blue-wrap',active:Variant|undefined,current='checkpoint';
  const originalHands=controller.hands.map(h=>[...h.group.children]);
@@ -43,7 +44,12 @@ export function createTraveller(scene:T.Scene,status:(message:string)=>void){
    hand.traverse(o=>{
     if(/base_joint|middle_joint|tip_joint|Opposing_thumb|distal_joint/.test(o.name))joints.push({node:o,rest:o.quaternion.clone(),index:/thumb/i.test(o.name)?4:Number(o.name.match(/Finger[_ ](\d)/i)?.[1]??0),amount:/middle_joint/.test(o.name)?.55:/tip_joint/.test(o.name)?.40:/Opposing_thumb/.test(o.name)?.25:.32});
     if(o instanceof T.Mesh){o.castShadow=true;o.renderOrder=20;const materials=(Array.isArray(o.material)?o.material:[o.material]).map(m=>{const c=m.clone();c.transparent=true;c.depthTest=true;c.depthWrite=true;return c;});o.material=Array.isArray(o.material)?materials:materials[0];}
-   });digits.push(joints);
+   });
+   for(let digit=0;digit<4;digit++){
+    const base=joints.find(d=>d.index===digit&&/base_joint/.test(d.node.name)),middle=joints.find(d=>d.index===digit&&/middle_joint/.test(d.node.name)),tip=joints.find(d=>d.index===digit&&/tip_joint/.test(d.node.name));
+    if(base&&middle&&tip){const a=middle.node.position.y,b=tip.node.position.y+.172;for(const [joint,segment] of [[base,'base'],[middle,'middle'],[tip,'tip']] as const)joint.walk={a,b,segment};}
+   }
+   digits.push(joints);
   });
   const wrists:T.SkinnedMesh[]=[],colors:Variant['colors']=[];
   model.traverse(o=>{if(o instanceof T.Mesh){o.castShadow=true;
@@ -90,9 +96,14 @@ export function createTraveller(scene:T.Scene,status:(message:string)=>void){
   active.stride.restore();active.mixer.update(dt);active.stride.update(dt,local,moving,!!pull,running);active.arms.update(active.stride.phase,active.stride.weight,running,!!grip,dt);
   const effort=pull?T.MathUtils.clamp(pull.effort,0,1):0;
   active.lean=T.MathUtils.lerp(active.lean,pull?-.08-effort*.08:running?.09:0,1-Math.exp(-dt*10));active.model.rotation.x=0;active.stride.lean(active.lean);
-  active.digits.forEach((digits,i)=>{const hand=controller.hands[i].group;for(const d of digits){const curl=(hand.userData.fingerGrasps as number[])[d.index]??hand.userData.grasp;d.node.quaternion.copy(d.rest).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(1,0,0),curl*d.amount));}});
+  active.digits.forEach((digits,i)=>{const hand=controller.hands[i].group;for(const d of digits){const curl=(hand.userData.fingerGrasps as number[])[d.index]??hand.userData.grasp;d.node.quaternion.copy(d.rest).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(1,0,0),curl*d.amount));
+   const walk=hand.userData.fingerWalk;
+   if(walk&&d.walk){const step=walk.steps[d.index],angles=solveFinger(d.walk.a,d.walk.b,.30+step.advance/.68,(.38-.024-step.lift)/.68),euler=new T.Euler().setFromQuaternion(d.rest);euler.x=d.walk.segment==='base'?angles.base:d.walk.segment==='middle'?angles.middle:0;d.node.quaternion.slerp(new T.Quaternion().setFromEuler(euler),walk.weight);}
+  }
+   if(hand.userData.fingerWalk?.weight>.99){hand.updateMatrixWorld(true);root.userData.fingerWalk.toeHeights=digits.filter(d=>d.walk?.segment==='tip').map(d=>d.node.localToWorld(new T.Vector3(0,.172,0)).y);root.userData.fingerWalk.steps=hand.userData.fingerWalk.steps;}
+  });
  }
- return {root,update,setCatchProps:controller.setCatchProps,setIdleCatch:controller.setIdleCatch,setTravelStyle:controller.setTravelStyle,setIdleTargets:controller.setIdleTargets,choose:select,setPalette(name:string){palette=name;variants.forEach(paint);},current:()=>current,locomotion:()=>running?'Run':active?.motion??'procedural',linkEnds(){
+ return {root,update,setCatchProps:controller.setCatchProps,setIdleCatch:controller.setIdleCatch,setTravelStyle:controller.setTravelStyle,setIdleTerrain:controller.setIdleTerrain,setIdleMode:controller.setIdleMode,choose:select,setPalette(name:string){palette=name;variants.forEach(paint);},current:()=>current,locomotion:()=>running?'Run':active?.motion??'procedural',linkEnds(){
   const ends=controller.linkEnds();if(active){root.updateMatrixWorld(true);const m=active.wrist;if(m instanceof T.SkinnedMesh)m.skeleton.update();const p=new T.Vector3(),sum=new T.Vector3();const n=m.geometry.attributes.position.count;for(let i=0;i<n;i++)sum.add(m.getVertexPosition(i,p));ends.from.copy(m.localToWorld(sum.divideScalar(n)));ends.to.copy(active.hands[0].localToWorld(new T.Vector3(0,0,0)));}return ends;
  }};
 }

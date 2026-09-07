@@ -23,9 +23,8 @@ const sound=createSound();addEventListener('pointerdown',()=>sound.unlock(),{onc
 const treeScale=1.35*1.15*.92,treeOrigin=new T.Vector3(-1,0,-3),hero=new T.Group();hero.position.copy(treeOrigin);hero.scale.setScalar(treeScale);scene.add(hero);
 const treeWorld=(p:T.Vector3)=>p.clone().multiplyScalar(treeScale).add(treeOrigin);
 const ring=mesh(new T.RingGeometry(5.5,5.58,80),new T.MeshBasicMaterial({color:'#e6ddb7',side:T.DoubleSide,transparent:true,opacity:.45}),treeOrigin.clone().setY(.025));ring.rotation.x=-Math.PI/2;
-const preLehi=new Set(scene.children);const lehi=createTraveller(scene, message=>$('characterStatus').textContent=message),avatar=lehi.root;for(const o of scene.children)if(!preLehi.has(o))o.userData.matteExclude=true;avatar.position.set(0,0,9);lehi.setIdleTargets(clearing.touchPoints);
+const preLehi=new Set(scene.children);const lehi=createTraveller(scene, message=>$('characterStatus').textContent=message),avatar=lehi.root;for(const o of scene.children)if(!preLehi.has(o))o.userData.matteExclude=true;avatar.position.set(0,0,9);lehi.setIdleTerrain(clearing.canFingerWalk);
 lehi.setCatchProps(clearing.catchProps,p=>Math.hypot(p.x,p.z)<13&&!obstacles.some(o=>Math.hypot(p.x-o.x,p.z-o.z)<o.r+.65));
-document.addEventListener('grow-rock-touch-points',event=>lehi.setIdleTargets((event as CustomEvent<T.Vector3[]>).detail));
 clearing.setGroundShadows(true);
 const treeShade=makeShading(),gradient=new T.DataTexture(new Uint8Array([45,110,185,255]),4,1,T.RedFormat);gradient.minFilter=gradient.magFilter=T.NearestFilter;gradient.needsUpdate=true;
 const wood=()=>new T.MeshStandardMaterial({color:'#bba078',roughness:.9});const cel=()=>new T.MeshToonMaterial({color:'#bba078',gradientMap:gradient});
@@ -242,6 +241,7 @@ function updateHands(now:number,dt:number,moving:boolean){const g=grip?.chosen??
  $('world').dataset.character=lehi.current();$('world').dataset.locomotion=lehi.locomotion();$('world').dataset.handActivity=avatar.userData.handActivity??'escort';
  const ends=lehi.linkEnds();ribbon.update(now,dt,value('bodyLink')==='ribbon',bodyMode()&&!!(grip||animation),ends.from,ends.to,camera,grip?Math.abs(grip.target-grip.progress):0);
  $('world').dataset.idleCatch=JSON.stringify(avatar.userData.idleCatch);
+ $('world').dataset.fingerWalk=JSON.stringify(avatar.userData.fingerWalk);$('world').dataset.idleCooldown=String(avatar.userData.idleCooldown);
  $('world').dataset.handState=!near?'home':point?'tree':'home';
 }
 for(const rule of rules){const label=document.createElement('label');label.className='rule';const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=true;checkbox.dataset.rule=rule.id;checkbox.onchange=()=>{if(checkbox.checked)enabled.add(rule.id);else enabled.delete(rule.id);spotlight=undefined;ui(false);};const text=document.createElement('span');text.textContent=rule.name;const small=document.createElement('small');small.textContent=rule.equation;text.append(small);label.append(checkbox,text);label.style.setProperty('--rule',rule.color);$('ruleList').append(label);}
@@ -295,7 +295,7 @@ const travellerPanel=Array.from($('settings').querySelectorAll('details')).find(
 addTravelHandControl(travellerPanel,style=>lehi.setTravelStyle(style));
 const idleCatchLabel=document.createElement('label');idleCatchLabel.textContent='Idle hands';
 const idleCatchSelect=document.createElement('select');idleCatchSelect.id='idleCatch';
-idleCatchSelect.add(new Option('Explore & play catch','catch'));idleCatchSelect.add(new Option('Explore only','explore'));
-idleCatchSelect.onchange=()=>lehi.setIdleCatch(idleCatchSelect.value==='catch');idleCatchLabel.append(idleCatchSelect);travellerPanel.append(idleCatchLabel);
+idleCatchSelect.add(new Option('Finger walks & catch','catch'));idleCatchSelect.add(new Option('Finger walks only','explore'));idleCatchSelect.add(new Option('Catch only','catch-only'));idleCatchSelect.add(new Option('Resting hands','rest'));
+idleCatchSelect.onchange=()=>lehi.setIdleMode(idleCatchSelect.value as 'catch'|'explore'|'catch-only'|'rest');idleCatchLabel.append(idleCatchSelect);travellerPanel.append(idleCatchLabel);
 const handReview=document.createElement('a');handReview.href='avatar-review.html?hands';handReview.target='_blank';handReview.rel='noopener';handReview.textContent='Compare travelling hands up close ↗';handReview.style.display='block';travellerPanel.append(handReview);
 setupControlReadouts();ui();requestAnimationFrame(tick);

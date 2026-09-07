@@ -3,7 +3,7 @@ import type {CatchProp} from './idle-catch';
 import {dirtRoutes} from './dirt-routes';
 import {mountRockStudy} from './rock-study';
 export function makeClearing(scene:T.Scene){
- const catchProps:CatchProp[]=[];
+ const catchProps:CatchProp[]=[],walkStones:T.Object3D[]=[],walkFungi:T.Vector3[]=[];
  const pathRocks:{x:number;z:number;r:number}[]=[],touchPoints:T.Vector3[]=[],obstacles:{x:number;z:number;r:number}[]=[],rand=(n:number)=>{const x=Math.sin(n*127.1+41.7)*43758.5;return x-Math.floor(x);};
  const rock=new T.MeshStandardMaterial({color:'#657574',roughness:1,flatShading:true,vertexColors:true}),moss=new T.MeshStandardMaterial({color:'#738458',roughness:1,flatShading:true}),lichen=new T.MeshStandardMaterial({color:'#b4b183',roughness:1,flatShading:true});
  function add(g:T.BufferGeometry,m:T.Material,p:T.Vector3,scale=new T.Vector3(1,1,1)){const o=new T.Mesh(g,m);o.position.copy(p);o.scale.copy(scale);o.castShadow=true;o.receiveShadow=true;scene.add(o);return o;}
@@ -16,7 +16,7 @@ export function makeClearing(scene:T.Scene){
   const geo=new T.CylinderGeometry(.7,1,1,7,2).toNonIndexed(),p=geo.getAttribute('position'),colors=[];
   for(let i=0;i<p.count;i++){const y=p.getY(i),angle=Math.atan2(p.getZ(i),p.getX(i)),factor=(1+.18*Math.sin(angle*3+seed))*(1-.45*y);p.setXYZ(i,p.getX(i)*factor+.48*y*Math.sin(seed),p.getY(i)+.18*Math.cos(angle+seed)*(y+.5),p.getZ(i)*factor+.25*y*Math.cos(seed));const c=new T.Color().setHSL(.47,.08,.42+.09*(y+.5)+.035*Math.sin(angle+seed));colors.push(c.r,c.g,c.b);}
   geo.setAttribute('color',new T.Float32BufferAttribute(colors,3));geo.computeVertexNormals();const o=add(geo,rock,new T.Vector3(x,h*.45-.08,z),new T.Vector3(w,h,w*.72));o.rotation.y=seed*2.3;
-  o.userData.rockSeed=seed;pathRocks.push({x,z,r:w*1.05});
+  o.userData.rockSeed=seed;walkStones.push(o);pathRocks.push({x,z,r:w*1.05});
   const touch=new T.Vector3(x,h*.95,z);touchPoints.push(touch);
   if(!collision&&w<=.44&&h<=.56){o.userData.catchable=true;catchProps.push({object:o,radius:Math.max(w,h)*.52,groundY:o.position.y,touch});}
   if(collision)obstacles.push({x,z,r:w*.82});
@@ -32,8 +32,12 @@ export function makeClearing(scene:T.Scene){
  for(let i=0;i<17;i++){const a=i*2.399,r=7+rand(i+42)*3;stone(Math.cos(a)*r,Math.sin(a)*r,.25+rand(i)*.45,.2+rand(i+4)*.5,i+100,false);}
  // Small clusters of warm shelf-like fungi at sheltered boulder feet.
  const stem=new T.MeshStandardMaterial({color:'#c3b691',roughness:1}),cap=new T.MeshStandardMaterial({color:'#ac7451',roughness:1,flatShading:true});
- for(let i=0;i<36;i++){const cluster=Math.floor(i/4),a=cluster*2.4,r=8.8+rand(cluster)*1.1,x=Math.cos(a)*r+(rand(i)-.5)*.7,z=Math.sin(a)*r+(rand(i+9)-.5)*.7,h=.12+rand(i+2)*.23;touchPoints.push(new T.Vector3(x,h+.06,z));add(new T.CylinderGeometry(.025,.04,h,5),stem,new T.Vector3(x,h/2,z));add(new T.SphereGeometry(.15,7,4,0,Math.PI*2,0,Math.PI/2),cap,new T.Vector3(x,h,z),new T.Vector3(1+rand(i)*.8,.4,1));}
+ for(let i=0;i<36;i++){const cluster=Math.floor(i/4),a=cluster*2.4,r=8.8+rand(cluster)*1.1,x=Math.cos(a)*r+(rand(i)-.5)*.7,z=Math.sin(a)*r+(rand(i+9)-.5)*.7,h=.12+rand(i+2)*.23;touchPoints.push(new T.Vector3(x,h+.06,z));walkFungi.push(new T.Vector3(x,0,z));add(new T.CylinderGeometry(.025,.04,h,5),stem,new T.Vector3(x,h/2,z));add(new T.SphereGeometry(.15,7,4,0,Math.PI*2,0,Math.PI/2),cap,new T.Vector3(x,h,z),new T.Vector3(1+rand(i)*.8,.4,1));}
  const gates=[stone(-6.5,-7.5,1.35,1.65,200),stone(6.5,-7.5,1.35,1.65,210)],baseY=gates.map(g=>g.position.y);let opened=0;
  mountRockStudy(scene,obstacles,touchPoints);
- return {obstacles,touchPoints,catchProps,get paths(){return dirtRoutes(pathRocks);},setGroundShadows(on:boolean){floor.receiveShadow=on;},setGroundPainted(on:boolean){floor.visible=!on;},update(open:boolean,dt:number){opened+=(Number(open)-opened)*(1-Math.exp(-dt*2));gates.forEach((g,i)=>g.position.y=baseY[i]-opened*2.3);for(const o of obstacles)if(o.z===-7.5)o.r=1.35*.82*(1-opened);}};
+ return {obstacles,touchPoints,catchProps,canFingerWalk(p:T.Vector3){
+  if(Math.hypot(p.x,p.z)>13||obstacles.some(o=>Math.hypot(p.x-o.x,p.z-o.z)<o.r+.7))return false;
+  if(walkStones.some(o=>o.visible&&o.position.y+o.scale.y*.6>.05&&Math.hypot(p.x-o.position.x,p.z-o.position.z)<o.scale.x*1.05+.7))return false;
+  return !walkFungi.some(o=>Math.hypot(p.x-o.x,p.z-o.z)<.8);
+ },get paths(){return dirtRoutes(pathRocks);},setGroundShadows(on:boolean){floor.receiveShadow=on;},setGroundPainted(on:boolean){floor.visible=!on;},update(open:boolean,dt:number){opened+=(Number(open)-opened)*(1-Math.exp(-dt*2));gates.forEach((g,i)=>g.position.y=baseY[i]-opened*2.3);for(const o of obstacles)if(o.z===-7.5)o.r=1.35*.82*(1-opened);}};
 }
