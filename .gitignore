@@ -7,3 +7,6 @@ dist/
 playwright-report/
 test-results/
 .cache/
+
+/public/settings/*.lock
+/public/settings/*.tmp

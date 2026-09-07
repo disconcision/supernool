@@ -1,3 +1,4 @@
+import {setupSettings} from './settings';
 import {createStartup} from './startup';
 import {createInhabitation} from './inhabited';
 import type {IdlePreview} from './lehi';
@@ -293,7 +294,7 @@ function tick(now:number){requestAnimationFrame(tick);const frameMs=now-last;con
   // Both the original and current rock controls enable layout after loading;
   // failed optional art retains the procedural scenery beneath it.
   const rocksReady=!($('rockLayout') as HTMLSelectElement).disabled||/failed/i.test($('rockLoad').textContent??'');
-  startup.frameReady(loaded&&!inflight&&queue.length===0&&backdrop.ready&&lehi.ready()&&rocksReady);
+  startup.frameReady(preferencesReady&&loaded&&!inflight&&queue.length===0&&backdrop.ready&&lehi.ready()&&rocksReady);
  }
  if(new URLSearchParams(location.search).has('matteCapture')){hero.visible=false;ring.visible=false;avatar.visible=false;scene.traverse(o=>{if(o.userData.matteExclude)o.visible=false;});}
  clearing.update(solved(tree)&&!grip&&!animation,dt);$('world').dataset.caught=String(grip?.caught??false);$('world').dataset.goal=String(solved(tree));
@@ -334,7 +335,10 @@ if(inhabitedStudy){
  cameraUI.append(toggle,help);document.querySelector('header')!.append(cameraUI);$('world').dataset.cameraMode='scene';
 }
 inhabitation.mount($('settings'));
-setupControlReadouts();ui();requestAnimationFrame(tick);
+setupControlReadouts();
+let preferencesReady=false;
+setupSettings(inhabitedStudy?'clearing-019':'clearing-018',$('settings'),'.dock input,.dock select',true).finally(()=>{preferencesReady=true;});
+ui();requestAnimationFrame(tick);
 
 // Read-only integration diagnostics; rendering uses the displayed worker pose.
 (window as any).__inhabited=()=>({ ...inhabitation.inspect(),displayedIds:poseNow?[...poseNow.nodes.keys()]:[],treeIds:walk(tree).map(n=>n.id)});

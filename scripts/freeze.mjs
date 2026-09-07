@@ -1,0 +1,14 @@
+import {spawnSync} from 'node:child_process';
+import {mkdir,writeFile} from 'node:fs/promises';
+import {resolve} from 'node:path';
+const root=process.cwd(),id=new Date().toISOString().replace(/[:.]/g,'-');
+const directory=resolve(root,'.cache/frozen',id);
+const result=spawnSync(process.execPath,['node_modules/vite/bin/vite.js','build','--outDir',directory],{cwd:root,stdio:'inherit'});
+if(result.status!==0)process.exit(result.status??1);
+const revision=spawnSync('git',['rev-parse','--short','HEAD'],{encoding:'utf8'}).stdout.trim();
+const dirty=!!spawnSync('git',['status','--porcelain'],{encoding:'utf8'}).stdout.trim();
+const manifest={id,revision,dirty,builtAt:new Date().toISOString(),directory};
+await writeFile(resolve(directory,'preview-manifest.json'),JSON.stringify(manifest,null,2));
+await mkdir(resolve(root,'.cache/frozen'),{recursive:true});
+await writeFile(resolve(root,'.cache/frozen/latest.json'),JSON.stringify(manifest,null,2));
+console.log(`Frozen ${id}. Start with npm run frozen:serve. An already running preview stays on its original snapshot.`);

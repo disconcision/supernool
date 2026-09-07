@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "scopes": {
+    "clearing-018": {
+      "revision": 0,
+      "values": {
+        "mossPlacement": "scatter",
+        "mossScale": "2.3",
+        "mossAmount": "1.2",
+        "mossSpread": "0.65",
+        "mossSmallBias": "0.6",
+        "mossSeed": "0",
+        "mossOpacity": "0.7",
+        "mossSaturation": "0.55",
+        "mossBrightness": "1",
+        "mossBlend": "normal",
+        "lichenPlacement": "scatter",
+        "lichenScale": "0.85",
+        "lichenAmount": "1.2",
+        "lichenSpread": "0.5",
+        "lichenSmallBias": "1.2",
+        "lichenSeed": "0",
+        "lichenOpacity": "0.7",
+        "lichenSaturation": "0.5",
+        "lichenBrightness": "1",
+        "lichenBlend": "normal"
+      }
+    },
+    "clearing-019": {
+      "revision": 0,
+      "values": {
+        "mossPlacement": "scatter",
+        "mossScale": "2.3",
+        "mossAmount": "1.2",
+        "mossSpread": "0.65",
+        "mossSmallBias": "0.6",
+        "mossSeed": "0",
+        "mossOpacity": "0.7",
+        "mossSaturation": "0.55",
+        "mossBrightness": "1",
+        "mossBlend": "normal",
+        "lichenPlacement": "scatter",
+        "lichenScale": "0.85",
+        "lichenAmount": "1.2",
+        "lichenSpread": "0.5",
+        "lichenSmallBias": "1.2",
+        "lichenSeed": "0",
+        "lichenOpacity": "0.7",
+        "lichenSaturation": "0.5",
+        "lichenBrightness": "1",
+        "lichenBlend": "normal"
+      }
+    }
+  }
+}
