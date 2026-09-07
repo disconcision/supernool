@@ -7,6 +7,7 @@ const scene=new T.Scene();scene.background=new T.Color('#89968b');scene.add(new 
 const renderer=new T.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));document.body.append(renderer.domElement);
 const camera=new T.OrthographicCamera(-4,4,2.8,-2.8,.01,100);
 const avatar=createTraveller(scene,s=>$('status').textContent=s),ribbon=createRibbon(scene);
+const prop=new T.Mesh(new T.IcosahedronGeometry(.42,0),new T.MeshStandardMaterial({color:'#58675e',flatShading:true,roughness:1}));scene.add(prop);
 addTravelHandControl($('handControls'),style=>avatar.setTravelStyle(style));
 if(new URLSearchParams(location.search).has('hands')){($('motion') as HTMLSelectElement).value='loop';($('view') as HTMLSelectElement).value='quarter';}
 $('figure').onchange=()=>avatar.choose(value('figure'));
@@ -14,5 +15,6 @@ function resize(){renderer.setSize(innerWidth,innerHeight);camera.left=-2.8*inne
 let last=performance.now();function frame(now:number){requestAnimationFrame(frame);const dt=Math.min(.05,(now-last)/1000);last=now;const cycle=now/1000%8,mode=value('motion')==='loop'?(cycle>1.4&&cycle<6.2?'travel':'idle'):value('motion'),working=mode==='pull'||mode==='pin',moving=mode==='step'||mode==='travel';avatar.root.position.z+=dt*(mode==='travel'?3.2:0);avatar.root.position.x+=dt*(mode==='step'?.65:0);
 const p=avatar.root.position,offset=value('view')==='quarter'?new T.Vector3(5,3,7):value('view')==='front'?new T.Vector3(0,2,7):value('view')==='side'?new T.Vector3(7,2,0):new T.Vector3(0,2,-7);camera.position.copy(p).add(offset);camera.lookAt(p.clone().add(value('view')==='side'?new T.Vector3(0,1.1,.8):new T.Vector3(value('view')==='back'?.6:-.6,1.1,0)));
 const grip=working?p.clone().add(new T.Vector3(-1,2.15,.5)):undefined,brace=mode==='pin'?p.clone().add(new T.Vector3(1,2.15,.5)):undefined;
+prop.visible=mode==='inspect';prop.position.copy(p).add(new T.Vector3(-1.6,.32,.6));avatar.setIdleTargets(prop.visible?[prop.position.clone().add(new T.Vector3(0,.25,0))]:[]);
 avatar.update(now,dt,moving,camera,grip,brace,0,working,working?{velocity:new T.Vector3(),effort:.6}:undefined);
 const ends=avatar.linkEnds();ribbon.update(now,dt,true,working,ends.from,ends.to,camera,.15);renderer.render(scene,camera);document.body.dataset.character=avatar.current();document.body.dataset.motion=avatar.locomotion();document.body.dataset.handPose=avatar.root.userData.travelHandPose;document.body.dataset.handWeight=String(avatar.root.userData.travelHandWeight);}requestAnimationFrame(frame);

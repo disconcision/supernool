@@ -40,6 +40,7 @@ export function createLehi(scene:T.Scene){
  // The character faces local +Z: anatomical right is local -X.
  const hands=[hand(-1),hand(1)],orientation=new T.Quaternion();
  const travel=new TravelHands();let travelSpeed=0,travelPhase=0;
+ const fingerGrasps=hands.map(()=>[0,0,0,0,0]);
  let grasp=[0,0],idleTime=0,idleTurn=0;let idleTargets:T.Vector3[]=[];let curiosity:{target:T.Vector3;hand:number;age:number}|undefined;
  function update(now:number,dt:number,moving:boolean,camera:T.Camera,grip?:T.Vector3,brace?:T.Vector3,active=0,engaged=true,pull?:{velocity:T.Vector3;effort:number}){
   const time=now/1000;
@@ -83,8 +84,20 @@ export function createLehi(scene:T.Scene){
    if(exploring)orientation.multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(1,0,0),2.65*Math.max(0,inspectWeight)));
    h.group.quaternion.slerp(orientation,1-Math.exp(-dt*14));
    grasp[i]=T.MathUtils.lerp(grasp[i],contact&&(engaged||i!==active)?1:exploring?.25:travelling.grasp*travelWeight,1-Math.exp(-dt*12));
-   h.joints.forEach((j,k)=>{j.rotation.x=.06+grasp[i]*(.48+k*.045);h.tips[k].rotation.x=grasp[i]*(1.0+k*.06);});
-   h.thumb.rotation.x=grasp[i]*.65;h.thumb.rotation.z=(i?1:-1)*(.8-grasp[i]*.25);
+   // Relax one finger after another at rest; a more deliberate ripple feels
+   // around nearby props. These are bounded curls, not fingertip contact IK.
+   const free=!moving&&!contact&&!engaged&&!pull?T.MathUtils.smoothstep(idleTime,.6,1.8):0;
+   const digits=fingerGrasps[i];
+   for(let k=0;k<digits.length;k++){
+    const idlePulse=Math.pow(.5+.5*Math.sin(time*1.35+i*2.3-k*.72),4);
+    const feelPulse=Math.pow(.5+.5*Math.sin((exploring?.age??0)*4.2-k*.85),2);
+    const fidget=T.MathUtils.lerp(.025+.16*idlePulse,.08+.34*feelPulse,Math.max(0,inspectWeight));
+    const target=grasp[i]+free*fidget*(k===4?.55:1);
+    digits[k]=contact?grasp[i]:T.MathUtils.lerp(digits[k],target,1-Math.exp(-dt*10));
+   }
+   h.joints.forEach((j,k)=>{j.rotation.x=.06+digits[k]*(.48+k*.045);h.tips[k].rotation.x=digits[k]*(1.0+k*.06);});
+   h.thumb.rotation.x=digits[4]*.65;h.thumb.rotation.z=(i?1:-1)*(.8-digits[4]*.25);
+   h.group.userData.fingerGrasps=digits;
    h.group.userData.grasp=grasp[i];
    h.group.scale.setScalar(contact?1.15:1);
   });
