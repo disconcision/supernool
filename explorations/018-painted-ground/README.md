@@ -189,3 +189,15 @@ Inspect → Appearance → Surroundings includes a clear/mist comparison plus am
 `mist.ts` reconstructs surface positions from the scene's depth texture and applies an atmospheric color wash. This preserves the foreground silhouette while misting the terrain behind it. It is a surface-depth approximation, not integrated volumetric scattering: no light shafts, self-shadowed clouds or visible fog volumes. One full-resolution multisampled render target and one compositing draw are added; clear mode bypasses the pass. Target allocation follows drawing-buffer size and is reused. The GPU memory cost scales with viewport resolution. Render statistics count both passes.
 
 Inspected normal, later-time, orbit and active-grip screenshots (`assets/mist-*.png`). At 1440×900 on this machine the static comparison measured 60 fps with and without mist (16.7 ms average; p95 16.8 vs 16.7 ms), and 1,016 vs 1,015 draws. These are browser frame timings, not GPU timings or a guarantee for other devices. TypeScript/build and the full six-rewrite mouse/body playthrough passed without browser errors. This is a provisional visual option, not an accepted permanent atmosphere direction.
+
+
+## Idle hands playing catch
+
+The ordinary route now lets idle hands pick up a nearby small loose stone and play a short, varied game of catch, with an underhand wind-up and follow-through. Successful catches move the hands farther apart until a miss ends the rally. Walking gets a brief set-down and return animation; tree work takes priority immediately. Starts and repeat attempts are slightly less frequent. **Inspect → Appearance → Traveller → Idle hands** offers mixed finger walks and catch, walking-only, catch-only, or resting hands. See [IDLE-CATCH.md](IDLE-CATCH.md) for object eligibility, motion limits and validation. This behavior is integrated into the current playable scene.
+
+
+## Finger-walking idle hands
+
+The earlier scenery inspection is replaced by a grounded finger walk with varied routes around rocks and fungi. Both hands take turns in each activity; a shared 12–22 second quiet interval prevents an ended catch from immediately starting a walk. Traveller → Idle hands offers mixed, walking-only, catch-only and resting comparisons. See [IDLE-HANDS.md](IDLE-HANDS.md) for gait, obstacle clearance, scheduling and checks. Rock climbing remains outside this ground-walking pass.
+
+Manual previews live under **Inspect → Appearance → Traveller → Test idle animations**. Choose wandering, catch, either walking style, or either walk with a stumble, then press **Play animation**. **Stop preview** ends the activity; movement still exercises its normal disengagement. Previews preserve the automatic idle settings and skip their waiting period. Catch requires a nearby available stone, and walks require clear ground.

@@ -22,3 +22,16 @@ $('shadow-full').href=new URL('./round-03/shadow-canopies.png',import.meta.url).
 $('shadow-prompt').href=new URL('./round-03/shadow-prompt.txt',import.meta.url).href;
 $('shadow-provenance').href=new URL('./round-03/provenance.json',import.meta.url).href;
 $('canopy-brief').href=new URL('./canopy-notes.md',import.meta.url).href;
+
+$('shadow-body-full').href=new URL('./round-04/shadow-body.png',import.meta.url).href;
+$('shadow-body-prompt').href=new URL('./round-04/shadow-body-prompt.txt',import.meta.url).href;
+$('round-four-provenance').href=new URL('./round-04/provenance.json',import.meta.url).href;
+$('growth-notes').href=new URL('./growth-notes.md',import.meta.url).href;
+
+$('shadow-method').href=new URL('./shadow-notes.md',import.meta.url).href;
+
+$('painterly-method').href=new URL('./painterly-notes.md',import.meta.url).href;
+
+$('storm-method').href=new URL('./storm-notes.md',import.meta.url).href;
+
+$('patch-shadow-method').href=new URL('./patch-shadow-notes.md',import.meta.url).href;

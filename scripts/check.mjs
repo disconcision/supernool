@@ -8,3 +8,9 @@ for(const name of ['check','associativity-check']){
  execFileSync(process.execPath,[outfile],{stdio:'inherit'});
  await rm(outfile);
 }
+
+execFileSync(process.execPath,['explorations/018-painted-ground/idle-catch-check.cjs'],{stdio:'inherit'});
+
+execFileSync(process.execPath,['explorations/018-painted-ground/finger-walk-check.cjs'],{stdio:'inherit'});
+
+execFileSync(process.execPath,['explorations/018-painted-ground/idle-roam-check.cjs'],{stdio:'inherit'});

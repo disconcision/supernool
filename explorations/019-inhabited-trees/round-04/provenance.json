@@ -1,0 +1,33 @@
+{
+  "date": "2026-09-07",
+  "method": "Built-in image_gen",
+  "images": [
+    {
+      "output": "shadow.png",
+      "prompt": "shadow-prompt.txt",
+      "original": "/Users/andrewblinn/.codex/generated_images/01a07563-399b-7f62-8731-6ed1b6a17b48/exec-5021be7a-89de-4762-8449-104f27693fdf.png",
+      "references": [
+        "../round-03/shadow-canopies.png"
+      ],
+      "review": "Superseded: user finds these too wispy and insubstantial."
+    },
+    {
+      "output": "growth.png",
+      "prompt": "growth-prompt.txt",
+      "original": "/Users/andrewblinn/.codex/generated_images/01a07563-399b-7f62-8731-6ed1b6a17b48/exec-2a117efb-5ec6-46a1-8fd4-d903e68d5a8f.png",
+      "references": [
+        "../round-02/foliage.png"
+      ],
+      "review": "Archived exploration, not a new visual target. User prefers original living concepts and asked for 3D iteration instead."
+    },
+    {
+      "output": "shadow-body.png",
+      "prompt": "shadow-body-prompt.txt",
+      "original": "/Users/andrewblinn/.codex/generated_images/01a07563-399b-7f62-8731-6ed1b6a17b48/exec-13b17a83-9535-4660-af7f-6cab7999578f.png",
+      "references": [
+        "../round-03/shadow-canopies.png"
+      ],
+      "review": "Latest unapproved candidate: restores storm-cloud body and defined borders with separate violet/blue palettes. Background transmission remains weaker than requested; do not infer approval."
+    }
+  ]
+}
