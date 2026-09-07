@@ -2,11 +2,11 @@ const assert=require('node:assert/strict'),T=require('three'),{buildSync}=requir
 mkdirSync('.cache',{recursive:true});
 buildSync({entryPoints:[__dirname+'/idle-catch.ts'],bundle:true,platform:'node',external:['three'],outfile:'.cache/idle-catch.cjs'});
 const {IdleCatch,catchSocket}=require('../../.cache/idle-catch.cjs');
-function fixture(seed=2,random){
+function fixture(seed=2,random,safe){
  let n=seed;const rng=()=>{n=(1664525*n+1013904223)>>>0;return n/4294967296;};
  const game=new IdleCatch(random??rng),root=new T.Group(),stone=new T.Object3D();stone.position.set(1.8,.08,0);stone.userData.rockSeed=111;
  const hands=[-1,1].map(side=>{const h=new T.Group();h.position.set(side*.9,1,.22);return h;});
- game.setProps([{object:stone,radius:.2,groundY:.08,touch:new T.Vector3()}]);
+ game.setProps([{object:stone,radius:.2,groundY:.08,touch:new T.Vector3()}],safe);
  const tick=(allowed=true,dt=1/60,walking=false)=>{game.update(dt,allowed,root,hands,walking);if(game.active)game.poses.forEach((p,i)=>{hands[i].position.copy(p.position);hands[i].quaternion.copy(p.orientation);});};
  const until=(phase)=>{for(let i=0;i<5000&&game.phase!==phase;i++)tick();assert.equal(game.phase,phase);};
  return {game,root,stone,hands,tick,until};
@@ -35,6 +35,22 @@ for(const phase of ['scout','grip','lift','notice','spread','windup','throw','fl
  assert(f.stone.position.distanceTo(before)<.3,`No reset teleport during ${phase}`);
  for(let i=0;i<300;i++)f.tick(false);
  assert(Math.abs(f.stone.position.y-.08)<1e-8,`Interrupted stone settles during ${phase}`);
+}
+// Anticipation reads the moving thrower before the rock is released. It stays
+// continuous across wind-up/release and respects the receiver's nearby scenery.
+for(const blocked of [false,true])for(let seed=1;seed<=8;seed++){
+ const safe=p=>!blocked||p.z<1.45,f=fixture(seed,undefined,safe);f.until('windup');
+ const receiver=1-f.game.holder,first=f.game.poses[receiver].position.clone(),initial=f.game.poses[f.game.holder].orientation.clone();
+ let travel=0,twist=0,lag=false,positive=false,negative=false,frames=0;
+ while(f.game.phase==='windup'||f.game.phase==='throw'){
+  const previous=f.game.poses[receiver].position.clone();f.tick();frames++;
+  const g=f.game,p=g.poses[receiver].position;
+  assert(p.distanceTo(previous)<.025,'Receiver shuffles continuously through release');assert(safe(p),'Waiting steps respect scenery');
+  travel=Math.max(travel,p.distanceTo(first));twist=Math.max(twist,g.poses[g.holder].orientation.angleTo(initial));
+  positive||=g.state.cue>.35;negative||=g.state.cue<-.35;lag||=Math.abs(g.state.cue-g.state.readCue)>.2;
+ }
+ assert(frames>65&&frames<120,'Anticipation has time to read without a long pause');assert(positive&&negative&&lag);assert(twist>.4);
+ if(!blocked)assert(travel>.15,'The waiting hand visibly wanders before release');
 }
 // Walking winds down continuously, even if the traveller stops or turns midway.
 for(const phase of ['scout','grip','lift','windup','throw','flight','catch','miss']){

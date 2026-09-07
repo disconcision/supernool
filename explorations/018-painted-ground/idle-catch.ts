@@ -22,6 +22,8 @@ export class IdleCatch {
  private loose=false;private bounces=0;private cooldown=7;
  private throwDirection=new T.Vector3();private throwRotation=new T.Quaternion();private departureCenter=new T.Vector3();
  private requestedHand?:number;
+ private windupTime=1.3;private feintSide=1;private feintWidth=.3;private readCue=0;private cue=0;private shufflePhase=0;
+ private throwSide=new T.Vector3();
  private safe:(p:T.Vector3)=>boolean=()=>true;
  constructor(private random:()=>number=Math.random){}
  setProps(props:CatchProp[],safe?:(p:T.Vector3)=>boolean){this.cancel();this.props=props;this.safe=safe??(()=>true);}
@@ -29,7 +31,7 @@ export class IdleCatch {
  requestStart(hand:number){this.requestedHand=hand;this.idle=this.cooldown;}
  get disengaging(){return this.phase==='startle'||this.phase==='depart'||this.phase==='rejoin';}
  get active(){return this.phase!=='rest';}
- get state(){return {phase:this.phase,holder:this.holder,separation:this.homes.length?this.homes[0].position.distanceTo(this.homes[1].position):0,stone:this.prop?.object.userData.rockSeed??null,held:this.held,loose:this.loose,throws:this.throws,catches:this.catches,misses:this.misses,sessions:this.sessions,age:this.age,flightTime:this.flightTime,position:this.prop?.object.position.toArray()??null};}
+ get state(){return {phase:this.phase,holder:this.holder,separation:this.homes.length?this.homes[0].position.distanceTo(this.homes[1].position):0,stone:this.prop?.object.userData.rockSeed??null,held:this.held,loose:this.loose,throws:this.throws,catches:this.catches,misses:this.misses,sessions:this.sessions,age:this.age,flightTime:this.flightTime,position:this.prop?.object.position.toArray()??null,windupTime:this.windupTime,cue:this.cue,readCue:this.readCue,hands:this.poses.map(p=>({position:p.position.toArray(),orientation:p.orientation.toArray(),grasp:p.grasp}))};}
  private enter(phase:Phase){this.phase=phase;this.age=0;this.starts=this.poses.map(pose);}
  private local(x:number,y:number,z:number){return new T.Vector3(x,y,z).applyQuaternion(this.heading).add(this.origin);}
  private rotation(pitch:number){return this.heading.clone().multiply(new T.Quaternion().setFromAxisAngle(xAxis,pitch));}
@@ -84,7 +86,24 @@ export class IdleCatch {
   if(!this.safe(this.target))this.target.copy(centre);
   this.throwDirection.copy(this.target).sub(this.poses[this.holder].position).setY(0).normalize();
   this.throwRotation.copy(this.facing(this.throwDirection));
+  this.throwSide.set(-this.throwDirection.z,0,this.throwDirection.x);
+  this.windupTime=1.15+this.random()*.4;this.feintSide=this.random()<.5?-1:1;this.feintWidth=.22+this.random()*.18;
+  this.shufflePhase=this.random()*Math.PI*2;this.readCue=this.cue=0;
   this.enter('windup');
+ }
+ /** Watch the visible wind-up with a little lag, not the hidden landing point. */
+ private watchReceiver(dt:number){
+  this.readCue=T.MathUtils.lerp(this.readCue,this.cue,1-Math.exp(-dt*6));
+  const r=1-this.holder,hand=this.poses[r],home=this.homes[r].position;
+  const shuffle=Math.sin(this.elapsed*2.5+this.shufflePhase)*.12;
+  const desired=home.clone().addScaledVector(this.throwSide,this.readCue*.55+shuffle);
+  desired.y+=Math.sin(this.elapsed*4+this.shufflePhase)*.06;
+  const delta=desired.sub(hand.position),next=hand.position.clone().addScaledVector(delta,Math.min(1,dt*1.25/Math.max(delta.length(),.001)));
+  if([.25,.5,.75,1].every(t=>{const p=hand.position.clone().lerp(next,t);return Math.hypot(p.x-this.origin.x,p.z-this.origin.z)>.9&&this.safe(p);}))hand.position.copy(next);
+  const attentive=this.facing(this.poses[this.holder].position.clone().sub(hand.position));
+  attentive.premultiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),this.readCue*.18));
+  attentive.multiply(new T.Quaternion().setFromAxisAngle(xAxis,-.12));
+  hand.orientation.slerp(attentive,1-Math.exp(-dt*5));hand.grasp=.03+.025*(1+Math.sin(this.elapsed*5));
  }
  private depart(){
   if(this.phase==='flight'){this.velocity.y-=9.8*Math.min(this.age,this.flightTime);this.loose=true;this.bounces=0;}
@@ -148,15 +167,21 @@ export class IdleCatch {
     if(this.age>=.95)this.planThrow();break;
    case 'windup':{
     const backswing=this.starts[h].position.clone().addScaledVector(this.throwDirection,-.58).add(new T.Vector3(0,-.38,0));
-    this.tween(h,backswing,this.throwRotation.clone().multiply(new T.Quaternion().setFromAxisAngle(xAxis,-.25)),.92,this.age/.65);
-    this.tween(r,this.homes[r].position,palmUp,0,this.age/.65);
-    if(this.age>=.65)this.enter('throw');break;
+    const t=Math.min(1,this.age/this.windupTime);
+    this.cue=this.feintSide*Math.sin(t*Math.PI*2)*Math.sin(t*Math.PI);
+    this.tween(h,backswing,this.throwRotation.clone().multiply(new T.Quaternion().setFromAxisAngle(xAxis,-.25)),.92,t);
+    const hand=this.poses[h],sideStep=hand.position.clone().addScaledVector(this.throwSide,this.cue*this.feintWidth);
+    if([.25,.5,.75,1].every(u=>this.safe(hand.position.clone().lerp(sideStep,u))))hand.position.copy(sideStep);
+    hand.orientation.premultiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),this.cue*.55));
+    this.watchReceiver(dt);
+    if(t===1)this.enter('throw');break;
    }
    case 'throw':{
     // Accelerate through the release instead of stopping at the apex of a flick.
     const u=Math.min(1,this.age/.24),p=this.poses[h];
     p.position.copy(this.starts[h].position).addScaledVector(this.throwDirection,.95*u*u);p.position.y+=.6*u*u;
     p.orientation.copy(this.starts[h].orientation).slerp(this.throwRotation,u*u);p.grasp=.92*(1-smooth((u-.6)/.4));
+    this.cue=0;this.watchReceiver(dt);
     if(this.age>=.24){
      this.syncHeld();this.launch.copy(o.position);this.velocity.copy(this.target).sub(this.launch).divideScalar(this.flightTime);this.velocity.y+=4.9*this.flightTime;
      this.held=false;this.throws++;this.enter('flight');
@@ -170,7 +195,8 @@ export class IdleCatch {
     else{this.poses[h].position.copy(follow).lerp(this.homes[h].position,smooth((this.age-.25)/.45));this.poses[h].orientation.copy(this.throwRotation).slerp(palmUp,smooth((this.age-.25)/.45));}
     const receiver=this.poses[r],destination=this.palmAt(this.target,palmUp);
     if(this.age>this.reaction){const delta=destination.sub(receiver.position);receiver.position.addScaledVector(delta,Math.min(1,this.reachSpeed*dt/Math.max(delta.length(),.001)));}
-    receiver.orientation.slerp(palmUp,1-Math.exp(-dt*12));receiver.grasp=0;
+    else this.watchReceiver(dt);
+    if(this.age>this.reaction){receiver.orientation.slerp(palmUp,1-Math.exp(-dt*12));receiver.grasp=0;}
     if(this.age>=this.flightTime){
      if(catchSocket(receiver).distanceTo(o.position)<.17){this.holder=r;this.catches++;this.attach();this.enter('catch');}
      else{this.misses++;this.velocity.y-=9.8*this.flightTime;this.loose=true;this.bounces=0;this.enter('miss');}
