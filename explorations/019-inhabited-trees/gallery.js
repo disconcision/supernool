@@ -31,3 +31,5 @@ $('growth-notes').href=new URL('./growth-notes.md',import.meta.url).href;
 $('shadow-method').href=new URL('./shadow-notes.md',import.meta.url).href;
 
 $('painterly-method').href=new URL('./painterly-notes.md',import.meta.url).href;
+
+$('storm-method').href=new URL('./storm-notes.md',import.meta.url).href;
