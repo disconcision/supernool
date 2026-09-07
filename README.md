@@ -2,6 +2,8 @@
 
 prototype playable world exploring the premise of what if math was real. this is the super/3d version of [nool](https://github.com/disconcision/nool), which persists as interaction and symbolic manipulation lab.
 
+![supernool clearing with tree and hand control](docs/screenshots/supernool.jpg)
+
 ## run
 
 use Node.js 20+.
