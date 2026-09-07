@@ -48,3 +48,6 @@ header h1{font-family:"Avenir Next",Avenir,system-ui,sans-serif;font-size:25px;f
 .controlLabel{display:flex;align-items:baseline;justify-content:space-between;gap:12px}.controlValue{font:12px ui-monospace,monospace;font-variant-numeric:tabular-nums;color:#58685e;flex-shrink:0}#settingsSnapshot textarea{display:block;width:100%;resize:vertical;font:11px/1.45 ui-monospace,monospace;color:#435147;background:#f3f5f0;border:1px solid #d8ded4;border-radius:6px;padding:9px;margin-top:10px}#settingsSnapshot small{display:block;margin-top:7px;color:#61705f}
 
 #idleAnimationTest button{font-size:12px;margin:0 6px 6px 0}#idleAnimationTest small{display:block;line-height:1.5;margin-top:7px;color:#61705f}#idleAnimationTest [role=status]{color:#324d3e}
+
+/* Study 019 shares the scene, but keeps an explicit inspection camera. */
+.studyCamera{margin-top:10px;display:flex;align-items:flex-start;flex-direction:column;gap:5px;max-width:280px}.studyCamera button{pointer-events:auto;border:1px solid #c9d0c4;border-radius:16px;background:#f4f5efeb;color:#46534c;font:12px system-ui;padding:6px 11px;text-shadow:none}.studyCamera button[aria-pressed=true]{background:#dce5d6}.studyCamera small{font:11px/1.5 system-ui;color:#f1f1e5}

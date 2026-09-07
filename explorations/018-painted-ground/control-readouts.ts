@@ -17,7 +17,7 @@ export function setupControlReadouts(){
  const button=document.createElement('button');button.type='button';button.textContent='Capture & copy settings';
  const text=document.createElement('textarea');text.readOnly=true;text.rows=9;text.setAttribute('aria-label','Captured settings');text.spellcheck=false;
  const status=document.createElement('small');status.setAttribute('role','status');
- const key='supernool-018-captured-settings';
+ const key='supernool-'+(document.body.dataset.study||'018')+'-captured-settings';
  try{text.value=localStorage.getItem(key)||'';}catch{}
  text.hidden=!text.value;
  button.onclick=async()=>{
@@ -26,7 +26,7 @@ export function setupControlReadouts(){
    if(input.id)controls[input.id]=input instanceof HTMLInputElement&&input.type==='checkbox'?input.checked:input.value;
   }
   const rules=Array.from(document.querySelectorAll<HTMLInputElement>('#ruleList input[type="checkbox"]')).map(input=>({rule:input.closest('label')?.textContent?.trim(),enabled:input.checked}));
-  text.value=JSON.stringify({study:'supernool/018',capturedAt:new Date().toISOString(),controls,rules},null,2);text.hidden=false;
+  text.value=JSON.stringify({study:document.body.dataset.study==='019'?'supernool/019':'supernool/018',capturedAt:new Date().toISOString(),controls,rules},null,2);text.hidden=false;
   let saved=false;try{localStorage.setItem(key,text.value);saved=true;}catch{}
   try{await navigator.clipboard.writeText(text.value);status.textContent=saved?'Copied and saved in this browser.':'Copied.';}
   catch{status.textContent=saved?'Saved in this browser. Select the text below to copy it.':'Select the text below to copy it.';text.focus();text.select();}

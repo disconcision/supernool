@@ -46,7 +46,7 @@ export function addBackdrop(scene:T.Scene,world:HTMLElement,renderer:T.WebGLRend
     float luma=dot(outer,vec3(.2126,.7152,.0722));
     outer=mix(vec3(luma),outer,.55)*vec3(1.5,1.57,1.08);
     outer=mix(vColor,outer,smoothstep(0.,.025,outerBorder));
-    vec3 c=mix(outer,texture2D(paint,paintUv).rgb,a);for(int i=0;i<4;i++){vec3 delta=localPositions[i].xyz-vWorld;float d=length(delta),falloff=pow(max(0.,1.-d/localReach),2.)/(1.+d*d*.2);float facing=max(.1,dot(normalize(vGroundNormal),normalize(delta)));c+=c*localTint*localPositions[i].w*falloff*facing*.035*localGain;}
+    vec3 c=mix(outer,texture2D(paint,paintUv).rgb,a);for(int i=0;i<4;i++){vec3 delta=localPositions[i].xyz-vWorld;float d=length(delta),falloff=pow(max(0.,1.-d/localReach),2.)/(1.+d*d*.2);float facing=max(.1,dot(normalize(vGroundNormal),normalize(delta)));float energy=1.-exp(-localPositions[i].w*falloff*facing*.12*localGain);float brightness=max(.18,dot(c,vec3(.2126,.7152,.0722)));c+=localTint*brightness*energy*3.;}
     gl_FragColor=vec4(c,1.);
     #include <colorspace_fragment>
    }`,toneMapped:false});

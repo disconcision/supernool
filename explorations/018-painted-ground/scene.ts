@@ -7,6 +7,8 @@ import {fitZoom} from './framing';
 import * as T from 'three';import {createPerformanceStats} from './stats';import {StanceAdjustment} from './stance';import {createRibbon} from './ribbon';import {ScreenGuides} from './guides';import {addBackdrop} from './backdrop';import {makeClearing} from './terrain';import {makeSigil,disposeSigil} from './sigils';import {setupHUD} from './hud';import {createSound} from './sound';import {directionalContact} from './navigation';import {rules,ruleId,ruleColor,Pin,allowsPin,advanceSpring,catchPull} from './interaction';import {createTraveller} from './traveller';import {Gesture,gestures,scoreDrag} from './gestures';import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {Term,Action,initial,walk,count,format,readable,find,actions,replace,solved,hint} from './algebra';import {Pose,layout,transition} from './layout';import {Options,prepare} from './surface';import {makeShading} from './shading';
 const $=(id:string)=>document.getElementById(id)!,value=(id:string)=>($(id) as HTMLInputElement).value;
+const inhabitedStudy=new URLSearchParams(location.search).get('inhabited')==='1';let freeStudyCamera=false;
+if(inhabitedStudy){document.title='supernool · 019 · Inhabited clearing';document.querySelector('header a')!.textContent='supernool · 019';document.querySelector('header h1')!.textContent='Inhabited clearing';document.body.dataset.study='019';}
 const renderer=new T.WebGLRenderer({antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setClearColor('#bac7c1');renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;$('world').append(renderer.domElement);
 const scene=new T.Scene();scene.fog=new T.Fog('#bac7c1',85,185);scene.add(new T.HemisphereLight('#fff5d9','#506451',2));const sun=new T.DirectionalLight('#fff0d0',2.5);sun.position.set(-8,16,10);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-23,right:23,top:23,bottom:-23,near:1,far:80});sun.shadow.bias=-.00012;sun.shadow.normalBias=.025;scene.add(sun);
 const camera=new T.OrthographicCamera(-14,14,10,-10,.1,250);camera.position.set(39,32,63);if(new URLSearchParams(location.search).has('matteCapture'))camera.zoom=.78;const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,2,0);controls.enableDamping=true;controls.minZoom=.65;controls.maxZoom=2;controls.maxPolarAngle=Math.PI*.48;controls.mouseButtons={LEFT:null as any,MIDDLE:T.MOUSE.DOLLY,RIGHT:T.MOUSE.ROTATE};controls.update();
@@ -14,7 +16,7 @@ let framingFloor=Infinity,preferredZoom=camera.zoom,manualView=false,manualZoom=
 controls.addEventListener('start',()=>{manualView=true;manualZoom=camera.zoom;});
 controls.addEventListener('change',()=>{if(manualView&&Math.abs(camera.zoom-manualZoom)>1e-6){preferredZoom=camera.zoom;manualZoom=camera.zoom;}});
 controls.addEventListener('end',()=>{manualView=false;});
-function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h);camera.left=-11*w/h;camera.right=11*w/h;camera.top=11;camera.bottom=-11;const painted=value('backdrop')==='painted'&&!new URLSearchParams(location.search).has('matteCapture');controls.minZoom=Math.min(framingFloor,painted?Math.max(.9,.9*w/h/(16/9)):.65);controls.maxZoom=Math.max(2,controls.minZoom*1.5);controls.enablePan=!painted;camera.updateProjectionMatrix();}addEventListener('resize',resize);resize();
+function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h);camera.left=-11*w/h;camera.right=11*w/h;camera.top=11;camera.bottom=-11;const painted=value('backdrop')==='painted'&&!new URLSearchParams(location.search).has('matteCapture');controls.minZoom=Math.min(framingFloor,painted?Math.max(.9,.9*w/h/(16/9)):.65);controls.maxZoom=Math.max(2,controls.minZoom*1.5);controls.enableRotate=!inhabitedStudy||freeStudyCamera;controls.enablePan=inhabitedStudy?freeStudyCamera:!painted;if(freeStudyCamera){controls.minZoom=.25;controls.maxZoom=4;}camera.updateProjectionMatrix();}addEventListener('resize',resize);resize();
 const backdrop=addBackdrop(scene,$('world'),renderer);backdrop.set(new URLSearchParams(location.search).has('matteCapture')?'block':'painted');
 backdrop.setGroundShadows(true);
 const preClearing=new Set(scene.children);const clearing=makeClearing(scene),obstacles=clearing.obstacles;for(const o of scene.children)if(!preClearing.has(o))o.userData.matteExclude=true;
@@ -62,7 +64,7 @@ function finishSettling(){
 // Slow framing during tree interaction only; wandering preserves the current zoom.
 function frameTree(dt:number){
  if(!poseNow||new URLSearchParams(location.search).has('matteCapture'))return;
- const active=bodyMode()?handFocus:!!grip||!!animation;
+ const active=!freeStudyCamera&&(bodyMode()?handFocus:!!grip||!!animation);
  $('world').dataset.autoFraming=String(active);
  if(!active){
   $('world').dataset.cameraZoom=camera.zoom.toFixed(5);
@@ -209,12 +211,12 @@ function drawGuides(){
 function pick(e:{clientX:number;clientY:number}){pointer.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);ray.setFromCamera(pointer,camera);return near?ray.intersectObjects(runes.children,true)[0]?.object.userData.nodeId as string|undefined:undefined;}
 let groundDown:ScreenPoint|undefined;
 renderer.domElement.tabIndex=0;
-renderer.domElement.addEventListener('pointerdown',e=>{if(e.button!==0)return;renderer.domElement.focus();const id=pick(e);if(id){if(e.shiftKey){togglePin(id);return;}if(bodyMode()){if(!handFocus)setHandFocus(true);select(id);lingerPoint=worldPoint(id);return;}beginGrip(id,{x:e.clientX,y:e.clientY});if(grip)renderer.domElement.setPointerCapture(e.pointerId);}else if(!bodyMode()||!handFocus)groundDown={x:e.clientX,y:e.clientY};});
-renderer.domElement.addEventListener('pointermove',e=>{if(grip&&!grip.keyboard)updateGrip({x:e.clientX,y:e.clientY});else if(!grip&&!bodyMode()){
+renderer.domElement.addEventListener('pointerdown',e=>{if(freeStudyCamera)return;if(e.button!==0)return;renderer.domElement.focus();const id=pick(e);if(id){if(e.shiftKey){togglePin(id);return;}if(bodyMode()){if(!handFocus)setHandFocus(true);select(id);lingerPoint=worldPoint(id);return;}beginGrip(id,{x:e.clientX,y:e.clientY});if(grip)renderer.domElement.setPointerCapture(e.pointerId);}else if(!bodyMode()||!handFocus)groundDown={x:e.clientX,y:e.clientY};});
+renderer.domElement.addEventListener('pointermove',e=>{if(freeStudyCamera)return;if(grip&&!grip.keyboard)updateGrip({x:e.clientX,y:e.clientY});else if(!grip&&!bodyMode()){
  hoverId=pick(e);if(hoverId){lingerPoint=worldPoint(hoverId);lastContactAt=performance.now();}else if(near&&lingerPoint){const floatingPlane=new T.Plane().setFromNormalAndCoplanarPoint(camera.getWorldDirection(new T.Vector3()),lingerPoint);const p=ray.ray.intersectPlane(floatingPlane,new T.Vector3());if(p&&p.distanceTo(treeOrigin.clone().setY(4))<9)lingerPoint=p;}
  renderer.domElement.style.cursor=hoverId?'grab':'default';
 }});
-renderer.domElement.addEventListener('pointerup',e=>{if(e.button!==0)return;if(grip&&!grip.keyboard){releaseGrip();if(renderer.domElement.hasPointerCapture(e.pointerId))renderer.domElement.releasePointerCapture(e.pointerId);}else if(groundDown&&Math.hypot(e.clientX-groundDown.x,e.clientY-groundDown.y)<5){pick(e);const p=ray.ray.intersectPlane(plane,new T.Vector3());if(p&&Math.hypot(p.x,p.z)<14)navTarget=p.setY(0);}groundDown=undefined;});
+renderer.domElement.addEventListener('pointerup',e=>{if(freeStudyCamera)return;if(e.button!==0)return;if(grip&&!grip.keyboard){releaseGrip();if(renderer.domElement.hasPointerCapture(e.pointerId))renderer.domElement.releasePointerCapture(e.pointerId);}else if(groundDown&&Math.hypot(e.clientX-groundDown.x,e.clientY-groundDown.y)<5){pick(e);const p=ray.ray.intersectPlane(plane,new T.Vector3());if(p&&Math.hypot(p.x,p.z)<14)navTarget=p.setY(0);}groundDown=undefined;});
 renderer.domElement.addEventListener('pointercancel',()=>releaseGrip(false));
 addEventListener('keydown',e=>{if((e.target as HTMLElement).matches('input,select,textarea'))return;
  const key=e.key.toLowerCase();
@@ -316,6 +318,13 @@ const idlePreviewHelp=document.createElement('small');idlePreviewHelp.textConten
 const idlePreviewStatus=document.createElement('small');idlePreviewStatus.id='idlePreviewStatus';idlePreviewStatus.setAttribute('role','status');idlePreviewStatus.textContent='Choose an animation, then play.';
 idleTest.append(idlePreviewPlay,idlePreviewStop,idlePreviewHelp,idlePreviewStatus);travellerPanel.append(idleTest);
 const handReview=document.createElement('a');handReview.href='avatar-review.html?hands';handReview.target='_blank';handReview.rel='noopener';handReview.textContent='Compare travelling hands up close ↗';handReview.style.display='block';travellerPanel.append(handReview);
+if(inhabitedStudy){
+ const cameraUI=document.createElement('div');cameraUI.className='studyCamera';
+ const toggle=document.createElement('button');toggle.id='studyCamera';toggle.textContent='Free camera';toggle.setAttribute('aria-pressed','false');
+ const help=document.createElement('small');help.textContent='Drag: orbit · Shift-drag: pan · Wheel: zoom';help.hidden=true;
+ toggle.onclick=()=>{if(grip)releaseGrip(false);freeStudyCamera=!freeStudyCamera;toggle.setAttribute('aria-pressed',String(freeStudyCamera));toggle.textContent=freeStudyCamera?'Return to scene camera':'Free camera';help.hidden=!freeStudyCamera;controls.mouseButtons.LEFT=freeStudyCamera?T.MOUSE.ROTATE:null as any;controls.mouseButtons.MIDDLE=freeStudyCamera?T.MOUSE.PAN:T.MOUSE.DOLLY;resize();if(!freeStudyCamera){controls.enableDamping=false;controls.update();$('resetView').click();controls.enableDamping=true;}$('world').dataset.cameraMode=freeStudyCamera?'free':'scene';};
+ cameraUI.append(toggle,help);document.querySelector('header')!.append(cameraUI);$('world').dataset.cameraMode='scene';
+}
 inhabitation.mount($('settings'));
 setupControlReadouts();ui();requestAnimationFrame(tick);
 

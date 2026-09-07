@@ -32,7 +32,7 @@ export function createInhabitation(renderer:T.WebGLRenderer,scene:T.Scene,camera
  for(const [id,label,min,max,step] of specs)range('spirit_'+id,label,min,max,step,arcDefaults[id as keyof ArcSettings]!,bolts);
  let preview:ArcPreview|undefined,previewUntil=0;
  for(const [name,kind] of [['Small flash','small'],['Medium flash','medium'],['Branch strike','branch'],['Scenery strike','rock']] as [string,ArcPreview][]){const b=document.createElement('button');b.textContent=name;b.onclick=()=>{preview=kind;previewUntil=clock+.35;};bolts.append(b);}
- const note=document.createElement('p');note.textContent='Live scene experiment: existing rewrites, hands, terrain and rocks. Preview buttons produce a brief flash. Right-drag to orbit; Surroundings → Reset framing restores the scene camera. The painted backdrop remains a single-view asset.';panel.append(note);
+ const note=document.createElement('p');note.textContent='Live scene experiment: existing rewrites, hands, terrain and rocks. Preview buttons produce a brief flash. In study 019, enable Free camera below the title to inspect; Return to scene camera restores the framing. The painted backdrop remains a single-view asset.';panel.append(note);
  const status=document.createElement('small');status.id='spiritStatus';panel.append(status);
  const v=(id:string)=>values[id].value,n=(id:string)=>+v(id);
  let effect:ReturnType<typeof makeShadowCanopy>|undefined,lastPose:Pose|undefined,worldPose:Pose|undefined,clock=0;
