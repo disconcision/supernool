@@ -1,7 +1,7 @@
 {
   "app": "supernool",
   "branch": "main",
-  "revision": "c914ac66dcc84918bfd20c79c514e975fa0c1b56",
+  "revision": "7db0188cf4a952cb5832837479e3a2b987022c81",
   "prefix": "",
   "files": [
     "assets/01-arrival-4a2c0efa.png",
@@ -50,7 +50,7 @@
     "assets/dirt-paths-live-68f98635.png",
     "assets/elastic-ribbon-cce9c70c.png",
     "assets/explorations/018-painted-ground/avatar-review.html-e5762fbc.js",
-    "assets/explorations/018-painted-ground/index.html-b6cc59c0.js",
+    "assets/explorations/018-painted-ground/index.html-e5c65d1a.js",
     "assets/explorations/018-painted-ground/symbols.html-38ec703b.js",
     "assets/explorations/019-inhabited-trees/index.html-75f5289c.js",
     "assets/foliage-f41ae09e.png",

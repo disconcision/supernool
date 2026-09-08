@@ -7,14 +7,13 @@
   <script>
     const destination = new URL('./explorations/018-painted-ground/', location.href);
     destination.search = location.search;
-    if (!destination.searchParams.has('mode')) destination.searchParams.set('mode', 'body');
     destination.hash = location.hash;
     location.replace(destination.href);
   </script>
-  <noscript><meta http-equiv="refresh" content="0;url=./explorations/018-painted-ground/?mode=body"></noscript>
+  <noscript><meta http-equiv="refresh" content="0;url=./explorations/018-painted-ground/"></noscript>
 </head>
 <body>
-  <a href="./explorations/018-painted-ground/?mode=body">Play supernool</a>
+  <a href="./explorations/018-painted-ground/">Play supernool</a>
   · <a href="./explorations/index.html">Study catalogue</a>
 </body>
 </html>
