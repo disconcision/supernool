@@ -59,9 +59,9 @@ export function makeShadowCanopy(renderer:T.WebGLRenderer){
  }`});
  const screen=new T.Scene();screen.add(new T.Mesh(new T.PlaneGeometry(2,2),mat));const screenCamera=new T.Camera();let anchors:{id:string;point:T.Vector3;scale:number}[]=[];
  function setPose(p:Pose){pose=p;legacy?.setPose(p);anchors=[];for(const e of p.edges){if(e.id==='stem')continue;const node=p.nodes.get(e.id);if(node?.kind!=='op'||hash(e.id+'cloud')>.6)anchors.push({id:e.id,point:e.b.clone(),scale:Math.min(1,e.a.distanceTo(e.b)/.75)*(node?.kind==='op'?.64:1)});}}
- function render(scene:T.Scene,camera:T.OrthographicCamera,o:ShadowOptions){
+ function render(scene:T.Scene,camera:T.OrthographicCamera,o:ShadowOptions,drawBase?:()=>void){
  const destination=renderer.getRenderTarget();u.arcGlow.value=o.arcGlow??1;u.cloudFlash.value=o.cloudFlash??0;
- lastLegacy=['S1','S2','S3'].includes(o.form);if(lastLegacy){lastForm=o.form;if(!legacy){legacy=makeLegacy(renderer);if(pose)legacy.setPose(pose);}legacy.render(scene,camera,o);return;}
+ lastLegacy=['S1','S2','S3'].includes(o.form);if(lastLegacy){lastForm=o.form;if(!legacy){legacy=makeLegacy(renderer);if(pose)legacy.setPose(pose);}legacy.render(scene,camera,o,drawBase);return;}
  const patchMode=isPatchForm(o.form);u.patchMode.value=patchMode?1:0;
  const size=renderer.getDrawingBufferSize(new T.Vector2());if(target.width!==size.x||target.height!==size.y){target.setSize(size.x,size.y);host.setSize(size.x,size.y);}u.resolution.value.copy(size);
  camera.updateMatrixWorld();u.invProjection.value.copy(camera.projectionMatrixInverse);u.cameraWorld.value.copy(camera.matrixWorld);u.clock.value=o.time*o.drift;u.opacity.value=o.opacity;u.fringe.value=o.fringe;u.textureAmount.value=o.texture;u.tint.value.set(o.colour);u.roil.value=o.roil;u.preserveHost.value=o.visibility==='clear'?1:o.visibility==='readable'?.78:0;
@@ -89,7 +89,7 @@ export function makeShadowCanopy(renderer:T.WebGLRenderer){
  projected.push({x:p.x*.5+.5,y:p.y*.5+.5,rx:Math.hypot(px.x,py.x,pz.x)*.5,ry:Math.hypot(px.y,py.y,pz.y)*.5});
  }}
  u.count.value=o.enabled?n:0;
- const autoReset=renderer.info.autoReset;if(autoReset)renderer.info.reset();renderer.info.autoReset=false;renderer.setRenderTarget(target);renderer.render(scene,camera);
+ const autoReset=renderer.info.autoReset;if(autoReset)renderer.info.reset();renderer.info.autoReset=false;renderer.setRenderTarget(target);if(drawBase)drawBase();else renderer.render(scene,camera);
  if(patchMode&&pose){projected=patches.render(renderer,camera,target.depthTexture,pose,o);if(!o.enabled){renderer.setRenderTarget(patches.target);renderer.clear();u.patchMode.value=0;}}
  if(lastForm!==o.form){smallMemory.key=undefined;smallMemory.events?.clear();}lastForm=o.form;const project=(p:T.Vector3)=>{const q=p.clone().project(camera);return new T.Vector2(q.x*.5+.5,q.y*.5+.5);};
  const branchPoints=(pose?.edges??[]).filter(e=>e.id!=='stem').map(e=>project(e.a.clone().lerp(e.b,.72)));

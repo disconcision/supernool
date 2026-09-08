@@ -289,7 +289,7 @@ function tick(now:number){requestAnimationFrame(tick);const frameMs=now-last;con
  const target=near?0:+value('spread'),next=spread+(target-spread)*(1-Math.exp(-dt*4));spread=Math.abs(next-target)<.008?target:Math.round(next*1000)/1000;
  if(near!==nearOld){nearOld=near;if(!near&&grip)releaseGrip(false);ui();}runes.visible=near;(ring.material as T.MeshBasicMaterial).color.set(solved(tree)?'#f1ce79':near?'#e6ddb7':'#bac8a8');
  if(!animation&&!grip&&spread===0&&near&&document.querySelector<HTMLButtonElement>('#actions button')?.disabled)ui(false);
- requestPose(now);controls.update();frameTree(dt);updateHands(now,dt,moving);drawGuides();inhabitation.update(dt,poseNow,shapeSeed);mist.render(scene,camera,dt,{enabled:value('mistMode')==='on'&&value('backdrop')!=='plain'&&!new URLSearchParams(location.search).has('matteCapture'),strength:+value('mistDensity'),radius:+value('mistRadius'),texture:+value('mistTexture'),speed:+value('mistSpeed')},inhabitation.active?()=>inhabitation.render():undefined);stats.update(now,frameMs);
+ requestPose(now);controls.update();frameTree(dt);updateHands(now,dt,moving);drawGuides();inhabitation.update(dt,poseNow,shapeSeed);mist.render(scene,camera,dt,{enabled:value('mistMode')==='on'&&value('backdrop')!=='plain'&&!new URLSearchParams(location.search).has('matteCapture'),strength:+value('mistDensity'),radius:+value('mistRadius'),texture:+value('mistTexture'),speed:+value('mistSpeed')},inhabitation.active?drawBase=>inhabitation.render(drawBase):undefined);stats.update(now,frameMs);
  if(startup.pending){
   // Both the original and current rock controls enable layout after loading;
   // failed optional art retains the procedural scenery beneath it.
