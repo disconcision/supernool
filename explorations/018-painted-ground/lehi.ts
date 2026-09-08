@@ -74,12 +74,12 @@ export function createLehi(scene:T.Scene){
   canPreview=allowed&&!walking;
   const wasBusy=catchGame.active||fingerWalk.active;
   const wasRoaming=roam.active;roam.update(dt,allowed&&(previewActive||idleSchedule.mode!=='rest'),walking,wasBusy,root,hands.map(h=>h.group));
-  const request=previewActive?undefined:idleSchedule.tick(dt,allowed&&!walking,wasBusy);
+  const request=previewActive?undefined:idleSchedule.tick(dt,allowed&&!walking,wasBusy,[0,1].some(i=>roam.ready(i,root)));
   if(request){
    const catchHand=request.kind==='catch'?catchGame.nearbyHand(root,hands.map(h=>h.group),[0,1].map(i=>roam.ready(i,root)),request.hand):undefined;
    if(catchHand!==undefined){catchGame.requestStart(catchHand);catchGame.update(dt,allowed,root,hands.map(h=>h.group),walking,true);}
    const walkHand=idleSchedule.handFor('walk');
-   if(!catchGame.active&&idleSchedule.mode!=='catch-only'&&roam.ready(walkHand,root)&&fingerWalk.startWalk(root,hands.map(h=>h.group),walkHand,camera))idleSchedule.started('walk',walkHand);
+   if(!catchGame.active&&request.allowWalk&&idleSchedule.mode!=='catch-only'&&roam.ready(walkHand,root)&&fingerWalk.startWalk(root,hands.map(h=>h.group),walkHand,camera))idleSchedule.started('walk',walkHand);
    else if(catchGame.active)idleSchedule.started('catch',catchHand!);
   }
   if(!request||!catchGame.active)catchGame.update(dt,allowed,root,hands.map(h=>h.group),walking,false);

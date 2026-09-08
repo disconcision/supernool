@@ -119,6 +119,17 @@ for(let i=0;i<8;i++){
  for(let j=0;j<11*60;j++)assert.equal(schedule.tick(1/60,true,false),undefined,'Shared quiet period applies to both activities');
 }
 for(const values of Object.values(byKind)){assert(values.length>=3);for(let i=1;i<values.length;i++)assert.notEqual(values[i],values[i-1],'Each activity uses both hands');}
+// Catch gets a bounded opportunity only after a hand is ready; waiting for
+// departure cannot spend that opportunity, and walking cannot steal it early.
+{
+ const s=new IdleSchedule(rng(8));s.started('walk',0);s.remaining=0;
+ assert.equal(s.tick(1/60,true,false,false).kind,'catch');
+ for(let i=0;i<600;i++){const request=s.tick(1/60,true,false,false);if(request)assert(!request.allowWalk);}
+ for(let i=0;i<149;i++){const request=s.tick(1/60,true,false,true);if(request)assert(!request.allowWalk,'Give catch the full opportunity');}
+ let fallback=false;for(let i=0;i<30;i++){const request=s.tick(1/60,true,false,true);fallback||=!!request?.allowWalk;}assert(fallback,'A missing stone does not starve walking');
+ s.tick(1/60,false,false,true);s.remaining=0;assert(!s.tick(1/60,true,false,true).allowWalk,'Movement resets the opportunity');
+ s.mode='catch-only';s.rest();s.remaining=0;for(let i=0;i<600;i++){const request=s.tick(1/60,true,false,true);if(request)assert(!request.allowWalk,'Catch-only never falls back to a walk');}
+}
 // Full controller: a voluntary catch ending cannot immediately launch a walk.
 const originalRandom=Math.random;Math.random=rng(351);const actor=createLehi(new T.Scene());Math.random=originalRandom;
 // A clearing with local opportunities on all sides isolates scheduling from

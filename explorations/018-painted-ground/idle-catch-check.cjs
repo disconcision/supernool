@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict'),T=require('three'),{buildSync}=require('esbuild'),{mkdirSync}=require('node:fs');
 mkdirSync('.cache',{recursive:true});
 buildSync({entryPoints:[__dirname+'/idle-catch.ts'],bundle:true,platform:'node',external:['three'],outfile:'.cache/idle-catch.cjs'});
-const {IdleCatch,catchSocket}=require('../../.cache/idle-catch.cjs');
+const {IdleCatch,catchSocket,catchStoneProfile}=require('../../.cache/idle-catch.cjs');
 function fixture(seed=2,random,safe){
  let n=seed;const rng=()=>{n=(1664525*n+1013904223)>>>0;return n/4294967296;};
  const game=new IdleCatch(random??rng),root=new T.Group(),stone=new T.Object3D();stone.position.set(1.8,.08,0);stone.userData.rockSeed=111;
@@ -10,6 +10,28 @@ function fixture(seed=2,random,safe){
  const tick=(allowed=true,dt=1/60,walking=false)=>{game.update(dt,allowed,root,hands,walking);if(game.active)game.poses.forEach((p,i)=>{hands[i].position.copy(p.position);hands[i].quaternion.copy(p.orientation);});};
  const until=(phase)=>{for(let i=0;i<5000&&game.phase!==phase;i++)tick();assert.equal(game.phase,phase);};
  return {game,root,stone,hands,tick,until};
+}
+// The authored loose-rock population gains four candidates, preserving all
+// six former candidates and excluding rocks beyond either size limit.
+{
+ const rand=n=>{const x=Math.sin(n*127.1+41.7)*43758.5;return x-Math.floor(x);};
+ const eligible=Array.from({length:17},(_,i)=>({id:i+100,profile:catchStoneProfile(.25+rand(i)*.45,.2+rand(i+4)*.5)})).filter(r=>r.profile);
+ assert.deepEqual(eligible.map(r=>r.id),[100,102,103,104,106,107,110,111,114,115]);
+ assert.equal(catchStoneProfile(.57,.3),undefined);assert.equal(catchStoneProfile(.3,.57),undefined);
+ assert.equal(catchStoneProfile(.3,.3).effort,0);assert(catchStoneProfile(.55,.55).effort>.9);
+}
+// Identical random throws retain attachment and continuity with more heft;
+// preparation takes longer and the catching wrist yields farther under load.
+{
+ const samples=[];
+ for(const effort of [0,1]){
+  const f=fixture();f.until('lift');f.game.prop.effort=effort;let liftFrames=0;
+  while(f.game.phase==='lift'){const before=f.stone.position.clone();f.tick();liftFrames++;assert(f.stone.position.distanceTo(before)<.12);assert(f.stone.position.distanceTo(catchSocket(f.game.poses[f.game.holder]))<1e-8);}
+  f.until('windup');const windup=f.game.state.windupTime;f.until('catch');const y=f.game.poses[f.game.holder].position.y;
+  for(let i=0;i<20;i++)f.tick();const dip=y-f.game.poses[f.game.holder].position.y;
+  samples.push({liftFrames,windup,dip});f.tick(false);assert(!f.game.active&&!f.game.held);
+ }
+ assert(samples[1].liftFrames>samples[0].liftFrames+25);assert(samples[1].windup>samples[0].windup+.3);assert(samples[1].dip>samples[0].dip+.1);
 }
 let catches=0,misses=0;const phases=new Set();
 for(let seed=1;seed<=16;seed++){

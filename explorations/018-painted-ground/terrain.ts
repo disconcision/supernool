@@ -1,5 +1,5 @@
 import * as T from 'three';
-import type {CatchProp} from './idle-catch';
+import {catchStoneProfile,type CatchProp} from './idle-catch';
 import {dirtRoutes} from './dirt-routes';
 import {mountRockStudy} from './rock-study';
 export function makeClearing(scene:T.Scene){
@@ -18,7 +18,8 @@ export function makeClearing(scene:T.Scene){
   geo.setAttribute('color',new T.Float32BufferAttribute(colors,3));geo.computeVertexNormals();const o=add(geo,rock,new T.Vector3(x,h*.45-.08,z),new T.Vector3(w,h,w*.72));o.rotation.y=seed*2.3;
   o.userData.rockSeed=seed;walkStones.push(o);pathRocks.push({x,z,r:w*1.05});
   const touch=new T.Vector3(x,h*.95,z);touchPoints.push(touch);
-  if(!collision&&w<=.44&&h<=.56){o.userData.catchable=true;catchProps.push({object:o,radius:Math.max(w,h)*.52,groundY:o.position.y,touch});}
+  const catchProfile=!collision?catchStoneProfile(w,h):undefined;
+  if(catchProfile){o.userData.catchable=true;catchProps.push({object:o,radius:Math.max(w,h)*.52,groundY:o.position.y,touch,...catchProfile});}
   if(collision)obstacles.push({x,z,r:w*.82});
   // Flat moss islands and small pale lichen plates follow the rock crown.
   o.updateMatrixWorld(true);const probe=new T.Raycaster();
