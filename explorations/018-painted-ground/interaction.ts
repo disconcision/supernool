@@ -1,18 +1,7 @@
 import {Term,Action,find,replace} from './algebra';
 import {layout,transition,LayoutOptions} from './layout';
-export const rules=[
- {id:'swap-add',name:'Swap · addition',equation:'A + B ↔ B + A',color:'#347e9b'},
- {id:'swap-mul',name:'Swap · multiplication',equation:'A × B ↔ B × A',color:'#347e9b'},
- {id:'assoc-add',name:'Regroup · addition',equation:'(A + B) + C ↔ A + (B + C)',color:'#b36148'},
- {id:'assoc-mul',name:'Regroup · multiplication',equation:'(A × B) × C ↔ A × (B × C)',color:'#b36148'},
- {id:'zero',name:'Additive identity',equation:'A + 0 → A',color:'#64883c'},
- {id:'one',name:'Multiplicative identity',equation:'A × 1 → A',color:'#64883c'},
- {id:'absorb',name:'Zero absorbs a product',equation:'A × 0 → 0',color:'#64883c'},
- {id:'distribute',name:'Distribute into a sum',equation:'A × (B + C) → A×B + A×C',color:'#99714c'},
- {id:'factor',name:'Common factor',equation:'A×X + B×X → (A+B)×X',color:'#8963a6'},
- {id:'eval-add',name:'Gather numbers · addition',equation:'3 + 2 → 5',color:'#a58120'},
- {id:'eval-mul',name:'Gather numbers · multiplication',equation:'3 × 2 → 6',color:'#a58120'},
-];
+import {rules} from './rule-definitions';
+export {rules} from './rule-definitions';
 export function ruleId(owner:Term,a:Action){const suffix=owner.kind==='op'&&owner.op==='*'?'mul':'add';return a.key==='swap'?'swap-'+suffix:a.key.startsWith('group')?'assoc-'+suffix:a.key.startsWith('zero')?'zero':a.key.startsWith('one')?'one':a.key.startsWith('factor')?'factor':a.key.startsWith('absorb')?'absorb':a.key.startsWith('distribute')?'distribute':'eval-'+suffix;}
 export function ruleColor(owner:Term,a:Action){return rules.find(r=>r.id===ruleId(owner,a))!.color;}
 export type Pin={id:string;position:{x:number;y:number;z:number}};

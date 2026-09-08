@@ -268,3 +268,10 @@ A reported buzz returned after unmuting and cleared on page reload. Its audible 
 Selection survives a same-tab reload. Use Settings & presets → All controls → Set as app defaults to share it as an application default; this does not save a partly solved tree. See [the rule boundaries and next steps](../../design/algebra-presets.md).
 
 **Audio remains unresolved and is paused**, following the user's sustained-playback buzzing report. The mute/resume mitigation above should not be read as a confirmed fix.
+
+
+## Rule tiles & problem catalogue · interface study 01
+
+Encounter → Browse tree problems opens cards with starting/target expressions, reference move counts, node counts and rule badges. Route details show the largest intermediate tree and the recorded rule sequence. All problems remain available; the badges indicate a sufficient recorded route, not mathematical necessity. Selection uses the existing problem control and its persistence semantics.
+
+[Rule tiles & the Noolbox](rule-workshop.html) compares formula stamps, compact seals and gesture sketches at several sizes, then flat and CSS-depth inventory trays. Page-only equipment toggles illustrate which recorded problem routes a collection supports. The playable Noolbox uses formula tiles alongside the existing checkboxes. See [design notes](../../design/rule-interface-study.md) for data semantics and limits. Rebuild the verified static witnesses with `npm run problems:metadata`.
