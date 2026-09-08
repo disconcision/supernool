@@ -21,7 +21,7 @@ export function transition(before:Term,after:Term,t:number,o:LayoutOptions,kind:
  const a=layout(before,o),b=layout(after,o),points=new Map<string,T.Vector3>(),ease=motionEase(t,flow);
  const ancestor=(id:string,source:Pose,target:Pose):string=>{let p:string|undefined=id;while(p&&!target.points.has(p))p=source.parents.get(p);return p??(target===b?after.id:before.id);};
  const all=new Set([...a.points.keys(),...b.points.keys()]);
- for(const id of all){const start=a.points.get(id)??a.points.get(ancestor(id,b,a))!,end=b.points.get(id)??b.points.get(merge[id]??ancestor(id,a,b))!;const p=start.clone().lerp(end,ease);
+ for(const id of all){const start=a.points.get(id)??a.points.get(merge[id]??ancestor(id,b,a))!,end=b.points.get(id)??b.points.get(merge[id]??ancestor(id,a,b))!;const p=start.clone().lerp(end,ease);
   if(kind==='swap'&&a.points.has(id)&&b.points.has(id))p.z+=Math.sin(Math.PI*t)*(end.x-start.x)*.5;
   points.set(id,p);
  }
@@ -46,7 +46,13 @@ export function transition(before:Term,after:Term,t:number,o:LayoutOptions,kind:
    }else end=start.clone().lerp(end,1-ease);
    retracted.set(id,end);
   }
-  if(!e0){end=start.clone().lerp(end,ease);}
+  if(!e0){
+   const source=merge[id],sourceParent=source?a.parents.get(source):undefined;
+   if(source&&a.points.has(source)){
+    // A new distributive copy peels from its source member, not from the root.
+    start=p1&&merge[p1]===sourceParent?points.get(p1)!.clone():attachment(sourceParent??source,p1!);
+   }else end=start.clone().lerp(end,ease);
+  }
   if(r>1e-5&&start.distanceTo(end)>1e-5)edges.push({id,a:start,b:end,r});
  }
  // A host-regrowth root may have been a child in the reduced expression.

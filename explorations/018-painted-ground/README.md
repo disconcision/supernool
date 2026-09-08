@@ -260,3 +260,11 @@ The rigid whole-crown intro spin is replaced by staggered condensation and count
 ## Audio mute/resume lifecycle
 
 A reported buzz returned after unmuting and cleared on page reload. Its audible cause has not been reproduced conclusively. Mute previously only reduced master gain while retaining the audio graph. It now fades out over a short interval, stops scheduling and closes that context; unmute creates a fresh instrument bank and rejoins the current encounter phase without replaying its transition cue. Muted clicks and visibility changes cannot revive an old graph, and rapid unmute does not let delayed cleanup close the replacement. Scene state and control settings are unaffected. The core lifecycle test covers repeated/rapid replacement, ownership of cleanup and no cue replay; live browser checks verified fresh session numbers and no errors. This is a targeted stale-audio-state mitigation pending the user’s audible retest.
+
+## Twelve algebra presets
+
+**Encounter → Tree problem** now changes the expression and target, restarting that encounter. Identity cleanups, arithmetic, nested/common factors, regrouping, signed coefficients, zero absorption and expansion-before-collection have tested solution routes. Two added Noolbox groups enable distributive expansion and zero absorption. Both mouse and body use the shared gesture definitions. Reset returns to the selected problem, and recovery restores that problem's host through the recorded inverse motion. Expansion beyond 31 nodes is withheld for this study.
+
+Selection survives a same-tab reload. Use Settings & presets → All controls → Set as app defaults to share it as an application default; this does not save a partly solved tree. See [the rule boundaries and next steps](../../design/algebra-presets.md).
+
+**Audio remains unresolved and is paused**, following the user's sustained-playback buzzing report. The mute/resume mitigation above should not be read as a confirmed fix.

@@ -1,3 +1,4 @@
+import {problems,problemById,instantiate} from './problems';
 import {RewriteRecord,recoveryRoute,replayRecovery,recoveryEmbedding} from './recovery-replay';
 import {createEncounterPresentation} from './encounter-presentation';
 import {EncounterState} from './encounter-sequence';
@@ -13,7 +14,7 @@ import {setupControlReadouts} from './control-readouts';
 import {createMist} from './mist';
 import {fitZoom} from './framing';
 import * as T from 'three';import {createPerformanceStats} from './stats';import {StanceAdjustment} from './stance';import {createRibbon} from './ribbon';import {ScreenGuides} from './guides';import {addBackdrop} from './backdrop';import {makeClearing} from './terrain';import {makeSigil,disposeSigil} from './sigils';import {setupHUD} from './hud';import {createSound} from './sound';import {directionalContact} from './navigation';import {rules,ruleId,ruleColor,Pin,allowsPin,advanceSpring,catchPull} from './interaction';import {createTraveller} from './traveller';import {Gesture,gestures,scoreDrag} from './gestures';import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {Term,Action,initial,walk,count,format,readable,find,actions,replace,solved,hint} from './algebra';import {Pose,layout,transition} from './layout';import {Options,prepare} from './surface';import {makeShading} from './shading';
+import {Term,Action,fitsScene,initial,walk,count,format,readable,find,actions,replace,solved as matchesGoal,hint} from './algebra';import {Pose,layout,transition} from './layout';import {Options,prepare} from './surface';import {makeShading} from './shading';
 const $=(id:string)=>document.getElementById(id)!,value=(id:string)=>($(id) as HTMLInputElement).value;
 const startup=createStartup();
 const inhabitedStudy=new URLSearchParams(location.search).get('inhabited')==='1';let freeStudyCamera=false;
@@ -48,10 +49,14 @@ const inhabitation=createInhabitation(renderer,scene,camera,treeMesh,Object.valu
 const burntBark=createBurntBark(Object.values(materials));
 const encounter=createEncounterPresentation(scene,treeOrigin,treeScale);
 const mayRewrite=()=>document.body.dataset.sceneEditing!=='true'&&(!encounter.enabled||encounter.sequence.state==='active');
-let tree=initial(),selected=tree.id,steps=0,history:{tree:Term;steps:number}[]=[],future:{tree:Term;steps:number}[]=[],near=false,loaded=false,epoch=0,shapeSeed=2,spread=1,navTarget:T.Vector3|undefined,suggested:{id:string;key:string}|undefined;
+let problem=problems[0],goalTerm=instantiate(problem.target);
+const solved=(t:Term)=>matchesGoal(t,goalTerm);
+const problemSelect=$('problemPreset') as HTMLSelectElement;
+for(const p of problems)problemSelect.add(new Option(p.title,p.id));
+let tree=instantiate(problem.start),selected=tree.id,steps=0,history:{tree:Term;steps:number}[]=[],future:{tree:Term;steps:number}[]=[],near=false,loaded=false,epoch=0,shapeSeed=2,spread=1,navTarget:T.Vector3|undefined,suggested:{id:string;key:string}|undefined;
 let hostTree=tree,recoveryTree:Term|undefined,hostSpread=1,insideRing=false;
 let rewriteTrace:RewriteRecord[]=[],redoTrace:RewriteRecord[]=[],recoveryTrace:RewriteRecord[]=[];
-function prepareRecovery(){const route=recoveryRoute(tree,rewriteTrace);recoveryTree=route.reduced;recoveryTrace=route.records;}
+function prepareRecovery(){const route=recoveryRoute(tree,rewriteTrace,goalTerm);recoveryTree=route.reduced;recoveryTrace=route.records;}
 let exitAfterSettle=false;
 let animation:{before:Term;after:Term;start:number;kind:string;merge:Record<string,string>;from:number;to:number;duration:number}|undefined,poseNow:Pose|undefined,lastKey='',idCounter=0;
 function options():Options{return {...rootOptions(),thickness:+value('thickness'),taper:+value('taper'),bow:+value('bow'),random:+value('random'),twist:+value('twist'),facets:+value('facets'),seed:shapeSeed,blend:+value('blend'),hewn:value('surface')==='hewn',spread};}
@@ -126,11 +131,11 @@ function status(text:string){$('message').textContent=text;}
 function nextClue(){
  const nodes=walk(tree);
  if(nodes.some(n=>n.kind==='num'&&n.value===0))return 'Hold a rune and pull. Press zeros into their junctions, or carry a branch around its sibling. Suggest a grip shows one route.';
- if(nodes.some(n=>actions(n).some(a=>a.key.startsWith('factor'))))return 'The x-products now share a junction. Bring one x rune to the other x to factor the shared branch.';
- if(nodes.some(n=>actions(n).some(a=>a.key==='calculate')))return 'The numeric leaves can combine. Gather the numbers into their + junction to finish the simplification.';
- return 'Bring the two x-products under one + junction. Swapping and regrouping preserve the whole branches.';
+ if(nodes.some(n=>actions(n).some(a=>a.key.startsWith('factor'))))return 'Matching factors share a junction. Bring the matching branches together to factor them.';
+ if(nodes.some(n=>actions(n).some(a=>a.key==='calculate')))return 'Numeric leaves can combine. Gather them into their operator junction.';
+ return problem.note+' Suggest a grip finds a legal next move with the equipped rules.';
 }
-function ui(updateMessage=true){const busy=!!animation||!!grip;const done=solved(tree)&&!busy;$('expression').textContent=readable(tree);$('progress').textContent=`${count(tree)} nodes · ${steps} moves · start: 13 nodes`;$('bar').style.width=Math.min(100,Math.max(0,(13-count(tree))/8*100))+'%';$('goal').textContent=done?'5×x + y · same meaning, less structure.':'Simplify this tree to 5×x + y.';$('guideTitle').textContent=done?'Paths opened':'Help';$('approach').hidden=near;$('hint').hidden=!near||done;($('hint') as HTMLButtonElement).disabled=busy||!loaded;
+function ui(updateMessage=true){const busy=!!animation||!!grip;const done=solved(tree)&&!busy;$('expression').textContent=readable(tree);$('progress').textContent=`${count(tree)} nodes · ${steps} moves · start: ${count(hostTree)} nodes`;$('bar').style.width=Math.min(100,Math.max(0,(count(hostTree)-count(tree))/Math.max(1,count(hostTree)-count(goalTerm))*100))+'%';$('goal').textContent=done?readable(goalTerm)+' · same meaning, less structure.':'Simplify this tree to '+readable(goalTerm)+'.';$('problemNote').textContent=problem.note;problemSelect.disabled=busy||!!pin; $('guideTitle').textContent=done?'Paths opened':'Help';$('approach').hidden=near;$('hint').hidden=!near||done;($('hint') as HTMLButtonElement).disabled=busy||!loaded;
  ($('undo') as HTMLButtonElement).disabled=!history.length||busy;($('redo') as HTMLButtonElement).disabled=!future.length||busy;($('reset') as HTMLButtonElement).disabled=busy;($('settingsButton') as HTMLButtonElement).disabled=busy;
  ($('inputMode') as HTMLSelectElement).disabled=busy;($('pinButton') as HTMLButtonElement).disabled=busy;($('clearPin') as HTMLButtonElement).disabled=busy||!pin;
  $('pinStatus').textContent=pin?'Holding '+format(find(tree,pin.id)!)+': position and incoming connection fixed.':'Second hand rests. F or Shift-click pins a node.';
@@ -146,10 +151,10 @@ function ui(updateMessage=true){const busy=!!animation||!!grip;const done=solved
  if(poseNow)updateRunes(poseNow);}
 function select(id:string){if(animation||grip||!near)return;selected=id;hoverId=undefined;ui(false);}
 function showGesture(n:Term,a:Action){if(bodyMode()&&!handFocus)setHandFocus(true);spotlight=gestures(tree).find(g=>g.owner.id===n.id&&g.action.key===a.key&&allowed(g.owner,g.action));if(spotlight){selected=spotlight.gripId;ui(false);status(spotlight.instruction+'. Grip the contact, then follow its colored path. Spell names are listed separately.');drawGuides();}}
-$('hint').onclick=()=>{if(!near||animation||grip)return;const h=hint(tree,(owner,a,t)=>allowed(owner,a,t));if(h){showGesture(find(tree,h.nodeId)!,h.action);}else status('No route found with the equipped rules and pin. Release the pin or re-enable rules in the noolbox; undo is also available.');};
+$('hint').onclick=()=>{if(!near||animation||grip)return;const h=hint(tree,(owner,a,t)=>allowed(owner,a,t),goalTerm);if(h){showGesture(find(tree,h.nodeId)!,h.action);}else status('No route found with the equipped rules and pin. Release the pin or re-enable rules in the noolbox; undo is also available.');};
 $('undo').onclick=()=>{if(animation||grip||!history.length)return;if(encounter.enabled)encounter.sequence.jump('active');const record=rewriteTrace.pop();if(record)redoTrace.push(record);future.push({tree,steps});const prev=history.pop()!;tree=prev.tree;steps=prev.steps;epoch++;selected=tree.id;suggested=undefined;spotlight=undefined;pin=undefined;lastKey='';ui();drawGuides();};
 $('redo').onclick=()=>{if(animation||grip||!future.length)return;if(encounter.enabled)encounter.sequence.jump('active');const record=redoTrace.pop();if(record)rewriteTrace.push(record);history.push({tree,steps});const next=future.pop()!;tree=next.tree;steps=next.steps;epoch++;selected=tree.id;suggested=undefined;spotlight=undefined;pin=undefined;lastKey='';ui();drawGuides();};
-$('reset').onclick=()=>{if(animation||grip)return;tree=initial();hostTree=tree;rewriteTrace=[];redoTrace=[];recoveryTrace=[];recoveryTree=undefined;hostSpread=+value('spread');if(encounter.enabled)encounter.sequence.jump('dormant');selected=tree.id;history=[];future=[];steps=0;epoch++;suggested=undefined;spotlight=undefined;pin=undefined;lastKey='';ui();drawGuides();};
+$('reset').onclick=()=>{if(animation||grip)return;tree=instantiate(problem.start);hostTree=tree;rewriteTrace=[];redoTrace=[];recoveryTrace=[];recoveryTree=undefined;hostSpread=+value('spread');if(encounter.enabled)encounter.sequence.jump('dormant');selected=tree.id;history=[];future=[];steps=0;epoch++;suggested=undefined;spotlight=undefined;pin=undefined;lastKey='';ui();drawGuides();};
 $('approach').onclick=()=>navTarget=new T.Vector3(0,0,bodyMode()?-.8:1.7);
 $('settingsButton').onclick=()=>$('settings').hidden=!$('settings').hidden;$('closeSettings').onclick=()=>$('settings').hidden=true;
 $('character').onchange=()=>lehi.choose(value('character'));
@@ -168,7 +173,7 @@ const guideSvg=$('gestureGuide'),spells=$('spells'),screenGuides=new ScreenGuide
 const bodyMode=()=>value('inputMode')==='body';
 function screen(p:T.Vector3):ScreenPoint{const v=p.clone().project(camera);return {x:(v.x+1)*innerWidth/2,y:(1-v.y)*innerHeight/2};}
 function worldPoint(id:string,pose=poseNow){const p=pose?.points.get(id);return p?treeWorld(p):undefined;}
-function allowed(owner:Term,action:Action,source=tree){return mayRewrite()&&enabled.has(ruleId(owner,action))&&allowsPin(source,owner,action,pin,layoutOptions());}
+function allowed(owner:Term,action:Action,source=tree){return mayRewrite()&&fitsScene(source,owner,action)&&enabled.has(ruleId(owner,action))&&allowsPin(source,owner,action,pin,layoutOptions());}
 function anchors(g:Gesture){const before=layout(tree,layoutOptions()),after=layout(g.after,layoutOptions());const from=screen(treeWorld(before.points.get(g.gripId)!));
  const endpoint=g.action.key==='swap'||g.action.key.startsWith('group')?after.points.get(g.gripId)!:(after.points.get(g.targetId)??before.points.get(g.targetId))!;
  const to=screen(treeWorld(endpoint));return {from,to};}
@@ -333,7 +338,7 @@ function tick(now:number){requestAnimationFrame(tick);const frameMs=now-last;con
  requestPose(now);controls.update();frameTree(dt);updateHands(now,dt,moving);drawGuides();
  encounter.update(dt,poseNow,walk(hostTree).filter(n=>n.kind!=='op').map(n=>n.id));
  const envelope=encounter.enabled?{...channels,...encounter.departure,flash:channels.flash*encounter.flashStrength,force:true}:undefined;
- sound.update({phase:encounter.enabled?channels.state:'dormant',age:encounter.sequence.age,reduction:Math.max(0,Math.min(1,(count(hostTree)-count(tree))/Math.max(1,count(hostTree)-5))),x:avatar.position.x,z:avatar.position.z,dt,recoveryCount:recoveryTrace.length,recoveryDuration:encounter.timing.recovery,paused:document.body.dataset.sceneEditing==='true'||encounter.enabled&&encounter.sequence.paused});
+ sound.update({phase:encounter.enabled?channels.state:'dormant',age:encounter.sequence.age,reduction:Math.max(0,Math.min(1,(count(hostTree)-count(tree))/Math.max(1,count(hostTree)-count(goalTerm)))),x:avatar.position.x,z:avatar.position.z,dt,recoveryCount:recoveryTrace.length,recoveryDuration:encounter.timing.recovery,paused:document.body.dataset.sceneEditing==='true'||encounter.enabled&&encounter.sequence.paused});
  inhabitation.update(dt,poseNow,shapeSeed,envelope);backdrop.decals.update(obstacles,encounter.enabled?channels:undefined);burntBark.update(poseNow,treeScale,encounter.enabled?channels.burn:1);
  $('world').dataset.encounterState=encounter.enabled?channels.state:'study';$('world').dataset.encounterProgress=String(channels.growth);
  mist.render(scene,camera,dt,{enabled:value('mistMode')==='on'&&value('backdrop')!=='plain'&&!new URLSearchParams(location.search).has('matteCapture'),strength:+value('mistDensity'),radius:+value('mistRadius'),texture:+value('mistTexture'),speed:+value('mistSpeed')},inhabitation.active?drawBase=>inhabitation.render(drawBase):undefined);sceneEditor?.render();stats.update(now,frameMs);
@@ -389,11 +394,12 @@ mountRootControls($('settings'));
 function jumpEncounter(state:EncounterState){
  // Developer previews share the lifecycle, but never mark the equation solved.
  if(grip)releaseGrip(false);animation=undefined;exitAfterSettle=false;handFocus=false;hoverId=undefined;lingerPoint=undefined;pin=undefined;spotlight=undefined;clearMovement();controls.enabled=true;
- if(state==='dormant'&&encounter.sequence.automatic){tree=initial();hostTree=tree;rewriteTrace=[];redoTrace=[];recoveryTrace=[];history=[];future=[];steps=0;selected=tree.id;recoveryTree=undefined;avatar.position.set(0,0,9);insideRing=false;hostSpread=+value('spread');}
+ if(state==='dormant'&&encounter.sequence.automatic){tree=instantiate(problem.start);hostTree=tree;rewriteTrace=[];redoTrace=[];recoveryTrace=[];history=[];future=[];steps=0;selected=tree.id;recoveryTree=undefined;avatar.position.set(0,0,9);insideRing=false;hostSpread=+value('spread');}
  if(['release','recovery','healthy'].includes(state))prepareRecovery();
  encounter.sequence.jump(state);if(state==='dormant'||state==='healthy')spread=hostSpread;if(state==='release')spread=0;
  epoch++;lastKey='';ui(false);drawGuides();
 }
+problemSelect.onchange=()=>{if(animation||grip||pin){problemSelect.value=problem.id;return;}problem=problemById(problemSelect.value);goalTerm=instantiate(problem.target);encounter.sequence.automatic=true;encounter.sequence.paused=false;jumpEncounter('dormant');$('world').dataset.problem=problem.id;};
 encounter.mount($('settings'),jumpEncounter);
 for(const [id,state]of [['charQuiet','dormant'],['charSpirit','active']] as const){const previous=$(id).onclick;$(id).onclick=e=>{if(encounter.enabled){encounter.sequence.automatic=false;encounter.sequence.paused=true;jumpEncounter(state);}else previous?.call($(id),e);};}
 

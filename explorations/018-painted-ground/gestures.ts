@@ -17,7 +17,11 @@ export function gestures(tree:Term,gripId?:string):Gesture[]{
    if(action.key.endsWith('-left')&&(action.key.startsWith('zero')||action.key.startsWith('one')))add(a,owner,owner,'Press the identity into its junction');
    if(action.key.endsWith('-right')&&(action.key.startsWith('zero')||action.key.startsWith('one')))add(b,owner,owner,'Press the identity into its junction');
    if(action.key==='calculate')add(b,a,owner,'Gather the numbers into their junction');
-   if(action.merge)for(const [removed,kept] of Object.entries(action.merge)){
+   if(action.key==='absorb-left')add(b,a,a,'Draw this whole branch into zero');
+   if(action.key==='absorb-right')add(a,b,b,'Draw this whole branch into zero');
+   if(action.key==='distribute-left')add(a,owner,owner,'Draw the sum down to spread the factor across its branches');
+   if(action.key==='distribute-right')add(b,owner,owner,'Draw the sum down to spread the factor across its branches');
+   if(action.key.startsWith('factor')&&action.merge)for(const [removed,kept] of Object.entries(action.merge)){
     // Nested common factors travel as one whole branch, not one gesture per leaf.
     if(!walk(owner).some(n=>n.kind==='op'&&action.merge[n.id]&&walk(n).slice(1).some(c=>c.id===removed)))add(removed,kept,kept,'Bring the matching branches together');
    }

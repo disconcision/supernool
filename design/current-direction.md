@@ -197,3 +197,8 @@ A separate “More enclosing” arrangement raises/steps the same formations inw
 
 
 Latest rock feedback: favor scattered placement, with independently adjustable broad moss and smaller lichen colonies. The enclosing arrangement may be preferable, but it must leave both painted rear exits visible and avoid crowding the clearing. Its revised placement keeps the same rock groups/scales while moving the obstructing rear mass to the northwest shoulder and slightly spreading the sides. Separate moss/lichen controls are now the default surface workflow; neither the atlas nor the optional enclosing arrangement should be described as finalized art.
+
+
+## Audio work paused · unresolved buzzing
+
+The user reports buzzing both after unmute and after letting playback run. Recreating the audio graph on unmute did not resolve it. Do not claim the sound bug is fixed. Audio investigation is paused at the user's request while algebra/preset work proceeds; preserve the current sound implementation as a checkpoint for a later layer-by-layer diagnosis.

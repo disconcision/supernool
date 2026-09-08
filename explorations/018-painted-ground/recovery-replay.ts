@@ -14,10 +14,10 @@ export function recoveryEmbedding(progress:number,hostSpread:number){
 }
 
 /** Previewing recovery completes a copy of the current route, not the live AST. */
-export function recoveryRoute(tree:Term,history:RewriteRecord[]){
+export function recoveryRoute(tree:Term,history:RewriteRecord[],target?:Term){
  const records=[...history];let reduced=tree;
- for(let i=0;i<12&&!solved(reduced);i++){
-  const h=hint(reduced);if(!h)break;
+ for(let i=0;i<12&&!solved(reduced,target);i++){
+  const h=hint(reduced,undefined,target);if(!h)break;
   const after=replace(reduced,h.nodeId,h.action.result);
   records.push({before:reduced,after,kind:h.action.key,merge:{...h.action.merge}});reduced=after;
  }
