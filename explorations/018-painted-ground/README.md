@@ -248,3 +248,10 @@ The scenery clipboard persists in browser storage across reload and works betwee
 ### Delete scenery
 
 In Edit scenery, Delete beside Copy/Paste/Duplicate removes the selected formation, loose stone, mushroom or copied instance. Delete and Backspace are keyboard equivalents; text fields and Play mode retain their usual behavior. Undo restores and selects the object; Redo removes it again. Save version/default retains deletions, and loading an older version restores its objects. Attached growth, collision footprints and hand contacts follow removals. Original-source deletion does not invalidate a copied object or the scenery clipboard. `npm run test:delete` checks these behaviors in Chrome.
+
+
+## Awakening · local cloud formation
+
+The rigid whole-crown intro spin is replaced by staggered condensation and counter-rotating local eddies. S7–S9 animate existing instanced patches independently on the GPU: broad, soft coverage builds first, then resolves to the authored painted texture. Coverage combines by maximum rather than accumulating opacity, retaining the skeleton readability treatment. S4–S6 use analogous local lobe movement. No new cloud instances or per-frame geometry rebuilds are added. Endpoints return exactly to the steady canopy; the release spin remains separate.
+
+**Inspect → Appearance → Encounter · states & transitions → Awakening** holds the intro for inspection. Use Transition position to scrub, or Pause / resume to play. **Awakening local swirl** reuses the saved earlier `sequenceArrivalTurns` value and controls the local eddies; Awakening seconds controls duration. This is a soft patch-field approximation, not a fluid simulation. Fine painted shapes remain visible as it settles. Interim frames were reviewed at 35%, 50%, 60% and the endpoint in the live scene, and formation endpoint/continuity checks are part of the core suite.

@@ -1,5 +1,6 @@
+import {formationPoint,formationPhase} from '../019-inhabited-trees/cloud-formation';
 import * as T from 'three';
-import {canopyDeparture,canopyArrival} from './canopy-departure';
+import {canopyDeparture} from './canopy-departure';
 import assert from 'node:assert/strict';
 import {EncounterSequence,sequenceStates,sequenceTiming} from './encounter-sequence';
 import {stormEvents,arcDefaults} from '../019-inhabited-trees/storm-lightning';
@@ -77,8 +78,16 @@ assert.equal(cues.length,7);assert.equal(cues[6],8*recoveryReplayFraction);
 for(let i=0;i<6;i++)assert.equal(replayRecovery(route.records,original,(cues[i]+1e-6)/8,config,opt,1).index,i);
 assert(motionEase(.01,.8)>.008,'Flow starts moving without a long eased pause');
 for(let i=0;i<=100;i++){
- const u=i/100,d=canopyArrival(u,pivot);assert(d.matrix.elements.every(Number.isFinite));assert(d.scale>=.35&&d.scale<=1);assert(d.dissolve>=0&&d.dissolve<=1);
+ const u=i/100;
  if(i)assert(motionEase(u,.8)>=motionEase(u-.01,.8));
+ for(const seed of [.05,.3,.7,.95])for(const swirl of [0,.65,2]){
+  const p=formationPoint(sample,seed,{progress:u,swirl});assert(p.toArray().every(Number.isFinite));
+  assert(formationPhase(u,seed)>=0&&formationPhase(u,seed)<=1);
+  if(i===100)assert(p.distanceTo(sample)<1e-9,'Every patch returns exactly to its settled position');
+  if(i>0)assert(formationPhase(u,seed)>=formationPhase(u-.01,seed),'Condensation never reverses');
+ }
 }
-assert(sample.clone().applyMatrix4(canopyArrival(1,pivot).matrix).distanceTo(sample)<1e-9,'Awakening ends at the steady canopy with no pose jump');
-console.log('Flow pacing, music cue boundaries and storm arrival endpoints passed.');
+const early=formationPoint(sample,.1,{progress:.4,swirl:.65}),late=formationPoint(sample,.8,{progress:.4,swirl:.65});
+assert(early.distanceTo(late)>.5,'Neighbouring patches must not share a rigid crown rotation');
+assert(formationPoint(sample,.3,{progress:.9999,swirl:2}).distanceTo(sample)<.00001,'No pop when awakening switches to active');
+console.log('Flow pacing, music cues and staggered cloud formation endpoints passed.');

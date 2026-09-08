@@ -51,7 +51,7 @@ export function createEncounterPresentation(scene:T.Scene,origin:T.Vector3,treeS
   const releaseStyle=document.createElement('label');releaseStyle.innerHTML='Canopy release<select id="sequenceDeparture"><option value="swirl">Spin, expand & dissolve</option><option value="fade">Fade in place · earlier comparison</option></select>';panel.append(releaseStyle);
   range('sequenceDepartureTurns','Release turns',0,3,.05,1.35);range('sequenceDepartureExpansion','Release expansion',0,5,.1,2.8);
   range('sequenceFlow','Regrowth flow · 0 = earlier pauses',0,1,.05,.8);
-  range('sequenceArrivalTurns','Awakening turns',0,2,.05,.65);
+  range('sequenceArrivalTurns','Awakening local swirl',0,2,.05,.65);
   range('sequenceAwakening','Awakening seconds',1,6,.25,3);range('sequenceRelease','Release seconds',.6,4,.1,1.8);range('sequenceRecovery','Rewind + spatial return seconds',3,15,.5,8);range('sequenceLeafSize','Living canopy size',.4,1.8,.05,1);range('sequenceLeafDensity','Living canopy density',.4,1.6,.1,1);range('sequenceFlash','Transition flash strength',0,2,.05,1);
   host.prepend(panel);
   const mode=panel.querySelector<HTMLSelectElement>('#sequenceEnabled')!;mode.value=enabled?'on':'off';mode.onchange=()=>{enabled=mode.value==='on';sequence.automatic=true;sequence.paused=false;onJump(enabled?'dormant':'active');};

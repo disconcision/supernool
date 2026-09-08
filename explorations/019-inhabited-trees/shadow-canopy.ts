@@ -1,10 +1,11 @@
+import {CloudFormation,formationPoint,formationPhase} from './cloud-formation';
 import * as T from 'three';
 import {Pose} from '../018-painted-ground/layout';
 import {hash} from './canopy';
 import {makeShadowPatches,isPatchForm,CloudDeparture} from './shadow-patches';
 import {makeShadowCanopy as makeLegacy,ShadowOptions as LegacyOptions} from './shadow-legacy';
 import {mixedLightning,ProjectedLobe,ArcSettings,ArcPreview,LightningMemory} from './storm-lightning';
-export type ShadowOptions=LegacyOptions&{visibility:string;roil:number;seed:number;density:number;fray:number;lightning:ArcSettings;arcPreview?:ArcPreview;strikePoints:T.Vector3[];arcGlow?:number;cloudFlash?:number;departure?:CloudDeparture};
+export type ShadowOptions=LegacyOptions&{visibility:string;roil:number;seed:number;density:number;fray:number;lightning:ArcSettings;arcPreview?:ArcPreview;strikePoints:T.Vector3[];arcGlow?:number;cloudFlash?:number;departure?:CloudDeparture;formation?:CloudFormation};
 const MAX=64,ARC=80;
 export function makeShadowCanopy(renderer:T.WebGLRenderer){
  const smallMemory:LightningMemory={};let lastEvents:ReturnType<typeof mixedLightning>['events']=[];let lastForm='';const patches=makeShadowPatches();
@@ -84,7 +85,9 @@ export function makeShadowCanopy(renderer:T.WebGLRenderer){
  }
  const phase=tt*(.65+o.anger*.35)+seed*6.28;
  offset.x+=Math.sin(phase)*.16*o.roil;offset.y+=Math.cos(phase)*.2*o.roil;offset.z+=Math.sin(phase*.83)*.14*o.roil;
- r.multiplyScalar(1+Math.sin(phase+1.3)*.1*o.roil);const c=a.point.clone().add(offset.multiplyScalar(sz));r.multiplyScalar(sz);if(o.departure){c.applyMatrix4(o.departure.matrix);r.multiplyScalar(o.departure.scale);}
+ r.multiplyScalar(1+Math.sin(phase+1.3)*.1*o.roil);const forming=o.formation?formationPhase(o.formation.progress,seed):1;
+ if(o.formation){offset=formationPoint(offset,seed,o.formation);r.multiplyScalar(.18+.82*forming);}
+ const c=a.point.clone().add(offset.multiplyScalar(sz));r.multiplyScalar(sz);if(o.departure){c.applyMatrix4(o.departure.matrix);r.multiplyScalar(o.departure.scale);}
  u.centres.value[n].set(c.x,c.y,c.z,seed*17);u.radii.value[n].copy(r);n++;
  const p=c.clone().project(camera),px=c.clone().add(new T.Vector3(r.x,0,0)).project(camera).sub(p),py=c.clone().add(new T.Vector3(0,r.y,0)).project(camera).sub(p),pz=c.clone().add(new T.Vector3(0,0,r.z)).project(camera).sub(p);
  projected.push({x:p.x*.5+.5,y:p.y*.5+.5,rx:Math.hypot(px.x,py.x,pz.x)*.5,ry:Math.hypot(px.y,py.y,pz.y)*.5});
