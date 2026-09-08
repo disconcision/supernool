@@ -1,6 +1,6 @@
 # 018 · Painted ground
 
-Open `http://127.0.0.1:3100/explorations/018-painted-ground/?mode=body`.
+Open `http://127.0.0.1:3100/explorations/018-painted-ground/`.
 017 is preserved as the previous playable checkpoint. This study contains a camera-guided matte-painting loop, goal release, dimensional sigils and clearer catch feedback. The terrain is scenery; no new traversal level or rope simulation is implemented.
 
 
@@ -268,6 +268,16 @@ A reported buzz returned after unmuting and cleared on page reload. Its audible 
 Selection survives a same-tab reload. Use Settings & presets → All controls → Set as app defaults to share it as an application default; this does not save a partly solved tree. See [the rule boundaries and next steps](../../design/algebra-presets.md).
 
 **Audio remains unresolved and is paused**, following the user's sustained-playback buzzing report. The mute/resume mitigation above should not be read as a confirmed fix.
+
+## Pointer play on phones and tablets
+
+The ordinary homepage now lets the scene choose its input mode. A primary coarse pointer with no hover starts in **Pointer grip · mouse / touch**; desktop keeps the shared body-pull default. A fresh explicit `?mode=mouse` or `?mode=body` link overrides device detection. Existing tab preferences still win on reload, and Encounter → Interaction mode changes the choice. Resetting app defaults adapts the mode to touch again. Detection uses input capabilities rather than viewport width.
+
+Tap the ground to walk, or use Encounter → Approach. Once the tree awakens, hold a rune and drag along its colored path; release when caught to settle, or retreat before releasing to cancel. Suggest a grip and the pin controls remain available in the docks. One finger belongs to gameplay; camera pinch remains available between grips. Extra fingers cannot take over a grip, and touch cancellation or lost capture cancels instead of committing. Free-camera/scenery editing retains one-finger orbiting. Native gamepad bindings are not implemented yet; body mode currently uses the keyboard.
+
+`node explorations/018-painted-ground/touch-browser-check.cjs` runs against port 3100 in Chrome with phone/tablet touch emulation. It covers the homepage default, explicit links, manual-choice reloads, ground tapping, cancellation, extra-finger ownership and the full six-rewrite puzzle without keyboard input. Screenshots go to `.cache/touch-check/`, including an intermediate transformation. This is browser emulation, not an on-device performance or Safari validation. The existing mixed mouse/body browser route and `npm run check` / `npm test` remain the regression checks. The older standalone `controls-check.cjs` currently fails on unchanged HEAD because its text extraction matches the sound-unlock key handler; it needs a separate harness update.
+
+For testing on another device on the same Wi-Fi, restart the live development server with `npm run dev -- --host 0.0.0.0`, then open `http://<computer-LAN-address>:3100/` on that device. Port 3101 remains the frozen preview until explicitly rebuilt.
 
 
 ## Rule tiles & problem catalogue · interface study 01

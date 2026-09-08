@@ -1,3 +1,4 @@
+import {touchPrimary,requestedInputMode} from './input-profile';
 type Values=Record<string,string|boolean>;
 type Entry={revision:number;values:Values};
 type Control=HTMLInputElement|HTMLSelectElement;
@@ -13,7 +14,8 @@ export async function setupSettings(scope:string,parent:HTMLElement,selector:str
   const id=el.id||(el.dataset.rule?'rule:'+el.dataset.rule:'');if(id)controls.set(id,el);
  }
  const baseline:Values=Object.fromEntries([...controls].map(([id,el])=>[id,valueOf(el)]));
- if(controls.has('inputMode'))baseline.inputMode='mouse';
+ if(controls.has('inputMode'))baseline.inputMode='body';
+ const defaults=(values:Values):Values=>({...baseline,...values,...(controls.has('inputMode')&&touchPrimary()?{inputMode:'mouse'}:{})});
  const key=prefix+scope;let applying=false,entry:Entry={revision:0,values:{}},canWrite=false;
  const capture=():Values=>Object.fromEntries([...controls].map(([id,el])=>[id,valueOf(el)]));
  function persist(){if(applying)return;try{sessionStorage.setItem(key,JSON.stringify(capture()));}catch{status.textContent='Browser storage unavailable. Export a preset to keep these settings.';}}
@@ -66,7 +68,7 @@ export async function setupSettings(scope:string,parent:HTMLElement,selector:str
  const status=document.createElement('p');status.id='settingsPresetStatus';status.setAttribute('role','status');
  const actions=document.createElement('div');actions.style.cssText='display:flex;flex-wrap:wrap;gap:6px;margin:10px 0';panel.append(actions);
  function button(label:string,fn:()=>void|Promise<void>){const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=async()=>{b.disabled=true;try{await fn();}catch(e){status.textContent=(e as Error).message;}finally{b.disabled=false;}};actions.append(b);return b;}
- button('Reset to app defaults',async()=>{entry=await readShared();apply(subset({...baseline,...entry.values}));persist();status.textContent=`Reset ${group.selectedOptions[0].text.toLowerCase()} to app defaults (revision ${entry.revision}).`;});
+ button('Reset to app defaults',async()=>{entry=await readShared();apply(subset(defaults(entry.values)));persist();status.textContent=`Reset ${group.selectedOptions[0].text.toLowerCase()} to app defaults (revision ${entry.revision}).`;});
  button('Set as app defaults',async()=>{
   if(!canWrite)throw Error('Saving project defaults needs the local live or frozen server. Export a preset instead.');
   const selected=subset(capture());
@@ -92,11 +94,11 @@ export async function setupSettings(scope:string,parent:HTMLElement,selector:str
  const fileLabel=document.createElement('label');fileLabel.textContent='Import preset';fileLabel.append(upload);panel.append(fileLabel,status);parent.append(panel);
  // Existing rock controls attach their callbacks only when their assets settle.
  if(waitForRocks){const start=performance.now();while((document.getElementById('rockLayout') as HTMLSelectElement|null)?.disabled&&!/failed/i.test(document.getElementById('rockLoad')?.textContent??'')&&performance.now()-start<20000)await new Promise(r=>setTimeout(r,100));}
- try{entry=await readShared();apply({...baseline,...entry.values});status.textContent=`App defaults revision ${entry.revision}. Adjustments are saved for this tab.`;}
+ try{entry=await readShared();apply(defaults(entry.values));status.textContent=`App defaults revision ${entry.revision}. Adjustments are saved for this tab.`;}
  catch(e){status.textContent=(e as Error).message;}
  let restored=false;
  try{const raw=sessionStorage.getItem(key);if(raw){const values=JSON.parse(raw);if(values&&typeof values==='object'&&!Array.isArray(values)){apply(values);restored=true;status.textContent='Restored this tab’s controls. Reset loads the latest app defaults.';}}}catch{}
- if(!restored){const mode=new URLSearchParams(location.search).get('mode');if(mode&&controls.has('inputMode'))apply({inputMode:mode});}
+ if(!restored){const mode=requestedInputMode();if(mode&&controls.has('inputMode'))apply({inputMode:mode});}
  for(const el of controls.values()){el.addEventListener('input',persist);el.addEventListener('change',persist);}
  addEventListener('pagehide',persist);
  // Buttons such as a per-layer rock reset also change controls programmatically.
