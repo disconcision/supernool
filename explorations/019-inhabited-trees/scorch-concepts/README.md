@@ -1,5 +1,7 @@
 # Lightning strike scar — concept pass
 
+Latest: [Round 2 — straight explosive scorch marks](round-02.md). The curved branching marks below are superseded by that direction.
+
 Built-in image generation; scene-guided ideation, not approved or integrated assets.
 
 The earlier compact blob/tendril decal was rejected. The intended mark is dramatic cinder-black lightning damage with radiating, tapering, branching burn tracks reaching to and beyond the rock enclosure. Purple lines and invented glyphs are a separately assessable secondary layer.
