@@ -19,11 +19,11 @@ export function createInhabitation(renderer:T.WebGLRenderer,scene:T.Scene,camera
  const section=(name:string)=>{const d=document.createElement('details'),s=document.createElement('summary');s.textContent=name;d.append(s);panel.append(d);return d;};
  const cloud=section('Canopy & bark');
  for(const [id,label,min,max,step,v] of [
- ['spiritOpacity','Darkness',0,.9,.01,.72],['spiritFringe','Coloured fringe',0,1.5,.05,.55],['spiritSize','Cloud extent',.4,1.8,.05,1.25],['spiritDensity','Patch density',.4,1.6,.1,1],['spiritFray','Fraying / openings',0,1,.05,.55],['spiritRoil','Billowing',0,1.5,.05,.85],['spiritTexture','Interior texture',0,1,.05,.22],['spiritBark','Bark edge energy',0,1,.05,.4],['spiritFlow','Bark flow',0,1,.05,.65],['spiritDrift','Cloud evolution speed',0,2,.05,.65]
+ ['spiritOpacity','Darkness',0,.9,.01,.72],['spiritFringe','Coloured fringe',0,3,.05,.55],['spiritSize','Cloud extent',.4,2.6,.05,1.25],['spiritDensity','Patch density',.4,1.6,.1,1],['spiritFray','Fraying / openings',0,1,.05,.55],['spiritRoil','Billowing',0,2.5,.05,.85],['spiritTexture','Interior texture',0,1,.05,.22],['spiritBark','Bark edge energy',0,2,.05,.4],['spiritFlow','Bark flow',0,1,.05,.65],['spiritDrift','Cloud evolution speed',0,2,.05,.65]
  ] as [string,string,number,number,number,number][])range(id,label,min,max,step,v,cloud);
  const light=section('Lighting');light.open=true;
  for(const [id,label,min,max,step,v] of [
- ['spiritLight','Steady light strength',0,120,2,28],['spiritReach','Light reach',5,35,1,18],['spiritHeight','Steady light height',.5,8,.25,2.75],['spiritPulse','Steady pulsation',0,.8,.05,.1],['spiritGround','Painted ground response',0,3,.1,1],['spiritFlash','Lightning illumination',0,250,5,85],['spiritHalo','Arc glow radius / strength',0,4,.1,1],['spiritCloudFlash','Light inside cloud',0,3,.1,1],['spiritSun','Sun strength',0,4,.1,sun.intensity],['spiritFill','Ambient fill',0,3,.1,2]
+ ['spiritLight','Steady light strength',0,120,2,28],['spiritReach','Light reach',5,35,1,18],['spiritHeight','Steady light height',.5,8,.25,2.75],['spiritPulse','Steady pulsation',0,.8,.05,.1],['spiritGround','Painted ground response',0,3,.1,1],['spiritFlash','Lightning illumination',0,500,5,85],['spiritHalo','Arc glow radius / strength',0,4,.1,1],['spiritCloudFlash','Light inside cloud',0,3,.1,1],['spiritSun','Sun strength',0,4,.1,sun.intensity],['spiritFill','Ambient fill',0,3,.1,2]
  ] as [string,string,number,number,number,number][])range(id,label,min,max,step,v,light);
  const shadowSelect=select('spiritShadows','Large-strike shadows',[['off','Off · cheaper'],['on','On · comparison']],'off');light.append(shadowSelect.closest('label')!);
  const bolts=section('Lightning timing & reach');
