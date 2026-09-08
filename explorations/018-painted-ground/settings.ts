@@ -44,7 +44,8 @@ export async function setupSettings(scope:string,parent:HTMLElement,selector:str
  }
  async function readShared(){
   try{const r=await fetch('/__supernool/defaults',{cache:'no-store',signal:AbortSignal.timeout(4000)});if(!r.ok)throw Error();const all=await r.json();if(all.version!==1)throw Error();canWrite=true;return all.scopes[scope]??{revision:0,values:{}};}
-  catch{canWrite=false;const r=await fetch('/settings/app-defaults.json',{cache:'no-store',signal:AbortSignal.timeout(4000)});if(!r.ok)throw Error('App defaults could not be loaded.');const all=await r.json();return all.scopes[scope]??{revision:0,values:{}};}
+  // Both studies live two directories below the build root, including branch previews.
+  catch{canWrite=false;const r=await fetch(new URL('../../settings/app-defaults.json',location.href),{cache:'no-store',signal:AbortSignal.timeout(4000)});if(!r.ok)throw Error('App defaults could not be loaded.');const all=await r.json();return all.scopes[scope]??{revision:0,values:{}};}
  }
  document.getElementById('settingsSnapshot')?.remove();
  const panel=document.createElement('details');panel.id='settingsPresets';
