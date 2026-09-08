@@ -27,8 +27,8 @@
       }
     },
     "clearing-019": {
-      "revision": 4,
-      "updatedAt": "2026-09-08T05:05:16.329Z",
+      "revision": 6,
+      "updatedAt": "2026-09-08T05:41:06.898Z",
       "values": {
         "mossPlacement": "scatter",
         "mossScale": "2.3",
@@ -147,7 +147,16 @@
         "groundFootSpread": "2.35",
         "groundFootPlacements": "{}",
         "groundDecalState": "burnt",
-        "groundRecovery": "0.5"
+        "groundRecovery": "0.5",
+        "charMode": "texture",
+        "charStrength": "1",
+        "charBase": "0.028",
+        "charTip": "0.16",
+        "charStart": "0.3",
+        "charDetail": "1",
+        "charScale": "3.25",
+        "charCracks": "0.35",
+        "charSheen": "0.6"
       }
     }
   }

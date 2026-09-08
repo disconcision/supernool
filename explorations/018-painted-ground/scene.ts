@@ -1,3 +1,4 @@
+import {rootedEdges,rootOptions,mountRootControls} from './root-base';
 import {setupSettings} from './settings';
 import {createStartup} from './startup';
 import {createInhabitation} from './inhabited';
@@ -44,7 +45,7 @@ const burntBark=createBurntBark(Object.values(materials));
 let tree=initial(),selected=tree.id,steps=0,history:{tree:Term;steps:number}[]=[],future:{tree:Term;steps:number}[]=[],near=false,loaded=false,epoch=0,shapeSeed=2,spread=1,navTarget:T.Vector3|undefined,suggested:{id:string;key:string}|undefined;
 let exitAfterSettle=false;
 let animation:{before:Term;after:Term;start:number;kind:string;merge:Record<string,string>;from:number;to:number;duration:number}|undefined,poseNow:Pose|undefined,lastKey='',idCounter=0;
-function options():Options{return {thickness:+value('thickness'),taper:+value('taper'),bow:+value('bow'),random:+value('random'),twist:+value('twist'),facets:+value('facets'),seed:shapeSeed,blend:+value('blend'),hewn:value('surface')==='hewn',spread};}
+function options():Options{return {...rootOptions(),thickness:+value('thickness'),taper:+value('taper'),bow:+value('bow'),random:+value('random'),twist:+value('twist'),facets:+value('facets'),seed:shapeSeed,blend:+value('blend'),hewn:value('surface')==='hewn',spread};}
 function layoutOptions(){return {spread,seed:shapeSeed,irregularity:+value('irregularity'),height:value('height')};}
 function updateRunes(pose:Pose){runes.children.forEach(disposeSigil);runes.clear();for(const [id,n] of pose.nodes){const p=pose.points.get(id);if(!p)continue;
  const s=makeSigil(n.kind==='op'?(n.op==='*'?'×':'+'):n.kind==='num'?String(n.value):n.name,n.kind==='op',id===selected,value('sigils'));
@@ -53,13 +54,13 @@ function updateRunes(pose:Pose){runes.children.forEach(disposeSigil);runes.clear
 
 type Job={id:number;kind:'hero'|'deco';epoch:number;pose:Pose;options:Options;resolution:number;final:boolean;origin?:T.Vector3;scale?:number};
 let queue:Job[]=[],inflight:Job|undefined;const worker=new Worker(new URL('./mesh.worker.ts',import.meta.url),{type:'module'});
-function pump(){if(inflight||!queue.length)return;inflight=queue.shift()!;worker.postMessage({id:inflight.id,edges:inflight.pose.edges,options:inflight.options,resolution:inflight.resolution});}
+function pump(){if(inflight||!queue.length)return;inflight=queue.shift()!;worker.postMessage({id:inflight.id,edges:rootedEdges(inflight.pose.edges,inflight.options),options:inflight.options,resolution:inflight.resolution});}
 function submit(job:Job){if(job.kind==='hero')queue=queue.filter(j=>j.kind!=='hero');queue.push(job);pump();}
 worker.onmessage=event=>{const job=inflight;inflight=undefined;const data=event.data;if(!job||data.id!==job.id){pump();return;}if(data.error){if(!loaded)startup.fail('The tree could not be built. Please try again.');$('message').textContent='The surface could not be rebuilt: '+data.error;animation=undefined;ui();pump();return;}
  const geo=new T.BufferGeometry();geo.setAttribute('position',new T.BufferAttribute(data.position,3));geo.setAttribute('normal',new T.BufferAttribute(data.normal,3));geo.computeBoundingSphere();
- if(job.kind==='hero'&&job.epoch===epoch){treeMesh.geometry.dispose();treeMesh.geometry=geo;const members=data.edges.map((e:any)=>prepare({...e,a:new T.Vector3(e.a.x,e.a.y,e.a.z),b:new T.Vector3(e.b.x,e.b.y,e.b.z)},job.options));const shifted=members.map((m:any)=>({...m,r:m.r*treeScale,tip:m.tip*treeScale,e:{...m.e,a:treeWorld(m.e.a),b:treeWorld(m.e.b)},points:m.points.map(treeWorld)}));treeShade.feed(shifted,{...job.options,blend:job.options.blend*treeScale});poseNow=job.pose;updateRunes(job.pose);loaded=true;$('cost').textContent=`${data.position.length/9|0} triangles · ${Math.round(data.ms)} ms worker rebuild. Camera and walking stay on the main thread.`;$('world').dataset.nodes=String(count(tree));$('world').dataset.term=format(tree);$('world').dataset.meshing='ready';
+ if(job.kind==='hero'&&job.epoch===epoch){treeMesh.geometry.dispose();treeMesh.geometry=geo;const members=data.edges.map((e:any)=>prepare({...e,a:new T.Vector3(e.a.x,e.a.y,e.a.z),b:new T.Vector3(e.b.x,e.b.y,e.b.z)},job.options));const shifted=members.map((m:any)=>({...m,r:m.r*treeScale,tip:m.tip*treeScale,flare:m.flare*treeScale,e:{...m.e,a:treeWorld(m.e.a),b:treeWorld(m.e.b)},points:m.points.map(treeWorld)}));treeShade.feed(shifted,{...job.options,blend:job.options.blend*treeScale});poseNow=job.pose;updateRunes(job.pose);loaded=true;$('cost').textContent=`${data.position.length/9|0} triangles · ${Math.round(data.ms)} ms worker rebuild. Camera and walking stay on the main thread.`;$('world').dataset.nodes=String(count(tree));$('world').dataset.term=format(tree);$('world').dataset.meshing='ready';
   if(job.final&&animation){finishSettling();}else if(!animation&&!grip)ui(false);
- }else if(job.kind==='deco'){const s=job.scale!;const mat=new T.MeshStandardMaterial({color:'#7d8b77',roughness:1});const obj=new T.Mesh(geo,mat);obj.scale.setScalar(6*s);obj.position.copy(job.origin!).add(new T.Vector3(0,5*s,0));obj.castShadow=true;obj.userData.matteExclude=true;scene.add(obj);}else geo.dispose();pump();};
+ }else if(job.kind==='deco'){const s=job.scale!;const shade=makeShading();const mat=shade.carved(new T.MeshStandardMaterial({color:'#857a69',roughness:.93}));const transform=(p:T.Vector3)=>p.clone().multiplyScalar(s).add(job.origin!);const members=data.edges.map((e:any)=>prepare({...e,a:new T.Vector3(e.a.x,e.a.y,e.a.z),b:new T.Vector3(e.b.x,e.b.y,e.b.z)},job.options));shade.feed(members.map((m:any)=>({...m,r:m.r*s,tip:m.tip*s,flare:m.flare*s,e:{...m.e,a:transform(m.e.a),b:transform(m.e.b)},points:m.points.map(transform)})),{...job.options,blend:job.options.blend*s});const obj=new T.Mesh(geo,mat);obj.scale.setScalar(6*s);obj.position.copy(job.origin!).add(new T.Vector3(0,5*s,0));obj.castShadow=true;obj.userData.matteExclude=true;scene.add(obj);}else geo.dispose();pump();};
 worker.onerror=e=>{startup.fail('The tree renderer could not start. Please try again.');$('message').textContent='Tree renderer error: '+e.message;};
 function finishSettling(){
  animation=undefined;selected=find(tree,selected)?selected:tree.id;
@@ -97,7 +98,7 @@ function frameTree(dt:number){
 }
 function requestPose(now:number){const elapsed=animation?Math.min(1,(now-animation.start)/animation.duration):1;const u=grip?.chosen?grip.progress:animation?animation.from+(animation.to-animation.from)*elapsed:1;const quant=Math.round(u*48)/48;const config=layoutOptions();const key=JSON.stringify([epoch,tree.id,format(tree),grip?.chosen?.action.key,animation?.kind,animation?elapsed===1:false,quant,Math.round(spread*25),config,options(),value('resolution')]);if(key===lastKey)return;lastKey=key;
  const pose=grip?.chosen?transition(tree,grip.chosen.after,quant,config,grip.chosen.action.key,grip.chosen.action.merge,options()):animation?transition(animation.before,animation.after,quant,config,animation.kind,animation.merge,options()):layout(tree,config);submit({id:++idCounter,kind:'hero',epoch,pose,options:options(),resolution:+value('resolution'),final:!grip&&(!animation||elapsed===1)});$('world').dataset.meshing='working';}
-for(const [x,z,scale] of [[-8,-5,.6],[7,-7,.75]]){const root=initial();const t=root.kind==='op'?root.left:root;const opt={...options(),spread:1,thickness:.9,bow:.45,seed:Math.round(x+20)};submit({id:++idCounter,kind:'deco',epoch,pose:layout(t,{spread:1,irregularity:.5,height:'depth',seed:opt.seed}),options:opt,resolution:64,final:true,origin:new T.Vector3(x,0,z),scale});}
+for(const [x,z,scale] of [[-8,-5,.6],[7,-7,.75]]){const root=initial();const t=root.kind==='op'?root.left:root;const opt={...options(),spread:1,hewn:true,thickness:.62,taper:.85,bow:.42,random:.55,twist:.32,facets:.45,blend:.08,rootFlare:.7,rootAmount:.45,seed:Math.round(x+20)};submit({id:++idCounter,kind:'deco',epoch,pose:layout(t,{spread:1,irregularity:.5,height:'depth',seed:opt.seed}),options:opt,resolution:112,final:true,origin:new T.Vector3(x,0,z),scale});}
 function status(text:string){$('message').textContent=text;}
 function nextClue(){
  const nodes=walk(tree);
@@ -339,6 +340,7 @@ if(inhabitedStudy){
 inhabitation.mount($('settings'));
 backdrop.decals.mount($('settings'));
 burntBark.mount($('settings'));
+mountRootControls($('settings'));
 setupControlReadouts();
 let preferencesReady=false;
 setupSettings(inhabitedStudy?'clearing-019':'clearing-018',$('settings'),'.dock input,.dock select',true).finally(()=>{preferencesReady=true;});

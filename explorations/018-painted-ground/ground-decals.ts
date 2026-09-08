@@ -6,6 +6,8 @@ export const groundDecalGLSL=`
 uniform sampler2D scorchMask, footingMask;
 uniform vec4 scorchPose;
 uniform vec4 groundDecalAmounts;
+uniform vec4 rootContactPose;
+uniform vec4 rootContactColor;
 float groundChar = 0.;
 vec3 groundDecals(vec3 base, vec3 world){
  vec2 d=(world.xz-scorchPose.xy)/scorchPose.z;
@@ -21,6 +23,12 @@ vec3 groundDecals(vec3 base, vec3 world){
  base=mix(base,base*vec3(.46,.40,.32),foot*groundDecalAmounts.y);
  groundChar=burn*groundDecalAmounts.x*(1.-groundDecalAmounts.z);
  base=mix(base,vec3(.023,.022,.021),groundChar);
+ vec2 rd=world.xz-rootContactPose.xy;
+ float angle=atan(rd.y,rd.x);
+ float radius=rootContactPose.z*(1.+.06*sin(angle*5.)+.035*sin(angle*9.+1.));
+ float contact=(1.-smoothstep(radius*.27,radius,length(rd)))*rootContactPose.w;
+ base=mix(base,rootContactColor.rgb,contact);
+ groundChar=max(groundChar,contact*rootContactColor.a);
  return base;
 }`;
 
@@ -31,7 +39,7 @@ export function createGroundDecals(){
  const canvas=document.createElement('canvas');canvas.width=canvas.height=1024;
  const ctx=canvas.getContext('2d')!;ctx.fillStyle='white';ctx.fillRect(0,0,1024,1024);
  const composed=new T.CanvasTexture(canvas);composed.flipY=false;
- const uniforms={scorchMask:{value:white as T.Texture},footingMask:{value:composed},scorchPose:{value:new T.Vector4(-1,-3,34,0)},groundDecalAmounts:{value:new T.Vector4(0,0,0,0)}};
+ const uniforms={rootContactPose:{value:new T.Vector4(-1,-3,1.5,0)},rootContactColor:{value:new T.Vector4(.025,.022,.018,0)},scorchMask:{value:white as T.Texture},footingMask:{value:composed},scorchPose:{value:new T.Vector4(-1,-3,34,0)},groundDecalAmounts:{value:new T.Vector4(0,0,0,0)}};
  let atlas:HTMLImageElement|undefined,loaded=0,failed=false,root:HTMLElement|undefined,lastKey='',lastFootKey='',rawKey='';let feet:Foot[]=[];
  const loader=new T.TextureLoader();
  loader.load(new URL('./assets/ground-decals/scorch-mask.png',import.meta.url).href,t=>{t.colorSpace=T.NoColorSpace;t.flipY=false;uniforms.scorchMask.value=t;loaded++;report();},undefined,()=>{failed=true;report();});
@@ -68,6 +76,11 @@ export function createGroundDecals(){
  }
  function update(rawFeet:Foot[]){
  if(!root)return;
+ const read=(id:string,fallback:string)=>(document.getElementById(id) as HTMLInputElement|null)?.value??fallback;
+ const char=read('charMode','off')==='off'?0:+read('charStrength','1');
+ const gray=+read('charBase','.028');
+ uniforms.rootContactPose.value.set(-1,-3,+read('rootContactSize','1.5'),read('rootContact','on')==='on'?+read('rootContactStrength','1'):0);
+ uniforms.rootContactColor.value.set(T.MathUtils.lerp(.032,gray*.8,char),T.MathUtils.lerp(.026,gray*.8,char),T.MathUtils.lerp(.019,gray*.82,char),char);
  const state=val('groundDecalState');uniforms.groundDecalAmounts.value.set(val('groundScorch')==='on'?+val('groundScorchOpacity'):0,val('groundFooting')==='on'?+val('groundFootOpacity'):0,state==='healthy'?1:state==='recovery'?+val('groundRecovery'):0,0);
  uniforms.scorchPose.value.set(+val('groundScorchX'),+val('groundScorchZ'),+val('groundScorchSize'),+val('groundScorchAngle')*Math.PI/180);
  const layout=(document.getElementById('rockLayout') as HTMLSelectElement)?.value||'original';

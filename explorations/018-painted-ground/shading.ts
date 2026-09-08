@@ -1,14 +1,14 @@
 import * as T from 'three';import {Member,Options} from './surface';
 export function makeShading(){
 const MAX=40;
-const uniforms={cuts:{value:Array.from({length:MAX},()=>new T.Vector2())},memberCount:{value:0},starts:{value:Array.from({length:MAX},()=>new T.Vector4())},ends:{value:Array.from({length:MAX},()=>new T.Vector4())},bends:{value:Array.from({length:MAX},()=>new T.Vector4())},shape:{value:new T.Vector4()},hewn:{value:1}};
+const uniforms={flares:{value:Array(MAX).fill(0)},cuts:{value:Array.from({length:MAX},()=>new T.Vector2())},memberCount:{value:0},starts:{value:Array.from({length:MAX},()=>new T.Vector4())},ends:{value:Array.from({length:MAX},()=>new T.Vector4())},bends:{value:Array.from({length:MAX},()=>new T.Vector4())},shape:{value:new T.Vector4()},hewn:{value:1}};
 function feed(members:Member[],o:Options){
  uniforms.memberCount.value=Math.min(MAX,members.length);uniforms.shape.value.set(o.twist,o.facets,o.blend,0);uniforms.hewn.value=o.hewn?1:0;
- members.slice(0,MAX).forEach((m,i)=>{uniforms.cuts.value[i].set(m.e.cutA?1:0,m.e.cutB?1:0);uniforms.starts.value[i].set(m.e.a.x,m.e.a.y,m.e.a.z,m.r);uniforms.ends.value[i].set(m.e.b.x,m.e.b.y,m.e.b.z,m.tip);const mid=m.points[8].clone().sub(m.e.a.clone().lerp(m.e.b,.5));uniforms.bends.value[i].set(mid.x,mid.y,mid.z,m.n);});
+ members.slice(0,MAX).forEach((m,i)=>{uniforms.flares.value[i]=m.flare;uniforms.cuts.value[i].set(m.e.cutA?1:0,m.e.cutB?1:0);uniforms.starts.value[i].set(m.e.a.x,m.e.a.y,m.e.a.z,m.r);uniforms.ends.value[i].set(m.e.b.x,m.e.b.y,m.e.b.z,m.tip);const mid=m.points[8].clone().sub(m.e.a.clone().lerp(m.e.b,.5));uniforms.bends.value[i].set(mid.x,mid.y,mid.z,m.n);});
 }
 const code=`
 varying vec3 noolWorld;
-uniform vec2 cuts[40];uniform int memberCount;uniform vec4 starts[40];uniform vec4 ends[40];uniform vec4 bends[40];uniform vec4 shape;uniform float hewn;
+uniform float flares[40];uniform vec2 cuts[40];uniform int memberCount;uniform vec4 starts[40];uniform vec4 ends[40];uniform vec4 bends[40];uniform vec4 shape;uniform float hewn;
 // Continuous per-fragment face normal: no averaging over a grid triangle's corners.
 vec4 memberField(vec3 p,int i){
  vec3 a=starts[i].xyz,b=ends[i].xyz,d=b-a,bow=bends[i].xyz;float len=length(d);vec3 axis=d/len;
@@ -25,8 +25,10 @@ vec4 memberField(vec3 p,int i){
   float angle=theta+kf*6.2831853/7.;vec3 n=u*cos(angle)+v*sin(angle);float value=dot(delta,n)/width;
   if(value>crossD){crossD=value;face=n/width;derivative=shape.x*dot(delta,-u*sin(angle)+v*cos(angle))/width-value*(shape.y*.22*2.4*cos(phase))/width;}
  }
- float r=mix(starts[i].w,ends[i].w,t),q=r-crossD;
- vec3 outward=normalize(face+w*(derivative-(ends[i].w-starts[i].w))/max(.001,len));
+ float foot=max(0.,1.-t/.65);
+ float r=mix(starts[i].w,ends[i].w,t)+flares[i]*foot*foot,q=r-crossD;
+ float radiusDerivative=ends[i].w-starts[i].w-2.*flares[i]*foot/.65;
+ vec3 outward=normalize(face+w*(derivative-radiusDerivative)/max(.001,len));
  float cap=1e4;vec3 capNormal=w;
  if(t<.00001){cap=dot(delta,w);capNormal=-w;}
  if(t>.99999){cap=-dot(delta,w);capNormal=w;}
@@ -40,7 +42,7 @@ vec3 carvedNormal(vec3 p){
  for(int i=0;i<40;i++){if(i>=memberCount)break;
  // Conservative neighbourhood: a face pixel cannot be affected by distant members.
  vec3 chord=ends[i].xyz-starts[i].xyz;float along=clamp(dot(p-starts[i].xyz,chord)/dot(chord,chord),0.,1.);
- vec3 delta=p-(starts[i].xyz+along*chord);float reach=max(starts[i].w,ends[i].w)*1.6+length(bends[i].xyz)+shape.z+.15;
+ vec3 delta=p-(starts[i].xyz+along*chord);float reach=(max(starts[i].w,ends[i].w)+flares[i])*1.6+length(bends[i].xyz)+shape.z+.15;
  if(dot(delta,delta)>reach*reach)continue;
  vec4 q=memberField(p,i);float k=shape.z;
  float h=clamp(.5+.5*(best.w-q.w)/max(.001,k),0.,1.);
@@ -51,7 +53,7 @@ vec3 carvedNormal(vec3 p){
 `;
 function carved<TM extends T.Material>(mat:TM):TM{
  mat.onBeforeCompile=shader=>{Object.assign(shader.uniforms,uniforms);shader.vertexShader='varying vec3 noolWorld;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <worldpos_vertex>','#include <worldpos_vertex>\nnoolWorld=(modelMatrix*vec4(transformed,1.)).xyz;');shader.fragmentShader=code+shader.fragmentShader;shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_begin>','#include <normal_fragment_begin>\nnormal=normalize(mat3(viewMatrix)*carvedNormal(noolWorld));');};
- mat.customProgramCacheKey=()=> 'nool-carved-v2-cull';return mat;
+ mat.customProgramCacheKey=()=> 'nool-carved-v3-root-flare';return mat;
 }
 
 return {feed,carved};
