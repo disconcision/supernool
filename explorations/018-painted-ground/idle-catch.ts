@@ -2,7 +2,12 @@ import {startledPose} from './idle-roam';
 import * as T from 'three';
 
 /** Explicit affordance: only loose, hand-sized stones; never scenery or gates. */
-export type CatchProp={object:T.Object3D;radius:number;groundY:number;touch:T.Vector3};
+export type CatchProp={object:T.Object3D;radius:number;groundY:number;touch:T.Vector3;effort?:number};
+/** Size-based performance cue, not a physical mass simulation. */
+export function catchStoneProfile(width:number,height:number){
+ if(width>.56||height>.56)return undefined;
+ return {effort:T.MathUtils.smoothstep(width*width*height,.08,.18)};
+}
 type Pose={position:T.Vector3;orientation:T.Quaternion;grasp:number};
 type Phase='rest'|'scout'|'grip'|'lift'|'notice'|'spread'|'windup'|'throw'|'flight'|'catch'|'miss'|'return'|'place'|'startle'|'depart'|'rejoin';
 const socket=new T.Vector3(0,.12,.19),xAxis=new T.Vector3(1,0,0);
@@ -38,9 +43,10 @@ export class IdleCatch {
    .sort((a,b)=>Math.hypot(a.object.position.x-from.x,a.object.position.z-from.z)-Math.hypot(b.object.position.x-from.x,b.object.position.z-from.z))[0];
  }
  nearbyHand(root:T.Object3D,hands:T.Object3D[],eligible:boolean[],preferred:number,radius=1.6){return [preferred,1-preferred].find(i=>eligible[i]&&!!this.pickupFor(i,root,hands,radius));}
+ private get effort(){return T.MathUtils.clamp(this.prop?.effort??0,0,1);}
  get disengaging(){return this.phase==='startle'||this.phase==='depart'||this.phase==='rejoin';}
  get active(){return this.phase!=='rest';}
- get state(){return {phase:this.phase,holder:this.holder,separation:this.homes.length?this.homes[0].position.distanceTo(this.homes[1].position):0,stone:this.prop?.object.userData.rockSeed??null,held:this.held,loose:this.loose,throws:this.throws,catches:this.catches,misses:this.misses,sessions:this.sessions,age:this.age,flightTime:this.flightTime,position:this.prop?.object.position.toArray()??null,windupTime:this.windupTime,cue:this.cue,readCue:this.readCue,hands:this.poses.map(p=>({position:p.position.toArray(),orientation:p.orientation.toArray(),grasp:p.grasp}))};}
+ get state(){return {phase:this.phase,effort:this.effort,holder:this.holder,separation:this.homes.length?this.homes[0].position.distanceTo(this.homes[1].position):0,stone:this.prop?.object.userData.rockSeed??null,held:this.held,loose:this.loose,throws:this.throws,catches:this.catches,misses:this.misses,sessions:this.sessions,age:this.age,flightTime:this.flightTime,position:this.prop?.object.position.toArray()??null,windupTime:this.windupTime,cue:this.cue,readCue:this.readCue,hands:this.poses.map(p=>({position:p.position.toArray(),orientation:p.orientation.toArray(),grasp:p.grasp}))};}
  private enter(phase:Phase){this.phase=phase;this.age=0;this.starts=this.poses.map(pose);}
  private local(x:number,y:number,z:number){return new T.Vector3(x,y,z).applyQuaternion(this.heading).add(this.origin);}
  private rotation(pitch:number){return this.heading.clone().multiply(new T.Quaternion().setFromAxisAngle(xAxis,pitch));}
@@ -96,7 +102,7 @@ export class IdleCatch {
   this.throwDirection.copy(this.target).sub(this.poses[this.holder].position).setY(0).normalize();
   this.throwRotation.copy(this.facing(this.throwDirection));
   this.throwSide.set(-this.throwDirection.z,0,this.throwDirection.x);
-  this.windupTime=1.15+this.random()*.4;this.feintSide=this.random()<.5?-1:1;this.feintWidth=.22+this.random()*.18;
+  this.windupTime=1.15+this.random()*.4+this.effort*.35;this.feintSide=this.random()<.5?-1:1;this.feintWidth=.22+this.random()*.18;
   this.shufflePhase=this.random()*Math.PI*2;this.readCue=this.cue=0;
   this.enter('windup');
  }
@@ -166,9 +172,11 @@ export class IdleCatch {
    case 'grip':
     this.tween(h,groundPalm(),down,.88,this.age/.65);
     if(this.age>=.65){this.attach();this.enter('lift');}break;
-   case 'lift':
-    this.tween(h,this.homes[h].position,palmUp,.88,this.age/1.05);
-    if(this.age>=1.05)this.enter('notice');break;
+   case 'lift':{
+    const duration=1.05+this.effort*.55;
+    this.tween(h,this.homes[h].position,palmUp,.88,this.age/duration);
+    if(this.age>=duration)this.enter('notice');break;
+   }
    case 'notice':{
     const perk=this.starts[r].position.clone().add(new T.Vector3(0,.35,0));
     this.tween(r,perk,this.rotation(-.7),.02,this.age/.3);if(this.age>=.65)this.enter('spread');break;
@@ -214,7 +222,7 @@ export class IdleCatch {
     }break;
    }
    case 'catch':
-    this.tween(h,this.starts[h].position.clone().add(new T.Vector3(0,-.12,0)),palmUp,.88,this.age/.28);
+    this.tween(h,this.starts[h].position.clone().add(new T.Vector3(0,-.12-this.effort*.12,0)),palmUp,.88,this.age/.28);
     if(this.age>=.55){if(this.elapsed>30)this.enter('return');else this.spreadOut();}break;
    case 'miss':
     this.drop(dt);
