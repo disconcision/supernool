@@ -202,3 +202,7 @@ Latest rock feedback: favor scattered placement, with independently adjustable b
 ## Audio work paused · unresolved buzzing
 
 The user reports buzzing both after unmute and after letting playback run. Recreating the audio graph on unmute did not resolve it. Do not claim the sound bug is fixed. Audio investigation is paused at the user's request while algebra/preset work proceeds; preserve the current sound implementation as a checkpoint for a later layer-by-layer diagnosis.
+
+## Broader symbolic systems and casual play
+
+Read [rewriting-systems-roadmap.md](rewriting-systems-roadmap.md) before extending the calculus. It retains the 2026-09-08 discussion; next candidate is a schema with one extra variable, initially supplied by spare-hand sampling. The user also wants to consider casual, brief world interactions alongside staged encounters. Energy and its purpose remain open, not an approved economy. Identity-bar tiles are now adopted in the current scene; three additional 23/25/31-node problems are size studies, not a claim of mathematical coverage or global difficulty.

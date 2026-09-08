@@ -5,3 +5,10 @@
 /* The scene's title styles target header globally; the modal owns its own header. */
 .problem-dialog header{left:0;right:auto;max-width:none;pointer-events:auto;color:#344239;text-shadow:none;isolation:auto}.problem-dialog header:before{display:none}.problem-dialog header a{letter-spacing:normal;font-weight:400;text-shadow:none}.problem-dialog .catalogue-close{padding:0;line-height:1;display:grid;place-items:center;color:#53634f}.problem-dialog{overflow-x:hidden}.problem-dialog header p{display:block}
 .rule-tile.bar{height:43px}.rule-strip .rule-tile.bar{height:36px}
+
+/* Compact identity tiles in the scene; keep the study's larger comparisons intact. */
+.problem-dialog .rule-tile.bar,.problem-current-meta .rule-tile.bar{width:49px;height:32px;border-radius:8px}
+.problem-dialog .rule-strip,.problem-current-meta .rule-strip{gap:4px}
+#ruleList .rule{gap:7px;padding-block:5px}
+#ruleList .rule>.rule-tile.bar{width:53px;height:34px;border-radius:8px}
+.problem-dialog .rule-tile.bar svg,.problem-current-meta .rule-tile.bar svg,#ruleList .rule-tile.bar svg{width:calc(100% + 5px);height:calc(100% + 3px);flex:none}

@@ -2,6 +2,9 @@ import {Term,num,variable,op} from './algebra';
 export type Expression=number|string|['+'|'*',Expression,Expression];
 export type Problem={id:string;title:string;start:Expression;target:Expression;note:string};
 const add=(a:Expression,b:Expression):Expression=>['+',a,b],mul=(a:Expression,b:Expression):Expression=>['*',a,b];
+// Large carried operands probe geometry without requiring a long search to solve them.
+const forked=add(mul(add('x','y'),add('x','y')),'x'); // 9 nodes
+const broad=mul(add(mul('x','y'),add('x','y')),add('x',add('y','x'))); // 13 nodes
 export const problems:Problem[]=[
  {id:'clearing',title:'01 · The original clearing',start:add(add(add(mul(2,'x'),0),'y'),add(mul(3,'x'),0)),target:add(mul(5,'x'),'y'),note:'Swap and regroup to collect matching branches.'},
  {id:'identities',title:'02 · Shed the extra branches',start:add(mul(add('x',0),1),add(0,mul('y',1))),target:add('x','y'),note:'Remove additive and multiplicative identities.'},
@@ -15,6 +18,9 @@ export const problems:Problem[]=[
  {id:'expand-collect',title:'10 · Grow before shrinking',start:add(mul(2,add('x',3)),mul(3,'x')),target:add(mul(5,'x'),6),note:'Distribute into the sum before collecting the x terms.'},
  {id:'two-crowns',title:'11 · Two crowns',start:add(add(mul(2,'x'),mul(3,'x')),add(mul(4,'y'),mul(2,'y'))),target:add(mul(5,'x'),mul(6,'y')),note:'Simplify two independent sets of matching branches.'},
  {id:'nested-units',title:'12 · Units within units',start:mul(add('x',0),mul(1,add('y',0))),target:mul('x','y'),note:'Keep the product while clearing its nested identities.'},
+ {id:'branching-echoes',title:'13 · Branching echoes',start:add(mul(2,forked),mul(3,forked)),target:mul(5,forked),note:'23 nodes, two moves: carry and merge two matching nine-node crowns. A size study, not a harder puzzle.'},
+ {id:'hollow-crown',title:'14 · The hollow crown',start:add(add(mul(3,forked),mul(-3,forked)),'y'),target:'y',note:'25 nodes: a large matching pair cancels, leaving one small branch. Factor, calculate, absorb, remove zero.'},
+ {id:'full-span',title:'15 · The full span',start:add(mul(2,broad),mul(3,broad)),target:mul(5,broad),note:'31 nodes: the current expansion limit. Merge two thirteen-node crowns; tree size and solution length are different challenges.'},
 ];
 export function instantiate(e:Expression):Term{return typeof e==='number'?num(e):typeof e==='string'?variable(e):op(e[0],instantiate(e[1]),instantiate(e[2]));}
 export function problemById(id:string){return problems.find(p=>p.id===id)??problems[0];}

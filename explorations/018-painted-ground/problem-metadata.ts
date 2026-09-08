@@ -459,5 +459,97 @@ export const referenceSolutions:Record<string,ReferenceSolution[]>={
       "targetNodes": 3,
       "peakNodes": 9
     }
+  ],
+  "branching-echoes": [
+    {
+      "steps": [
+        {
+          "path": [],
+          "rule": "factor",
+          "result": "*(+(2,3),+(*(+(x,y),+(x,y)),x))"
+        },
+        {
+          "path": [
+            0
+          ],
+          "rule": "eval-add",
+          "result": "5"
+        }
+      ],
+      "rules": [
+        "eval-add",
+        "factor"
+      ],
+      "startNodes": 23,
+      "targetNodes": 11,
+      "peakNodes": 23
+    }
+  ],
+  "hollow-crown": [
+    {
+      "steps": [
+        {
+          "path": [
+            0
+          ],
+          "rule": "factor",
+          "result": "*(+(3,-3),+(*(+(x,y),+(x,y)),x))"
+        },
+        {
+          "path": [
+            0,
+            0
+          ],
+          "rule": "eval-add",
+          "result": "0"
+        },
+        {
+          "path": [
+            0
+          ],
+          "rule": "absorb",
+          "result": "0"
+        },
+        {
+          "path": [],
+          "rule": "zero",
+          "result": "y"
+        }
+      ],
+      "rules": [
+        "absorb",
+        "eval-add",
+        "factor",
+        "zero"
+      ],
+      "startNodes": 25,
+      "targetNodes": 1,
+      "peakNodes": 25
+    }
+  ],
+  "full-span": [
+    {
+      "steps": [
+        {
+          "path": [],
+          "rule": "factor",
+          "result": "*(+(2,3),*(+(*(x,y),+(x,y)),+(x,+(y,x))))"
+        },
+        {
+          "path": [
+            0
+          ],
+          "rule": "eval-add",
+          "result": "5"
+        }
+      ],
+      "rules": [
+        "eval-add",
+        "factor"
+      ],
+      "startNodes": 31,
+      "targetNodes": 15,
+      "peakNodes": 31
+    }
   ]
 };

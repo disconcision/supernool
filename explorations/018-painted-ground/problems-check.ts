@@ -1,17 +1,17 @@
 import assert from 'node:assert/strict';
 import {problems,instantiate} from './problems';
-import {solved,hint,replace,walk,evaluate,actions,count,format,fitsScene} from './algebra';
+import {solved,hint,replace,walk,evaluate,actions,count,format,fitsScene,maxPlayableNodes} from './algebra';
 import {gestures} from './gestures';
 import {rules,ruleId} from './interaction';
 import {layout,transition} from './layout';
 for(const p of problems){
- let tree=instantiate(p.start);const goal=instantiate(p.target),route:string[]=[],started=performance.now();
+ let tree=instantiate(p.start);assert(count(tree)<=maxPlayableNodes,p.id+' exceeds scene limit');const goal=instantiate(p.target),route:string[]=[],started=performance.now();
  for(let i=0;i<14&&!solved(tree,goal);i++){
   const h=hint(tree,undefined,goal);assert(h,'No hint route for '+p.id+' from '+format(tree));
   const g=gestures(tree).find(g=>g.owner.id===h.nodeId&&g.action.key===h.action.key);
   // Expansion actions allocate fresh IDs per enumeration; action keys and owner identify the same rewrite.
   assert(g,'Missing gesture for '+h.action.key);const before=tree;tree=g.after;route.push(h.action.key);
-  assert.equal(new Set(walk(tree).map(n=>n.id)).size,count(tree));
+  assert.equal(new Set(walk(tree).map(n=>n.id)).size,count(tree));assert(count(tree)<=maxPlayableNodes);
   for(const x of [-3,0,2])for(const y of [-2,0,4])assert.equal(evaluate(tree,x,y),evaluate(before,x,y));
   for(const spread of [0,1])for(const t of [0,.25,.5,.75,1]){
    const pose=transition(before,tree,t,{spread,irregularity:.25,height:'depth',seed:2},g.action.key,g.action.merge);
