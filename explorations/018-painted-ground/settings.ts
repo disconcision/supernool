@@ -52,13 +52,15 @@ export async function setupSettings(scope:string,parent:HTMLElement,selector:str
  const shadowIds=[...controls.keys()].filter(id=>id.startsWith('spirit'));
  if(shadowIds.length){group.add(new Option('Shadow & lighting only','shadow'));group.value='shadow';}
  const groundIds=[...controls.keys()].filter(id=>document.getElementById(id)?.closest('#groundDecalStudy'));
+ const sequenceIds=[...controls.keys()].filter(id=>id.startsWith('sequence'));
+ if(sequenceIds.length)group.add(new Option('Encounter timing & canopy only','sequence'));
  const rootIds=[...controls.keys()].filter(id=>id.startsWith('root'));
  if(rootIds.length)group.add(new Option('Roots & ground contact only','roots'));
  const charIds=[...controls.keys()].filter(id=>id.startsWith('char'));
  if(charIds.length)group.add(new Option('Burnt bark only','char'));
  if(groundIds.length)group.add(new Option('Ground decals only','ground'));
  panel.append(group);
- const subset=(values:Values)=>Object.fromEntries(Object.entries(values).filter(([id])=>group.value==='roots'?rootIds.includes(id):group.value==='shadow'?shadowIds.includes(id):group.value==='ground'?groundIds.includes(id):group.value==='char'?charIds.includes(id):true));
+ const subset=(values:Values)=>Object.fromEntries(Object.entries(values).filter(([id])=>group.value==='sequence'?sequenceIds.includes(id):group.value==='roots'?rootIds.includes(id):group.value==='shadow'?shadowIds.includes(id):group.value==='ground'?groundIds.includes(id):group.value==='char'?charIds.includes(id):true));
  const status=document.createElement('p');status.id='settingsPresetStatus';status.setAttribute('role','status');
  const actions=document.createElement('div');actions.style.cssText='display:flex;flex-wrap:wrap;gap:6px;margin:10px 0';panel.append(actions);
  function button(label:string,fn:()=>void|Promise<void>){const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=async()=>{b.disabled=true;try{await fn();}catch(e){status.textContent=(e as Error).message;}finally{b.disabled=false;}};actions.append(b);return b;}

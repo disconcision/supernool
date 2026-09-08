@@ -74,14 +74,14 @@ export function createGroundDecals(){
  root.querySelector('#groundDecalsOff')!.addEventListener('click',()=>{for(const id of ['groundScorch','groundFooting']){input(id).value='off';input(id).dispatchEvent(new Event('change',{bubbles:true}));}});
  root.querySelector('#groundDecalsBoth')!.addEventListener('click',()=>{for(const id of ['groundScorch','groundFooting']){input(id).value='on';input(id).dispatchEvent(new Event('change',{bubbles:true}));}});
  }
- function update(rawFeet:Foot[]){
+ function update(rawFeet:Foot[],sequence={scorch:1,burn:1}){
  if(!root)return;
  const read=(id:string,fallback:string)=>(document.getElementById(id) as HTMLInputElement|null)?.value??fallback;
- const char=read('charMode','off')==='off'?0:+read('charStrength','1');
+ const char=read('charMode','off')==='off'?0:+read('charStrength','1')*sequence.burn;
  const gray=+read('charBase','.028');
  uniforms.rootContactPose.value.set(-1,-3,+read('rootContactSize','1.5'),read('rootContact','on')==='on'?+read('rootContactStrength','1'):0);
  uniforms.rootContactColor.value.set(T.MathUtils.lerp(.032,gray*.8,char),T.MathUtils.lerp(.026,gray*.8,char),T.MathUtils.lerp(.019,gray*.82,char),char);
- const state=val('groundDecalState');uniforms.groundDecalAmounts.value.set(val('groundScorch')==='on'?+val('groundScorchOpacity'):0,val('groundFooting')==='on'?+val('groundFootOpacity'):0,state==='healthy'?1:state==='recovery'?+val('groundRecovery'):0,0);
+ const state=val('groundDecalState');uniforms.groundDecalAmounts.value.set(val('groundScorch')==='on'?+val('groundScorchOpacity')*sequence.scorch:0,val('groundFooting')==='on'?+val('groundFootOpacity'):0,state==='healthy'?1:state==='recovery'?+val('groundRecovery'):0,0);
  uniforms.scorchPose.value.set(+val('groundScorchX'),+val('groundScorchZ'),+val('groundScorchSize'),+val('groundScorchAngle')*Math.PI/180);
  const layout=(document.getElementById('rockLayout') as HTMLSelectElement)?.value||'original';
  const footKey=layout+':'+rawFeet.map(f=>[f.x.toFixed(2),f.z.toFixed(2),f.r.toFixed(2)].join(',')).join(';');

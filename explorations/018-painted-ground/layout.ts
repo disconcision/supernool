@@ -48,7 +48,9 @@ export function transition(before:Term,after:Term,t:number,o:LayoutOptions,kind:
   if(!e0){end=start.clone().lerp(end,ease);}
   if(r>1e-5&&start.distanceTo(end)>1e-5)edges.push({id,a:start,b:end,r});
  }
- for(const [id,p] of retracted)points.set(id,p);
+ // A host-regrowth root may have been a child in the reduced expression.
+ // Its retiring incoming member must not overwrite the surviving root point.
+ for(const [id,p] of retracted)if(kind!=='regrow'||!b.points.has(id))points.set(id,p);
  const nodes=t<.5?a.nodes:b.nodes;return {points,parents:b.parents,nodes,edges};
 }
 

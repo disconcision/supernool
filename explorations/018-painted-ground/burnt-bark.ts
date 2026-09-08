@@ -54,8 +54,8 @@ export function createBurntBark(materials:(T.MeshStandardMaterial|T.MeshToonMate
  get('charMode').value=new URLSearchParams(location.search).get('inhabited')==='1'?'texture':'off';
  for(const [id,value]of [['charQuiet','off'],['charSpirit','on']])document.getElementById(id)!.onclick=()=>{get('spiritMode').value=value;get('spiritMode').dispatchEvent(new Event('change',{bubbles:true}));};
  }
- function update(p:Pose|undefined,scale:number){if(!root)return;const v=(id:string)=>+get(id).value;
- u.charAmount.value=get('charMode').value==='off'?0:v('charStrength');u.charTexture.value=get('charMode').value==='texture'?v('charDetail'):0;
+ function update(p:Pose|undefined,scale:number,amount=1){if(!root)return;const v=(id:string)=>+get(id).value;
+ u.charAmount.value=get('charMode').value==='off'?0:v('charStrength')*amount;u.charTexture.value=get('charMode').value==='texture'?v('charDetail'):0;
  for(const id of ['charBase','charTip','charStart','charScale','charCracks','charSheen'] as const)u[id].value=v(id);
  if(p)u.charTop.value=Math.max(1,...[...p.points.values()].map(q=>q.y*scale));
  }

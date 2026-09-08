@@ -2,8 +2,8 @@ import * as T from 'three';
 import {Pose} from './layout';
 import {makeShadowCanopy,ShadowOptions} from '../019-inhabited-trees/shadow-canopy';
 import {addBarkEnergy} from '../019-inhabited-trees/shadow-bark';
-import {arcDefaults,ArcSettings,ArcPreview,largeContact} from '../019-inhabited-trees/storm-lightning';
-import {activeFlashes,ArcClass} from '../019-inhabited-trees/lightning-timing';
+import {arcDefaults,ArcSettings,ArcPreview,largeContact,stormEvents} from '../019-inhabited-trees/storm-lightning';
+import {ArcClass} from '../019-inhabited-trees/lightning-timing';
 import {hash} from '../019-inhabited-trees/canopy';
 
 /** An optional renderer on the existing scene. Never owns an AST, layout or input loop. */
@@ -41,26 +41,27 @@ export function createInhabitation(renderer:T.WebGLRenderer,scene:T.Scene,camera
  const ambient=scene.children.find(o=>o instanceof T.HemisphereLight) as T.HemisphereLight;
  const original={sun:sun.intensity,fill:ambient.intensity};let wasOn=false;
  let settings:ShadowOptions|undefined,lastSettings:ArcSettings=arcDefaults;
- function update(dt:number,p:Pose|undefined,seed:number){
- clock+=dt;const on=v('spiritMode')==='on'&&!!p;
+ function update(dt:number,p:Pose|undefined,seed:number,envelope:{shadow:number;cloudGrowth:number;flash:number;cueAge:number;force?:boolean}={shadow:1,cloudGrowth:1,flash:0,cueAge:-1}){
+ clock+=dt;const on=(envelope.force||v('spiritMode')==='on')&&!!p&&(envelope.shadow>.001||envelope.flash>.001);
  if(!on){pool.forEach(l=>{l.visible=false;l.intensity=0;l.castShadow=false;});bark.forEach(b=>b.barkPower.value=0);paint.setLocalLight([],new T.Color(),18,0);if(wasOn){sun.intensity=original.sun;ambient.intensity=original.fill;}wasOn=false;status.textContent='Clear-tree checkpoint';settings=undefined;return;}
  wasOn=true;if(!effect)effect=makeShadowCanopy(renderer);
  if(p!==lastPose){lastPose=p;worldPose={...p,points:new Map([...p!.points].map(([id,p])=>[id,transform(p)])),edges:p!.edges.map(e=>({...e,a:transform(e.a),b:transform(e.b),r:e.r*scale}))};effect.setPose(worldPose);}
  treeMesh.layers.enable(1);
  const colour=v('spiritPalette')==='blue'?'#507fcf':v('spiritPalette')==='amber'?'#c79548':'#9260d9',tint=new T.Color(colour),anger=n('spiritAnger');
  if(clock>previewUntil)preview=undefined;
- lastSettings={...arcDefaults,timingSeed:seed};for(const [id]of specs)(lastSettings as any)[id]=n('spirit_'+id);
+ lastSettings={...arcDefaults,timingSeed:seed};for(const [id]of specs)(lastSettings as any)[id]=n('spirit_'+id);lastSettings.cueAge=envelope.cueAge;lastSettings.cuePower=1.2;
  const branch=worldPose!.edges.filter(e=>e.id!=='stem').map(e=>e.a.clone().lerp(e.b,.72)),project=(p:T.Vector3)=>{const q=p.clone().project(camera);return new T.Vector2(q.x*.5+.5,q.y*.5+.5);};camera.updateMatrixWorld();
  const candidates=contacts.filter(p=>p.y>.05&&p.distanceTo(transform(new T.Vector3()))<25);
- const events=(['large','medium','small'] as ArcClass[]).flatMap(kind=>{const forced=preview&&(preview===kind||(kind==='large'&&(preview==='branch'||preview==='rock')));return (preview?(forced?[{slot:0,start:clock,power:.85}]:[]):activeFlashes(kind,clock,anger,lastSettings)).map(e=>({...e,kind}));});
+ const events=(['large','medium','small'] as ArcClass[]).flatMap(kind=>stormEvents(kind,clock,anger,lastSettings,preview).map(e=>({...e,kind})));
  for(const l of pool){l.visible=true;l.intensity=0;l.color.copy(tint);l.distance=n('spiritReach');l.castShadow=false;}
- pool[0].position.copy(transform(new T.Vector3(0,0,0))).add(new T.Vector3(0,0,2.2));pool[0].position.y=n('spiritHeight');pool[0].intensity=n('spiritLight')*(1-n('spiritPulse')*.5+n('spiritPulse')*.5*Math.sin(clock*1.8));
+ pool[0].position.copy(transform(new T.Vector3(0,0,0))).add(new T.Vector3(0,0,2.2));pool[0].position.y=n('spiritHeight');pool[0].intensity=n('spiritLight')*envelope.shadow*(1-n('spiritPulse')*.5+n('spiritPulse')*.5*Math.sin(clock*1.8));
  let flash=0;events.slice(0,3).forEach((e,i)=>{if(!branch.length)return;const l=pool[i+1];let point=branch[Math.floor(hash(e.kind+e.slot+'origin')*branch.length)].clone();
  if(e.kind==='large'){const c=largeContact(branch.map(project),candidates.map(project),e.slot,lastSettings.largeSize,lastSettings.rockShare,preview);if(c)point=c.rock?candidates[c.to].clone().add(new T.Vector3(0,.3,0)):branch[c.from].clone().lerp(branch[c.to],.5);}
  if(e.kind!=='large')point.add(camera.position.clone().sub(point).normalize().multiplyScalar(1.1));l.position.copy(point);l.intensity=n('spiritFlash')*e.power*(e.kind==='small'?.08:e.kind==='medium'?.4:1);l.castShadow=i===0&&e.kind==='large'&&v('spiritShadows')==='on'&&l.intensity>0;flash=Math.max(flash,e.power*(e.kind==='small'?.1:e.kind==='medium'?.5:1));});
+ pool[0].intensity+=envelope.flash*n('spiritFlash')*2;
  sun.intensity=n('spiritSun');ambient.intensity=n('spiritFill');paint.setLocalLight(pool,tint,n('spiritReach'),n('spiritGround'));
- bark.forEach(b=>{b.barkClock.value=clock;b.barkPower.value=n('spiritBark');b.barkTint.value.copy(tint);b.barkFlow.value=n('spiritFlow');});
- settings={form:v('spiritForm'),opacity:n('spiritOpacity'),fringe:n('spiritFringe'),texture:n('spiritTexture'),anger,size:n('spiritSize')*scale,colour,arcs:true,time:clock,enabled:true,drift:n('spiritDrift'),strike:candidates[0]??new T.Vector3(),strikePoints:candidates,visibility:v('spiritVisibility'),roil:n('spiritRoil'),seed,density:n('spiritDensity'),fray:n('spiritFray'),lightning:lastSettings,arcPreview:preview,arcGlow:n('spiritHalo'),cloudFlash:flash*n('spiritCloudFlash')};
+ bark.forEach(b=>{b.barkClock.value=clock;b.barkPower.value=n('spiritBark')*envelope.shadow+envelope.flash*.7;b.barkTint.value.copy(tint);b.barkFlow.value=n('spiritFlow');});
+ settings={form:v('spiritForm'),opacity:n('spiritOpacity')*envelope.shadow,fringe:n('spiritFringe')*envelope.shadow,texture:n('spiritTexture'),anger,size:n('spiritSize')*scale*envelope.cloudGrowth,colour,arcs:true,time:clock,enabled:true,drift:n('spiritDrift'),strike:candidates[0]??new T.Vector3(),strikePoints:candidates,visibility:v('spiritVisibility'),roil:n('spiritRoil'),seed,density:n('spiritDensity'),fray:n('spiritFray'),lightning:lastSettings,arcPreview:preview,arcGlow:n('spiritHalo'),cloudFlash:flash*n('spiritCloudFlash')};
  status.textContent=`Same live tree · ${worldPose!.nodes.size} sigils · ${events.length?'discharge':'quiet'} · ${pool.filter(l=>l.intensity>0).length} local lights`;
  }
  return {mount(parent:HTMLElement){parent.append(panel);},update,get active(){return !!settings;},render(drawBase?:()=>void){if(settings)effect!.render(scene,camera,settings,drawBase);},inspect(){return {active:!!settings,poseIds:worldPose?[...worldPose.nodes.keys()]:[],lights:pool.map(l=>({power:l.intensity,position:l.position.toArray(),shadow:l.castShadow})),shadow:effect?.inspect()};}};
