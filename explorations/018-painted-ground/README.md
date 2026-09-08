@@ -1,6 +1,6 @@
 # 018 · Painted ground
 
-Open `http://127.0.0.1:3100/explorations/018-painted-ground/?mode=body`.
+Open `http://127.0.0.1:3100/explorations/018-painted-ground/`.
 017 is preserved as the previous playable checkpoint. This study contains a camera-guided matte-painting loop, goal release, dimensional sigils and clearer catch feedback. The terrain is scenery; no new traversal level or rope simulation is implemented.
 
 
@@ -201,3 +201,12 @@ The ordinary route now lets idle hands pick up a nearby small loose stone and pl
 The earlier scenery inspection is replaced by a grounded finger walk with varied routes around rocks and fungi. Both hands take turns in each activity; a shared 12–22 second quiet interval prevents an ended catch from immediately starting a walk. Traveller → Idle hands offers mixed, walking-only, catch-only and resting comparisons. See [IDLE-HANDS.md](IDLE-HANDS.md) for gait, obstacle clearance, scheduling and checks. Rock climbing remains outside this ground-walking pass.
 
 Manual previews live under **Inspect → Appearance → Traveller → Test idle animations**. Choose wandering, catch, either walking style, or either walk with a stumble, then press **Play animation**. **Stop preview** ends the activity; movement still exercises its normal disengagement. Previews preserve the automatic idle settings and skip their waiting period. Catch requires a nearby available stone, and walks require clear ground.
+
+
+## Pointer play on phones and tablets
+
+Fresh sessions use Pointer grip on devices whose primary pointer is coarse and has no hover. Desktop defaults to Body pull. Encounter → Interaction mode switches between the two and preserves the choice on reload in that tab. Fresh `?mode=mouse` and `?mode=body` links override device detection; the homepage preserves URL parameters and fragments.
+
+Tap the ground to walk, or use Encounter → Walk to the tree. Hold a rune, drag along a colored path and release when caught. Retreat before releasing to cancel. Hint and pin controls remain in the docks. One finger controls gameplay; two-finger camera pinch is available between grips. Extra fingers cannot take over a grip. Touch cancellation and lost capture cancel rather than commit. Body pull remains keyboard driven; native gamepad bindings are not implemented.
+
+`node explorations/018-painted-ground/touch-browser-check.cjs` uses Chrome phone/tablet emulation against the development server. It checks device defaults, manual-choice reloads, explicit links, ground taps, cancellation, second-finger ownership and all six rewrites without keyboard input. Set `SUPERNOOL_TEST_ORIGIN` to test a different server. Intermediate and completed screenshots go to `.cache/touch-check/`. This does not replace real-device feel and performance testing.

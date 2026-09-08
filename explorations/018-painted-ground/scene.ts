@@ -1,3 +1,4 @@
+import {touchPrimary,initialInputMode,rememberInputMode} from './input-profile';
 import {createInhabitation} from './inhabited';
 import type {IdlePreview} from './lehi';
 import {addTravelHandControl} from './hand-travel';
@@ -9,7 +10,7 @@ import {Term,Action,initial,walk,count,format,readable,find,actions,replace,solv
 const $=(id:string)=>document.getElementById(id)!,value=(id:string)=>($(id) as HTMLInputElement).value;
 const renderer=new T.WebGLRenderer({antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setClearColor('#bac7c1');renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;$('world').append(renderer.domElement);
 const scene=new T.Scene();scene.fog=new T.Fog('#bac7c1',85,185);scene.add(new T.HemisphereLight('#fff5d9','#506451',2));const sun=new T.DirectionalLight('#fff0d0',2.5);sun.position.set(-8,16,10);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-23,right:23,top:23,bottom:-23,near:1,far:80});sun.shadow.bias=-.00012;sun.shadow.normalBias=.025;scene.add(sun);
-const camera=new T.OrthographicCamera(-14,14,10,-10,.1,250);camera.position.set(39,32,63);if(new URLSearchParams(location.search).has('matteCapture'))camera.zoom=.78;const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,2,0);controls.enableDamping=true;controls.minZoom=.65;controls.maxZoom=2;controls.maxPolarAngle=Math.PI*.48;controls.mouseButtons={LEFT:null as any,MIDDLE:T.MOUSE.DOLLY,RIGHT:T.MOUSE.ROTATE};controls.update();
+const camera=new T.OrthographicCamera(-14,14,10,-10,.1,250);camera.position.set(39,32,63);if(new URLSearchParams(location.search).has('matteCapture'))camera.zoom=.78;const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,2,0);controls.enableDamping=true;controls.minZoom=.65;controls.maxZoom=2;controls.maxPolarAngle=Math.PI*.48;controls.mouseButtons={LEFT:null as any,MIDDLE:T.MOUSE.DOLLY,RIGHT:T.MOUSE.ROTATE};controls.touches.ONE=null as any;controls.update();
 let framingFloor=Infinity,preferredZoom=camera.zoom,manualView=false,manualZoom=camera.zoom;
 controls.addEventListener('start',()=>{manualView=true;manualZoom=camera.zoom;});
 controls.addEventListener('change',()=>{if(manualView&&Math.abs(camera.zoom-manualZoom)>1e-6){preferredZoom=camera.zoom;manualZoom=camera.zoom;}});
@@ -207,15 +208,47 @@ function drawGuides(){
  screenGuides.finish(!document.body.classList.contains('clean-view'));$('world').dataset.guideMode=value('guideStyle')==='auto'?(bodyMode()?'points':'paths'):value('guideStyle');$('world').dataset.candidates=String(list.length);$('world').dataset.pin=pin?.id??'none';
 }
 function pick(e:{clientX:number;clientY:number}){pointer.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);ray.setFromCamera(pointer,camera);return near?ray.intersectObjects(runes.children,true)[0]?.object.userData.nodeId as string|undefined:undefined;}
-let groundDown:ScreenPoint|undefined;
+let groundDown:ScreenPoint|undefined,activePointer:number|undefined;
 renderer.domElement.tabIndex=0;
-renderer.domElement.addEventListener('pointerdown',e=>{if(e.button!==0)return;renderer.domElement.focus();const id=pick(e);if(id){if(e.shiftKey){togglePin(id);return;}if(bodyMode()){if(!handFocus)setHandFocus(true);select(id);lingerPoint=worldPoint(id);return;}beginGrip(id,{x:e.clientX,y:e.clientY});if(grip)renderer.domElement.setPointerCapture(e.pointerId);}else if(!bodyMode()||!handFocus)groundDown={x:e.clientX,y:e.clientY};});
-renderer.domElement.addEventListener('pointermove',e=>{if(grip&&!grip.keyboard)updateGrip({x:e.clientX,y:e.clientY});else if(!grip&&!bodyMode()){
+function cancelPointer(){
+ const id=activePointer;activePointer=undefined;groundDown=undefined;
+ if(id===undefined)return;
+ hoverId=undefined;
+ if(grip&&!grip.keyboard)releaseGrip(false);
+ if(renderer.domElement.hasPointerCapture(id))renderer.domElement.releasePointerCapture(id);
+}
+renderer.domElement.addEventListener('pointerdown',e=>{
+ if(e.button!==0)return;
+ // A second finger must not move or release the first finger's grip. A pinch
+ // also invalidates a pending ground tap, so lifting cannot start a walk.
+ if(e.isPrimary===false||activePointer!==undefined){groundDown=undefined;return;}
+ renderer.domElement.focus();const id=pick(e);
+ if(id){
+  if(e.shiftKey){togglePin(id);return;}
+  if(bodyMode()){if(!handFocus)setHandFocus(true);select(id);lingerPoint=worldPoint(id);return;}
+  beginGrip(id,{x:e.clientX,y:e.clientY});
+  if(grip&&!grip.keyboard){activePointer=e.pointerId;renderer.domElement.setPointerCapture(e.pointerId);}
+ }else if(!bodyMode()||!handFocus){activePointer=e.pointerId;groundDown={x:e.clientX,y:e.clientY};renderer.domElement.setPointerCapture(e.pointerId);}
+});
+renderer.domElement.addEventListener('pointermove',e=>{
+ if(activePointer!==undefined&&e.pointerId!==activePointer)return;
+ if(groundDown&&Math.hypot(e.clientX-groundDown.x,e.clientY-groundDown.y)>(e.pointerType==='touch'?12:5))groundDown=undefined;
+ if(grip&&!grip.keyboard&&e.pointerId===activePointer)updateGrip({x:e.clientX,y:e.clientY});else if(!grip&&!bodyMode()){
  hoverId=pick(e);if(hoverId){lingerPoint=worldPoint(hoverId);lastContactAt=performance.now();}else if(near&&lingerPoint){const floatingPlane=new T.Plane().setFromNormalAndCoplanarPoint(camera.getWorldDirection(new T.Vector3()),lingerPoint);const p=ray.ray.intersectPlane(floatingPlane,new T.Vector3());if(p&&p.distanceTo(treeOrigin.clone().setY(4))<9)lingerPoint=p;}
  renderer.domElement.style.cursor=hoverId?'grab':'default';
 }});
-renderer.domElement.addEventListener('pointerup',e=>{if(e.button!==0)return;if(grip&&!grip.keyboard){releaseGrip();if(renderer.domElement.hasPointerCapture(e.pointerId))renderer.domElement.releasePointerCapture(e.pointerId);}else if(groundDown&&Math.hypot(e.clientX-groundDown.x,e.clientY-groundDown.y)<5){pick(e);const p=ray.ray.intersectPlane(plane,new T.Vector3());if(p&&Math.hypot(p.x,p.z)<14)navTarget=p.setY(0);}groundDown=undefined;});
-renderer.domElement.addEventListener('pointercancel',()=>releaseGrip(false));
+renderer.domElement.addEventListener('pointerup',e=>{
+ if(e.pointerId!==activePointer||e.button!==0)return;
+ activePointer=undefined;
+ if(grip&&!grip.keyboard)releaseGrip();
+ else if(groundDown){pick(e);const p=ray.ray.intersectPlane(plane,new T.Vector3());if(p&&Math.hypot(p.x,p.z)<14)navTarget=p.setY(0);}
+ groundDown=undefined;
+ if(e.pointerType==='touch')hoverId=undefined;
+ if(renderer.domElement.hasPointerCapture(e.pointerId))renderer.domElement.releasePointerCapture(e.pointerId);
+});
+renderer.domElement.addEventListener('pointercancel',e=>{if(e.pointerId===activePointer)cancelPointer();});
+renderer.domElement.addEventListener('lostpointercapture',e=>{if(e.pointerId===activePointer)cancelPointer();});
+addEventListener('blur',cancelPointer);
 addEventListener('keydown',e=>{if((e.target as HTMLElement).matches('input,select,textarea'))return;
  const key=e.key.toLowerCase();
  if(e.key==='Escape'){if(grip)releaseGrip(false);else if(bodyMode()&&handFocus)setHandFocus(false);spotlight=undefined;$('settings').hidden=true;$('toolbox').hidden=true;return;}
@@ -252,8 +285,8 @@ function updateHands(now:number,dt:number,moving:boolean){const g=grip?.chosen??
 for(const rule of rules){const label=document.createElement('label');label.className='rule';const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=true;checkbox.dataset.rule=rule.id;checkbox.onchange=()=>{if(checkbox.checked)enabled.add(rule.id);else enabled.delete(rule.id);spotlight=undefined;ui(false);};const text=document.createElement('span');text.textContent=rule.name;const small=document.createElement('small');small.textContent=rule.equation;text.append(small);label.append(checkbox,text);label.style.setProperty('--rule',rule.color);$('ruleList').append(label);}
 $('toolboxButton').onclick=()=>$('toolbox').hidden=!$('toolbox').hidden;$('closeToolbox').onclick=()=>$('toolbox').hidden=true;
 $('pinButton').onclick=()=>togglePin();$('clearPin').onclick=()=>{pin=undefined;spotlight=undefined;ui(false);};
-$('inputMode').onchange=()=>{releaseGrip(false);keys.clear();walkVelocity.setScalar(0);hoverId=undefined;spotlight=undefined;handFocus=false;lingerPoint=undefined;pin=undefined;clearMovement();ui(false);renderer.domElement.focus();};
-if(new URLSearchParams(location.search).get('mode')==='body')($('inputMode') as HTMLSelectElement).value='body';
+$('inputMode').onchange=()=>{rememberInputMode(value('inputMode'));cancelPointer();releaseGrip(false);keys.clear();walkVelocity.setScalar(0);hoverId=undefined;spotlight=undefined;handFocus=false;lingerPoint=undefined;pin=undefined;clearMovement();ui(false);renderer.domElement.focus();};
+($('inputMode') as HTMLSelectElement).value=initialInputMode();
 $('interact').onclick=()=>{setHandFocus(!handFocus);renderer.domElement.focus();};
 let last=performance.now(),nearOld=false;
 function tick(now:number){requestAnimationFrame(tick);const frameMs=now-last;const dt=Math.min(.05,frameMs/1000);last=now;if(document.hidden)return;
@@ -291,8 +324,8 @@ function tick(now:number){requestAnimationFrame(tick);const frameMs=now-last;con
  $('world').dataset.controlPhase=bodyMode()?(animation?'settling':grip?'pull':handFocus?'hand':'walk'):'mouse';
  $('world').dataset.pullGain=String(grip?.gain??+value('pullGain'));$('world').dataset.gripOrigin=grip?`${grip.avatarStart.x.toFixed(2)},${grip.avatarStart.z.toFixed(2)}`:'';$('world').dataset.stance=stance.phase;$('world').dataset.stanceShift=String(stance.shift);$('world').dataset.ribbon=String(ribbon.visible);$('world').dataset.facing=String(avatar.rotation.y);$('world').dataset.activeHand=activeHand===0?'right':'left';$('world').dataset.selected=selected;$('world').dataset.brace=pin?'pinned':'rest';
  $('interact').hidden=!bodyMode()||!near;($('interact') as HTMLButtonElement).disabled=!!grip||!!animation;$('interact').textContent=handFocus?'Leave tree · Esc':'Reach in · Space';
- $('controlHelp').textContent=bodyMode()?'Space: enter, then hold to grip · Arrows: select / move · Release: settle · Esc: cancel / leave · Optional F: pin, H: hint, 1–9: route':'WASD / arrows: move · Hold rune: pull · F / Shift-click: pin · H: hint · Esc: cancel';
- $('pullStatus').textContent=bodyMode()&&animation?'SETTLING · The tree is catching up; the motion is finishing':grip?.body?`PULL · Keep Space held · Spring ${Math.round(grip.progress*100)}% · pull ${Math.round(grip.target*100)}%${grip.ready?' · CAUGHT — release':''}`:bodyMode()?(handFocus?'HAND · Arrows choose a sigil · Hold Space, then move to pull · Esc leaves':'WALK · Arrows move the traveller · Space reaches into the tree'):'Hold a rune and pull · Shift-click to pin';
+ $('controlHelp').textContent=bodyMode()?'Space: enter, then hold to grip · Arrows: select / move · Release: settle · Esc: cancel / leave · Optional F: pin, H: hint, 1–9: route':touchPrimary()?'Tap ground: walk · Hold a rune and drag along a colored path · Release: settle · Pin and Hint are in the docks':'WASD / arrows or click ground: move · Hold rune: pull · F / Shift-click: pin · H: hint · Esc: cancel';
+ $('pullStatus').textContent=bodyMode()&&animation?'SETTLING · The tree is catching up; the motion is finishing':grip?.body?`PULL · Keep Space held · Spring ${Math.round(grip.progress*100)}% · pull ${Math.round(grip.target*100)}%${grip.ready?' · CAUGHT — release':''}`:bodyMode()?(handFocus?'HAND · Arrows choose a sigil · Hold Space, then move to pull · Esc leaves':'WALK · Arrows move the traveller · Space reaches into the tree'):touchPrimary()?'Hold a rune and drag · Release to settle':'Hold a rune and pull · Shift-click to pin';
 }
 $('groundShadows').onchange=()=>{const on=value('groundShadows')==='on';clearing.setGroundShadows(on);backdrop.setGroundShadows(on);};
 $('backdrop').onchange=()=>{backdrop.set(value('backdrop'));clearing.setGroundPainted(value('backdrop')!=='plain');resize();};$('resetView').onclick=()=>{framingFloor=Infinity;preferredZoom=1;camera.position.set(39,32,63);camera.zoom=1;controls.target.set(0,2,0);controls.update();resize();};$('previewSound').onclick=()=>{sound.unlock();sound.catch();};$('soundMode').onchange=()=>{sound.unlock();sound.setMode(value('soundMode'));};$('volume').oninput=()=>sound.setVolume(+value('volume'));setupHUD();
