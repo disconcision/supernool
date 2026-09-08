@@ -27,8 +27,8 @@
       }
     },
     "clearing-019": {
-      "revision": 3,
-      "updatedAt": "2026-09-08T01:25:19.192310Z",
+      "revision": 4,
+      "updatedAt": "2026-09-08T05:05:16.329Z",
       "values": {
         "mossPlacement": "scatter",
         "mossScale": "2.3",
@@ -134,7 +134,20 @@
         "mistTexture": "1",
         "mistSpeed": "2",
         "soundMode": "chords",
-        "volume": "0.3"
+        "volume": "0.3",
+        "groundScorch": "on",
+        "groundScorchOpacity": "0.87",
+        "groundScorchX": "-1",
+        "groundScorchZ": "-3",
+        "groundScorchSize": "38.5",
+        "groundScorchAngle": "-1",
+        "groundFooting": "on",
+        "groundFootShape": "mixed",
+        "groundFootOpacity": "0.47",
+        "groundFootSpread": "2.35",
+        "groundFootPlacements": "{}",
+        "groundDecalState": "burnt",
+        "groundRecovery": "0.5"
       }
     }
   }
