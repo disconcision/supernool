@@ -2,7 +2,7 @@ import {createEncounterAudio,AudioPhase} from './encounter-audio';
 export type SoundFrame={phase:AudioPhase;age:number;reduction:number;x:number;z:number;dt:number;paused:boolean};
 /** One audio-clock scheduler per page, unlocked by a real user gesture. */
 export function createSound(){
- let ctx:AudioContext|undefined,bank:ReturnType<typeof createEncounterAudio>|undefined,buffer:AudioBuffer|undefined,loading=false,mode='thematic',volume=.3,lastBucket=0,lastAt=0;
+ let ctx:AudioContext|undefined,bank:ReturnType<typeof createEncounterAudio>|undefined,buffer:AudioBuffer|undefined,loading=false,mode='thematic',volume=.3,lastBucket=0,lastAt=0,lastAudibleMode='thematic';
  let frame:SoundFrame={phase:'dormant',age:0,reduction:0,x:0,z:0,dt:0,paused:false},lastPhase='',step=0,nextBeat=0,nextWind=0,lastPosition:{x:number;z:number}|undefined,travel=0,foot=0,lastThunder=-99;
  let lastMix='';let timer:ReturnType<typeof setInterval>|undefined,owner=true,channel:BroadcastChannel|undefined;
  const ownerId=Math.random().toString(36);try{channel=new BroadcastChannel('supernool-audio-owner');channel.onmessage=e=>{if(e.data!==ownerId){owner=false;if(ctx)void ctx.suspend();}};}catch{}
@@ -28,7 +28,7 @@ export function createSound(){
  function legacy(notes:number[],level=.15,duration=.2){if(!ready())return;notes.forEach((hz,i)=>bank!.tone(ctx!.currentTime+i*.012,hz,duration,level/notes.length,'triangle','effects'));}
  function gesture(kind:Parameters<ReturnType<typeof createEncounterAudio>['gesture']>[1],p=0){if(ready())bank!.gesture(ctx!.currentTime,kind,p);}
  function loadSample(){if(loading||!ctx)return;loading=true;fetch(new URL('../../assets/audio/tiup-comm-out.wav',import.meta.url)).then(r=>r.arrayBuffer()).then(b=>ctx!.decodeAudioData(b)).then(b=>buffer=b).catch(()=>{});}
- return {unlock,setMode(v:string){mode=v;mix();if(v==='recorded')loadSample();},setVolume(v:number){volume=v;mix();},
+ return {unlock,setMode(v:string){mode=v;if(v!=='off')lastAudibleMode=v;const mute=document.getElementById('audioMute');if(mute){mute.textContent=v==='off'?'Unmute audio':'Mute audio';mute.setAttribute('aria-pressed',String(v==='off'));}mix();if(v==='recorded')loadSample();},setVolume(v:number){volume=v;mix();},
   update(next:SoundFrame){const distance=lastPosition?Math.hypot(next.x-lastPosition.x,next.z-lastPosition.z):0;lastPosition={x:next.x,z:next.z};frame=next;
    if(!ready()||distance>1||distance<.0001){if(distance>1||!ready())travel=0;return;}travel+=distance;const speed=distance/Math.max(.001,next.dt),stride=speed>3?.95:.6;
    if(travel>=stride){travel%=stride;bank!.footstep(ctx!.currentTime,speed,(foot++%2)*2-1);}
@@ -40,6 +40,7 @@ export function createSound(){
   uncatch(){mode==='thematic'?gesture('uncatch'):legacy([261.63,196],.12,.16);},
   finish(commit:boolean){mode==='thematic'?gesture(commit?'commit':'cancel'):legacy(commit?[130.81,261.63]:[146.83],commit?.1:.05,.2);},
   mount(){const select=document.getElementById('soundMode') as HTMLSelectElement;select.insertBefore(new Option('Wood, earth & resonance','thematic',true,true),select.firstChild);select.value='thematic';
+   const mute=document.createElement('button');mute.id='audioMute';mute.type='button';mute.textContent='Mute audio';mute.setAttribute('aria-pressed','false');mute.onclick=()=>{select.value=select.value==='off'?lastAudibleMode:'off';select.dispatchEvent(new Event('change',{bubbles:true}));};(document.getElementById('studyTools')??select.closest('details')!).prepend(mute);
    const panel=select.closest('details')!;const label=document.createElement('label');label.innerHTML='Encounter soundtrack<select id="audioScore"><option value="on">On · wind, pulse & regrowth</option><option value="off">Off · interaction effects only</option></select>';panel.append(label);
    for(const [id,name,value] of [['audioMusic','Music',.65],['audioEnvironment','Wind & rustling',.55],['audioEffects','Effects & footsteps',.75]] as const){const l=document.createElement('label');l.innerHTML=`${name}<input id="${id}" type="range" min="0" max="1" step=".05" value="${value}">`;panel.append(l);}
    const note=document.createElement('p');note.textContent='Audio starts after a click/key press and pauses in background tabs. Newest interacted tab owns sound on this port. Encounter state buttons audition the mood; lightning sounds follow live flashes, not paused scrubbing.';panel.append(note);

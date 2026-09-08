@@ -16,7 +16,7 @@ import {Term,Action,initial,walk,count,format,readable,find,actions,replace,solv
 const $=(id:string)=>document.getElementById(id)!,value=(id:string)=>($(id) as HTMLInputElement).value;
 const startup=createStartup();
 const inhabitedStudy=new URLSearchParams(location.search).get('inhabited')==='1';let freeStudyCamera=false;
-if(inhabitedStudy){document.title='supernool · 019 · Inhabited clearing';document.querySelector('header a')!.textContent='supernool · 019';document.querySelector('header h1')!.textContent='Inhabited clearing';document.body.dataset.study='019';}
+if(inhabitedStudy){document.title='supernool · 019 · Inhabited clearing';document.querySelector('#sceneTitleToggle')!.textContent='supernool · 019';document.querySelector('header h1')!.textContent='Inhabited clearing';document.body.dataset.study='019';}
 const renderer=new T.WebGLRenderer({antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setClearColor('#bac7c1');renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;$('world').append(renderer.domElement);
 const scene=new T.Scene();scene.fog=new T.Fog('#bac7c1',85,185);scene.add(new T.HemisphereLight('#fff5d9','#506451',2));const sun=new T.DirectionalLight('#fff0d0',2.5);sun.position.set(-8,16,10);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-23,right:23,top:23,bottom:-23,near:1,far:80});sun.shadow.bias=-.00012;sun.shadow.normalBias=.025;scene.add(sun);
 const camera=new T.OrthographicCamera(-14,14,10,-10,.1,250);camera.position.set(39,32,63);if(new URLSearchParams(location.search).has('matteCapture'))camera.zoom=.78;const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,2,0);controls.enableDamping=true;controls.minZoom=.65;controls.maxZoom=2;controls.maxPolarAngle=Math.PI*.48;controls.mouseButtons={LEFT:null as any,MIDDLE:T.MOUSE.DOLLY,RIGHT:T.MOUSE.ROTATE};controls.update();
@@ -372,12 +372,13 @@ const idlePreviewHelp=document.createElement('small');idlePreviewHelp.textConten
 const idlePreviewStatus=document.createElement('small');idlePreviewStatus.id='idlePreviewStatus';idlePreviewStatus.setAttribute('role','status');idlePreviewStatus.textContent='Choose an animation, then play.';
 idleTest.append(idlePreviewPlay,idlePreviewStop,idlePreviewHelp,idlePreviewStatus);travellerPanel.append(idleTest);
 const handReview=document.createElement('a');handReview.href='avatar-review.html?hands';handReview.target='_blank';handReview.rel='noopener';handReview.textContent='Compare travelling hands up close ↗';handReview.style.display='block';travellerPanel.append(handReview);
+const studyTools=document.createElement('div');studyTools.id='studyTools';studyTools.className='studyTools';
 if(inhabitedStudy){
  const cameraUI=document.createElement('div');cameraUI.className='studyCamera';
  const toggle=document.createElement('button');toggle.id='studyCamera';toggle.textContent='Free camera';toggle.setAttribute('aria-pressed','false');
  const help=document.createElement('small');help.textContent='Drag: orbit · Shift-drag: pan · Wheel: zoom';help.hidden=true;
  toggle.onclick=()=>{if(grip)releaseGrip(false);freeStudyCamera=!freeStudyCamera;toggle.setAttribute('aria-pressed',String(freeStudyCamera));toggle.textContent=freeStudyCamera?'Return to scene camera':'Free camera';help.hidden=!freeStudyCamera;controls.mouseButtons.LEFT=freeStudyCamera?T.MOUSE.ROTATE:null as any;controls.mouseButtons.MIDDLE=freeStudyCamera?T.MOUSE.PAN:T.MOUSE.DOLLY;resize();if(!freeStudyCamera){controls.enableDamping=false;controls.update();$('resetView').click();controls.enableDamping=true;}$('world').dataset.cameraMode=freeStudyCamera?'free':'scene';};
- cameraUI.append(toggle,help);document.querySelector('header')!.append(cameraUI);$('world').dataset.cameraMode='scene';
+ cameraUI.append(toggle,help);studyTools.append(cameraUI);$('world').dataset.cameraMode='scene';
 }
 inhabitation.mount($('settings'));
 backdrop.decals.mount($('settings'));
@@ -394,7 +395,14 @@ function jumpEncounter(state:EncounterState){
 encounter.mount($('settings'),jumpEncounter);
 for(const [id,state]of [['charQuiet','dormant'],['charSpirit','active']] as const){const previous=$(id).onclick;$(id).onclick=e=>{if(encounter.enabled){encounter.sequence.automatic=false;encounter.sequence.paused=true;jumpEncounter(state);}else previous?.call($(id),e);};}
 
+$('settings').prepend(studyTools);
+const titleToggle=$('sceneTitleToggle'),subtitle=$('sceneSubtitle');let titlePinned=false,titleHover=false,titleFocus=false;
+const updateTitle=()=>{const shown=titlePinned||titleHover||titleFocus;titleToggle.closest('header')!.classList.toggle('title-revealed',shown);titleToggle.setAttribute('aria-pressed',String(titlePinned));subtitle.setAttribute('aria-hidden',String(!shown));};
+titleToggle.onpointerenter=()=>{titleHover=true;updateTitle();};titleToggle.onpointerleave=()=>{titleHover=false;updateTitle();};
+titleToggle.onfocus=()=>{titleFocus=titleToggle.matches(':focus-visible');updateTitle();};titleToggle.onblur=()=>{titleFocus=false;updateTitle();};
+titleToggle.onclick=()=>{titlePinned=!titlePinned;updateTitle();};
 sound.mount();
+for(const button of [titleToggle,...studyTools.querySelectorAll('button')])button.addEventListener('keydown',e=>{if([' ','Enter'].includes((e as KeyboardEvent).key))e.stopPropagation();});
 setupControlReadouts();
 let preferencesReady=false;
 setupSettings(inhabitedStudy?'clearing-019':'clearing-018',$('settings'),'.dock input,.dock select',true).finally(()=>{preferencesReady=true;});
