@@ -1,3 +1,4 @@
+import {RewriteRecord,recoveryRoute,replayRecovery,recoveryEmbedding} from './recovery-replay';
 import {createEncounterPresentation} from './encounter-presentation';
 import {EncounterState} from './encounter-sequence';
 import {rootedEdges,rootOptions,mountRootControls} from './root-base';
@@ -48,6 +49,8 @@ const encounter=createEncounterPresentation(scene,treeOrigin,treeScale);
 const mayRewrite=()=>!encounter.enabled||encounter.sequence.state==='active';
 let tree=initial(),selected=tree.id,steps=0,history:{tree:Term;steps:number}[]=[],future:{tree:Term;steps:number}[]=[],near=false,loaded=false,epoch=0,shapeSeed=2,spread=1,navTarget:T.Vector3|undefined,suggested:{id:string;key:string}|undefined;
 let hostTree=tree,recoveryTree:Term|undefined,hostSpread=1,insideRing=false;
+let rewriteTrace:RewriteRecord[]=[],redoTrace:RewriteRecord[]=[],recoveryTrace:RewriteRecord[]=[];
+function prepareRecovery(){const route=recoveryRoute(tree,rewriteTrace);recoveryTree=route.reduced;recoveryTrace=route.records;}
 let exitAfterSettle=false;
 let animation:{before:Term;after:Term;start:number;kind:string;merge:Record<string,string>;from:number;to:number;duration:number}|undefined,poseNow:Pose|undefined,lastKey='',idCounter=0;
 function options():Options{return {...rootOptions(),thickness:+value('thickness'),taper:+value('taper'),bow:+value('bow'),random:+value('random'),twist:+value('twist'),facets:+value('facets'),seed:shapeSeed,blend:+value('blend'),hewn:value('surface')==='hewn',spread};}
@@ -69,7 +72,7 @@ worker.onmessage=event=>{const job=inflight;inflight=undefined;const data=event.
 worker.onerror=e=>{startup.fail('The tree renderer could not start. Please try again.');$('message').textContent='Tree renderer error: '+e.message;};
 function finishSettling(){
  animation=undefined;selected=find(tree,selected)?selected:tree.id;
- if(exitAfterSettle){if(encounter.enabled){recoveryTree=tree;encounter.sequence.paused=false;encounter.sequence.jump('release');}exitAfterSettle=false;clearMovement();handFocus=false;pin=undefined;hoverId=undefined;spotlight=undefined;lingerPoint=undefined;lastGesture=undefined;}
+ if(exitAfterSettle){if(encounter.enabled){prepareRecovery();encounter.sequence.paused=false;encounter.sequence.jump('release');}exitAfterSettle=false;clearMovement();handFocus=false;pin=undefined;hoverId=undefined;spotlight=undefined;lingerPoint=undefined;lastGesture=undefined;}
  ui();
 }
 // Slow framing during tree interaction only; wandering preserves the current zoom.
@@ -106,13 +109,15 @@ function requestPose(now:number){
  const channels=encounter.sequence.sample(encounter.timing),sequenced=encounter.enabled;
  const elapsed=animation?Math.min(1,(now-animation.start)/animation.duration):1;
  const u=grip?.chosen?grip.progress:animation?animation.from+(animation.to-animation.from)*elapsed:1,quant=Math.round(u*48)/48;
- const config=layoutOptions(),growth=Math.round(channels.growth*80)/80,rear=sequenced?Math.round(channels.rear*100)/100:0;
+ const config=layoutOptions(),growth=channels.state==='healthy'?1:channels.state==='recovery'?Math.round(Math.min(1,encounter.sequence.age/encounter.timing.recovery)*240)/240:0,rear=sequenced?Math.round(channels.rear*100)/100:0;
  const key=JSON.stringify([epoch,tree.id,format(tree),grip?.chosen?.action.key,animation?.kind,animation?elapsed===1:false,quant,Math.round(spread*25),config,options(),value('resolution'),sequenced?channels.state:'off',growth,rear]);
  if(key===lastKey)return;lastKey=key;
- let pose=sequenced&&channels.recovering?transition(recoveryTree??tree,hostTree,growth,config,'regrow',{},options()):sequenced&&channels.state==='release'?layout(recoveryTree??tree,config):grip?.chosen?transition(tree,grip.chosen.after,quant,config,grip.chosen.action.key,grip.chosen.action.merge,options()):animation?transition(animation.before,animation.after,quant,config,animation.kind,animation.merge,options()):layout(tree,config);
+ const replay=sequenced&&channels.recovering?replayRecovery(recoveryTrace,hostTree,growth,config,options(),hostSpread):undefined;
+ let pose=replay?replay.pose:sequenced&&channels.state==='release'?layout(recoveryTree??tree,config):grip?.chosen?transition(tree,grip.chosen.after,quant,config,grip.chosen.action.key,grip.chosen.action.merge,options()):animation?transition(animation.before,animation.after,quant,config,animation.kind,animation.merge,options()):layout(tree,config);
  if(sequenced&&channels.recovering)pose={...pose,nodes:new Map(walk(hostTree).map(n=>[n.id,n]))};
  if(rear){const raise=(p:T.Vector3)=>new T.Vector3(p.x,p.y*(1+rear),p.z);pose={...pose,points:new Map([...pose.points].map(([id,p])=>[id,raise(p)])),edges:pose.edges.map(e=>({...e,a:raise(e.a),b:raise(e.b),curve:e.curve?raise(e.curve):undefined}))};}
- submit({id:++idCounter,kind:'hero',epoch,pose,options:options(),resolution:+value('resolution'),final:!grip&&(!animation||elapsed===1)});$('world').dataset.meshing='working';
+ $('world').dataset.recoveryMove=replay?replay.phase==='rewind'?`Undo ${replay.kind} (${replay.index+1}/${recoveryTrace.length})`:'Return to spatial tree':'';
+ submit({id:++idCounter,kind:'hero',epoch,pose,options:replay?{...options(),spread:replay.spread}:options(),resolution:+value('resolution'),final:!grip&&(!animation||elapsed===1)});$('world').dataset.meshing='working';
 }
 
 for(const [x,z,scale] of [[-8,-5,.6],[7,-7,.75]]){const root=initial();const t=root.kind==='op'?root.left:root;const opt={...options(),spread:1,hewn:true,thickness:.62,taper:.85,bow:.42,random:.55,twist:.32,facets:.45,blend:.08,rootFlare:.7,rootAmount:.45,seed:Math.round(x+20)};submit({id:++idCounter,kind:'deco',epoch,pose:layout(t,{spread:1,irregularity:.5,height:'depth',seed:opt.seed}),options:opt,resolution:112,final:true,origin:new T.Vector3(x,0,z),scale});}
@@ -141,9 +146,9 @@ function ui(updateMessage=true){const busy=!!animation||!!grip;const done=solved
 function select(id:string){if(animation||grip||!near)return;selected=id;hoverId=undefined;ui(false);}
 function showGesture(n:Term,a:Action){if(bodyMode()&&!handFocus)setHandFocus(true);spotlight=gestures(tree).find(g=>g.owner.id===n.id&&g.action.key===a.key&&allowed(g.owner,g.action));if(spotlight){selected=spotlight.gripId;ui(false);status(spotlight.instruction+'. Grip the contact, then follow its colored path. Spell names are listed separately.');drawGuides();}}
 $('hint').onclick=()=>{if(!near||animation||grip)return;const h=hint(tree,(owner,a,t)=>allowed(owner,a,t));if(h){showGesture(find(tree,h.nodeId)!,h.action);}else status('No route found with the equipped rules and pin. Release the pin or re-enable rules in the noolbox; undo is also available.');};
-$('undo').onclick=()=>{if(animation||grip||!history.length)return;if(encounter.enabled)encounter.sequence.jump('active');future.push({tree,steps});const prev=history.pop()!;tree=prev.tree;steps=prev.steps;epoch++;selected=tree.id;suggested=undefined;spotlight=undefined;pin=undefined;lastKey='';ui();drawGuides();};
-$('redo').onclick=()=>{if(animation||grip||!future.length)return;if(encounter.enabled)encounter.sequence.jump('active');history.push({tree,steps});const next=future.pop()!;tree=next.tree;steps=next.steps;epoch++;selected=tree.id;suggested=undefined;spotlight=undefined;pin=undefined;lastKey='';ui();drawGuides();};
-$('reset').onclick=()=>{if(animation||grip)return;tree=initial();hostTree=tree;recoveryTree=undefined;hostSpread=+value('spread');if(encounter.enabled)encounter.sequence.jump('dormant');selected=tree.id;history=[];future=[];steps=0;epoch++;suggested=undefined;spotlight=undefined;pin=undefined;lastKey='';ui();drawGuides();};
+$('undo').onclick=()=>{if(animation||grip||!history.length)return;if(encounter.enabled)encounter.sequence.jump('active');const record=rewriteTrace.pop();if(record)redoTrace.push(record);future.push({tree,steps});const prev=history.pop()!;tree=prev.tree;steps=prev.steps;epoch++;selected=tree.id;suggested=undefined;spotlight=undefined;pin=undefined;lastKey='';ui();drawGuides();};
+$('redo').onclick=()=>{if(animation||grip||!future.length)return;if(encounter.enabled)encounter.sequence.jump('active');const record=redoTrace.pop();if(record)rewriteTrace.push(record);history.push({tree,steps});const next=future.pop()!;tree=next.tree;steps=next.steps;epoch++;selected=tree.id;suggested=undefined;spotlight=undefined;pin=undefined;lastKey='';ui();drawGuides();};
+$('reset').onclick=()=>{if(animation||grip)return;tree=initial();hostTree=tree;rewriteTrace=[];redoTrace=[];recoveryTrace=[];recoveryTree=undefined;hostSpread=+value('spread');if(encounter.enabled)encounter.sequence.jump('dormant');selected=tree.id;history=[];future=[];steps=0;epoch++;suggested=undefined;spotlight=undefined;pin=undefined;lastKey='';ui();drawGuides();};
 $('approach').onclick=()=>navTarget=new T.Vector3(0,0,bodyMode()?-.8:1.7);
 $('settingsButton').onclick=()=>$('settings').hidden=!$('settings').hidden;$('closeSettings').onclick=()=>$('settings').hidden=true;
 $('character').onchange=()=>lehi.choose(value('character'));
@@ -185,7 +190,7 @@ function updateGrip(at:ScreenPoint){if(!grip)return;const h=grip;h.feedbackCurso
 }
 function releaseGrip(allow=true){const h=grip;if(!h)return;const g=h.chosen,commit=allow&&h.ready;if(h.body)clearMovement();grip=undefined;controls.enabled=true;renderer.domElement.style.cursor='grab';epoch++;lastKey='';
  sound.finish(!!commit);const p=worldPoint(h.id);if(p)lingerPoint=p;lastContactAt=performance.now();
- if(g&&(commit||h.progress>.005)){lastGesture=g;const before=tree;exitAfterSettle=!!commit&&!solved(before)&&solved(g.after);if(commit){history.push({tree,steps});future=[];tree=g.after;steps++;hoverId=undefined;selected=find(tree,g.gripId)?g.gripId:g.action.result.id;spotlight=undefined;}
+ if(g&&(commit||h.progress>.005)){lastGesture=g;const before=tree;exitAfterSettle=!!commit&&!solved(before)&&solved(g.after);if(commit){rewriteTrace.push({before,after:g.after,kind:g.action.key,merge:{...g.action.merge}});redoTrace=[];history.push({tree,steps});future=[];tree=g.after;steps++;hoverId=undefined;selected=find(tree,g.gripId)?g.gripId:g.action.result.id;spotlight=undefined;}
  animation={before,after:g.after,kind:g.action.key,merge:g.action.merge??{},start:performance.now(),from:h.progress,to:commit?1:0,duration:commit?Math.max(180,(1-h.progress)*500):350};
  }else lastGesture=undefined;ui(false);status(commit?'The rewrite settles under your hands.':'Released without changing the expression.');}
 function chooseContact(offset:number){if(grip||animation||!near)return;const nodes=walk(tree);const i=nodes.findIndex(n=>n.id===selected);selected=nodes[(i+offset+nodes.length)%nodes.length].id;hoverId=undefined;spotlight=undefined;lingerPoint=worldPoint(selected);lastContactAt=performance.now();ui(false);}
@@ -314,12 +319,12 @@ function tick(now:number){requestAnimationFrame(tick);const frameMs=now-last;con
  insideRing=inRing;
  const channels=encounter.sequence.sample(encounter.timing);
  if(stateBefore!==channels.state){
-  if(channels.state==='release'){recoveryTree=tree;handFocus=false;hoverId=undefined;pin=undefined;lingerPoint=undefined;spotlight=undefined;clearMovement();}
+  if(channels.state==='release'){prepareRecovery();handFocus=false;hoverId=undefined;pin=undefined;lingerPoint=undefined;spotlight=undefined;clearMovement();}
   ui(false);
  }
  near=mayRewrite()&&(handFocus||!!grip||!!animation||Math.hypot(avatar.position.x-treeOrigin.x,avatar.position.z-treeOrigin.z)<(nearOld?7.5:5.5));
  if(!near){pin=undefined;lingerPoint=undefined;hoverId=undefined;handFocus=false;}
- const target=encounter.enabled?(channels.state==='dormant'?+value('spread'):channels.recovering?hostSpread*channels.growth:0):(near?0:+value('spread'));
+ const target=encounter.enabled?(channels.state==='dormant'?+value('spread'):channels.recovering?recoveryEmbedding(channels.state==='healthy'?1:encounter.sequence.age/encounter.timing.recovery,hostSpread):0):(near?0:+value('spread'));
  const next=spread+(target-spread)*(1-Math.exp(-dt*4));spread=Math.abs(next-target)<.008?target:Math.round(next*1000)/1000;
  if(near!==nearOld){nearOld=near;if(!near&&grip)releaseGrip(false);ui();}runes.visible=near;ring.visible=!encounter.enabled;(ring.material as T.MeshBasicMaterial).color.set(solved(tree)?'#f1ce79':near?'#e6ddb7':'#bac8a8');
  if(!animation&&!grip&&spread===0&&near&&document.querySelector<HTMLButtonElement>('#actions button')?.disabled)ui(false);
@@ -380,11 +385,8 @@ mountRootControls($('settings'));
 function jumpEncounter(state:EncounterState){
  // Developer previews share the lifecycle, but never mark the equation solved.
  if(grip)releaseGrip(false);animation=undefined;exitAfterSettle=false;handFocus=false;hoverId=undefined;lingerPoint=undefined;pin=undefined;spotlight=undefined;clearMovement();controls.enabled=true;
- if(state==='dormant'&&encounter.sequence.automatic){tree=initial();hostTree=tree;history=[];future=[];steps=0;selected=tree.id;recoveryTree=undefined;avatar.position.set(0,0,9);insideRing=false;hostSpread=+value('spread');}
- if(['release','recovery','healthy'].includes(state)){
-  recoveryTree=tree;
-  if(!solved(recoveryTree))for(let i=0;i<12&&!solved(recoveryTree);i++){const h=hint(recoveryTree);if(!h)break;recoveryTree=replace(recoveryTree,h.nodeId,h.action.result);}
- }
+ if(state==='dormant'&&encounter.sequence.automatic){tree=initial();hostTree=tree;rewriteTrace=[];redoTrace=[];recoveryTrace=[];history=[];future=[];steps=0;selected=tree.id;recoveryTree=undefined;avatar.position.set(0,0,9);insideRing=false;hostSpread=+value('spread');}
+ if(['release','recovery','healthy'].includes(state))prepareRecovery();
  encounter.sequence.jump(state);if(state==='dormant'||state==='healthy')spread=hostSpread;if(state==='release')spread=0;
  epoch++;lastKey='';ui(false);drawGuides();
 }
