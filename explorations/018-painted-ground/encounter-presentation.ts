@@ -40,6 +40,8 @@ export function createEncounterPresentation(scene:T.Scene,origin:T.Vector3,treeS
   const range=(id:string,label:string,min:number,max:number,step:number,value:number)=>{const l=document.createElement('label');l.innerHTML=`${label}<input id="${id}" type="range" min="${min}" max="${max}" step="${step}" value="${value}">`;panel.append(l);};
   range('sequenceScrub','Transition position',0,1,.01,0);
   const scrub=panel.querySelector<HTMLInputElement>('#sequenceScrub')!;scrub.dataset.transient='true';scrub.oninput=()=>{sequence.paused=true;sequence.age=+scrub.value*(timing[sequence.state as keyof typeof timing]||1);};
+  const releaseStyle=document.createElement('label');releaseStyle.innerHTML='Canopy release<select id="sequenceDeparture"><option value="swirl">Spin, expand & dissolve</option><option value="fade">Fade in place · earlier comparison</option></select>';panel.append(releaseStyle);
+  range('sequenceDepartureTurns','Release turns',0,3,.05,1.35);range('sequenceDepartureExpansion','Release expansion',0,5,.1,2.8);
   range('sequenceAwakening','Awakening seconds',1,6,.25,3);range('sequenceRelease','Release seconds',.6,4,.1,1.8);range('sequenceRecovery','Rewind + spatial return seconds',3,15,.5,8);range('sequenceLeafSize','Living canopy size',.4,1.8,.05,1);range('sequenceLeafDensity','Living canopy density',.4,1.6,.1,1);range('sequenceFlash','Transition flash strength',0,2,.05,1);
   host.prepend(panel);
   const mode=panel.querySelector<HTMLSelectElement>('#sequenceEnabled')!;mode.value=enabled?'on':'off';mode.onchange=()=>{enabled=mode.value==='on';sequence.automatic=true;sequence.paused=false;onJump(enabled?'dormant':'active');};
@@ -47,5 +49,5 @@ export function createEncounterPresentation(scene:T.Scene,origin:T.Vector3,treeS
   panel.querySelector<HTMLButtonElement>('#sequencePause')!.onclick=()=>{sequence.paused=!sequence.paused;};
   panel.querySelector<HTMLButtonElement>('#sequenceRestart')!.onclick=()=>{sequence.automatic=true;sequence.paused=false;onJump('dormant');};
  }
- return {sequence,timing,mount,update,get enabled(){return enabled;},get flashStrength(){return number('sequenceFlash',1);},readTiming(){timing.awakening=number('sequenceAwakening',3);timing.release=number('sequenceRelease',1.8);timing.recovery=number('sequenceRecovery',8);}};
+ return {sequence,timing,mount,update,get enabled(){return enabled;},get departure(){return {depart:(document.getElementById('sequenceDeparture') as HTMLSelectElement)?.value!=='fade',departureTurns:number('sequenceDepartureTurns',1.35),departureExpansion:number('sequenceDepartureExpansion',2.8)};},get flashStrength(){return number('sequenceFlash',1);},readTiming(){timing.awakening=number('sequenceAwakening',3);timing.release=number('sequenceRelease',1.8);timing.recovery=number('sequenceRecovery',8);}};
 }

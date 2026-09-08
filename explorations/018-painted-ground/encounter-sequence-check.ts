@@ -1,3 +1,5 @@
+import * as T from 'three';
+import {canopyDeparture} from './canopy-departure';
 import assert from 'node:assert/strict';
 import {EncounterSequence,sequenceStates,sequenceTiming} from './encounter-sequence';
 import {stormEvents,arcDefaults} from '../019-inhabited-trees/storm-lightning';
@@ -59,3 +61,13 @@ const partial=route.records.slice(0,2),extended=recoveryRoute(partial[1].after,p
 assert.equal(partial.length,2);assert.equal(extended.records[0],partial[0]);assert(solved(extended.reduced));
 assert.equal(walk(reduced).length,5,'Visual reversal leaves the solved expression alone');
 console.log('Encounter: lifecycle, short mixed-size cues, exact reverse replay of six operations, planar-to-spatial phase, endpoint and boundary continuity, preview route extension passed.');
+
+// Cloud-only release starts without a jump, spreads monotonically and thins away.
+const pivot=new T.Vector3(2,4,-1),sample=new T.Vector3(3,5,2),start=canopyDeparture(0,pivot);
+assert(sample.clone().applyMatrix4(start.matrix).distanceTo(sample)<1e-9);
+let radius=0;
+for(let i=0;i<=100;i++){const d=canopyDeparture(i/100,pivot);assert(d.scale>=radius);radius=d.scale;assert(d.matrix.elements.every(Number.isFinite));assert(d.dissolve>=0&&d.dissolve<=1);}
+const a=canopyDeparture(0,pivot).rotation.angleTo(canopyDeparture(.01,pivot).rotation);
+const b=canopyDeparture(.8,pivot).rotation.angleTo(canopyDeparture(.81,pivot).rotation);assert(a>b*10,'Spin decelerates during expansion');
+assert.equal(canopyDeparture(1,pivot).dissolve,1);
+console.log('Canopy departure: continuous start, bounded erosion, expanding cloud-only transform and decelerating rotation passed.');

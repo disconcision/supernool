@@ -330,7 +330,7 @@ function tick(now:number){requestAnimationFrame(tick);const frameMs=now-last;con
  if(!animation&&!grip&&spread===0&&near&&document.querySelector<HTMLButtonElement>('#actions button')?.disabled)ui(false);
  requestPose(now);controls.update();frameTree(dt);updateHands(now,dt,moving);drawGuides();
  encounter.update(dt,poseNow);
- const envelope=encounter.enabled?{...channels,flash:channels.flash*encounter.flashStrength,force:true}:undefined;
+ const envelope=encounter.enabled?{...channels,...encounter.departure,flash:channels.flash*encounter.flashStrength,force:true}:undefined;
  inhabitation.update(dt,poseNow,shapeSeed,envelope);backdrop.decals.update(obstacles,encounter.enabled?channels:undefined);burntBark.update(poseNow,treeScale,encounter.enabled?channels.burn:1);
  $('world').dataset.encounterState=encounter.enabled?channels.state:'study';$('world').dataset.encounterProgress=String(channels.growth);
  mist.render(scene,camera,dt,{enabled:value('mistMode')==='on'&&value('backdrop')!=='plain'&&!new URLSearchParams(location.search).has('matteCapture'),strength:+value('mistDensity'),radius:+value('mistRadius'),texture:+value('mistTexture'),speed:+value('mistSpeed')},inhabitation.active?drawBase=>inhabitation.render(drawBase):undefined);stats.update(now,frameMs);
