@@ -7,6 +7,7 @@ import {createStartup} from './startup';
 import {createInhabitation} from './inhabited';
 import {createBurntBark} from './burnt-bark';
 import type {IdlePreview} from './lehi';
+import {mountSceneEditor} from './scene-editor';
 import {addTravelHandControl} from './hand-travel';
 import {setupControlReadouts} from './control-readouts';
 import {createMist} from './mist';
@@ -46,7 +47,7 @@ const runes=new T.Group();hero.add(runes);
 const inhabitation=createInhabitation(renderer,scene,camera,treeMesh,Object.values(materials),treeWorld,treeScale,clearing.touchPoints,backdrop,sun,(kind,power,pan)=>sound.thunder(kind,power,pan));
 const burntBark=createBurntBark(Object.values(materials));
 const encounter=createEncounterPresentation(scene,treeOrigin,treeScale);
-const mayRewrite=()=>!encounter.enabled||encounter.sequence.state==='active';
+const mayRewrite=()=>document.body.dataset.sceneEditing!=='true'&&(!encounter.enabled||encounter.sequence.state==='active');
 let tree=initial(),selected=tree.id,steps=0,history:{tree:Term;steps:number}[]=[],future:{tree:Term;steps:number}[]=[],near=false,loaded=false,epoch=0,shapeSeed=2,spread=1,navTarget:T.Vector3|undefined,suggested:{id:string;key:string}|undefined;
 let hostTree=tree,recoveryTree:Term|undefined,hostSpread=1,insideRing=false;
 let rewriteTrace:RewriteRecord[]=[],redoTrace:RewriteRecord[]=[],recoveryTrace:RewriteRecord[]=[];
@@ -77,7 +78,7 @@ function finishSettling(){
 }
 // Slow framing during tree interaction only; wandering preserves the current zoom.
 function frameTree(dt:number){
- if(!poseNow||new URLSearchParams(location.search).has('matteCapture'))return;
+ if(!poseNow||document.body.dataset.sceneEditing==='true'||new URLSearchParams(location.search).has('matteCapture'))return;
  const cinematic=encounter.enabled&&(['awakening','release','recovery'].includes(encounter.sequence.state)||['healthy','active'].includes(encounter.sequence.state)&&encounter.sequence.age<3);
  const active=!freeStudyCamera&&(cinematic||(bodyMode()?handFocus:!!grip||!!animation));
  $('world').dataset.autoFraming=String(active);
@@ -239,14 +240,14 @@ function drawGuides(){
 function pick(e:{clientX:number;clientY:number}){pointer.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);ray.setFromCamera(pointer,camera);return near?ray.intersectObjects(runes.children,true)[0]?.object.userData.nodeId as string|undefined:undefined;}
 let groundDown:ScreenPoint|undefined;
 renderer.domElement.tabIndex=0;
-renderer.domElement.addEventListener('pointerdown',e=>{if(freeStudyCamera)return;if(e.button!==0)return;renderer.domElement.focus();const id=pick(e);if(id){if(e.shiftKey){togglePin(id);return;}if(bodyMode()){if(!handFocus)setHandFocus(true);select(id);lingerPoint=worldPoint(id);return;}beginGrip(id,{x:e.clientX,y:e.clientY});if(grip)renderer.domElement.setPointerCapture(e.pointerId);}else if(!bodyMode()||!handFocus)groundDown={x:e.clientX,y:e.clientY};});
-renderer.domElement.addEventListener('pointermove',e=>{if(freeStudyCamera)return;if(grip&&!grip.keyboard)updateGrip({x:e.clientX,y:e.clientY});else if(!grip&&!bodyMode()){
+renderer.domElement.addEventListener('pointerdown',e=>{if(freeStudyCamera||document.body.dataset.sceneEditing==='true')return;if(e.button!==0)return;renderer.domElement.focus();const id=pick(e);if(id){if(e.shiftKey){togglePin(id);return;}if(bodyMode()){if(!handFocus)setHandFocus(true);select(id);lingerPoint=worldPoint(id);return;}beginGrip(id,{x:e.clientX,y:e.clientY});if(grip)renderer.domElement.setPointerCapture(e.pointerId);}else if(!bodyMode()||!handFocus)groundDown={x:e.clientX,y:e.clientY};});
+renderer.domElement.addEventListener('pointermove',e=>{if(freeStudyCamera||document.body.dataset.sceneEditing==='true')return;if(grip&&!grip.keyboard)updateGrip({x:e.clientX,y:e.clientY});else if(!grip&&!bodyMode()){
  hoverId=pick(e);if(hoverId){lingerPoint=worldPoint(hoverId);lastContactAt=performance.now();}else if(near&&lingerPoint){const floatingPlane=new T.Plane().setFromNormalAndCoplanarPoint(camera.getWorldDirection(new T.Vector3()),lingerPoint);const p=ray.ray.intersectPlane(floatingPlane,new T.Vector3());if(p&&p.distanceTo(treeOrigin.clone().setY(4))<9)lingerPoint=p;}
  renderer.domElement.style.cursor=hoverId?'grab':'default';
 }});
-renderer.domElement.addEventListener('pointerup',e=>{if(freeStudyCamera)return;if(e.button!==0)return;if(grip&&!grip.keyboard){releaseGrip();if(renderer.domElement.hasPointerCapture(e.pointerId))renderer.domElement.releasePointerCapture(e.pointerId);}else if(groundDown&&Math.hypot(e.clientX-groundDown.x,e.clientY-groundDown.y)<5){pick(e);const p=ray.ray.intersectPlane(plane,new T.Vector3());if(p&&Math.hypot(p.x,p.z)<14)navTarget=p.setY(0);}groundDown=undefined;});
+renderer.domElement.addEventListener('pointerup',e=>{if(freeStudyCamera||document.body.dataset.sceneEditing==='true')return;if(e.button!==0)return;if(grip&&!grip.keyboard){releaseGrip();if(renderer.domElement.hasPointerCapture(e.pointerId))renderer.domElement.releasePointerCapture(e.pointerId);}else if(groundDown&&Math.hypot(e.clientX-groundDown.x,e.clientY-groundDown.y)<5){pick(e);const p=ray.ray.intersectPlane(plane,new T.Vector3());if(p&&Math.hypot(p.x,p.z)<14)navTarget=p.setY(0);}groundDown=undefined;});
 renderer.domElement.addEventListener('pointercancel',()=>releaseGrip(false));
-addEventListener('keydown',e=>{if((e.target as HTMLElement).matches('input,select,textarea'))return;
+addEventListener('keydown',e=>{if(document.body.dataset.sceneEditing==='true')return;if((e.target as HTMLElement).matches('input,select,textarea'))return;
  const key=e.key.toLowerCase();
  if(e.key==='Escape'){if(grip)releaseGrip(false);else if(bodyMode()&&handFocus)setHandFocus(false);spotlight=undefined;$('settings').hidden=true;$('toolbox').hidden=true;return;}
  if(key==='h'&&!e.repeat){$('hint').click();return;}
@@ -287,6 +288,7 @@ if(new URLSearchParams(location.search).get('mode')==='body')($('inputMode') as 
 $('interact').onclick=()=>{setHandFocus(!handFocus);renderer.domElement.focus();};
 let last=performance.now(),nearOld=false;
 function tick(now:number){requestAnimationFrame(tick);const frameMs=now-last;const dt=Math.min(.05,frameMs/1000);last=now;if(document.hidden)return;
+ if(document.body.dataset.sceneEditing==='true'){keys.clear();navTarget=undefined;walkVelocity.setScalar(0);}
  const arrowWalk=bodyMode()||!grip;
  const dx=(keys.has('d')||(arrowWalk&&keys.has('arrowright'))?1:0)-(keys.has('a')||(arrowWalk&&keys.has('arrowleft'))?1:0),dz=(keys.has('s')||(arrowWalk&&keys.has('arrowdown'))?1:0)-(keys.has('w')||(arrowWalk&&keys.has('arrowup'))?1:0);
  const right=new T.Vector3().setFromMatrixColumn(camera.matrixWorld,0).setY(0).normalize(),forward=new T.Vector3(right.z,0,-right.x);
@@ -303,7 +305,7 @@ function tick(now:number){requestAnimationFrame(tick);const frameMs=now-last;con
  // Automatic steps are confined to idle contact selection. Grip records the
  // current avatar position before this path is disabled, with velocity cleared.
  const stanceContact=bodyMode()?selected:hoverId;
- const stanceDelta=stance.step(now,dt,value('stanceAssist')==='gentle'&&(bodyMode()?handFocus:!!hoverId)&&near&&spread<.12&&!grip&&!animation&&!pin&&!keys.size&&!navTarget,stanceContact??'',stanceContact?worldPoint(stanceContact):undefined,avatar.position,treeOrigin,right,p=>Math.hypot(p.x,p.z)<14.5&&!obstacles.some(o=>Math.hypot(p.x-o.x,p.z-o.z)<o.r+.3));
+ const stanceDelta=stance.step(now,dt,document.body.dataset.sceneEditing!=='true'&&value('stanceAssist')==='gentle'&&(bodyMode()?handFocus:!!hoverId)&&near&&spread<.12&&!grip&&!animation&&!pin&&!keys.size&&!navTarget,stanceContact??'',stanceContact?worldPoint(stanceContact):undefined,avatar.position,treeOrigin,right,p=>Math.hypot(p.x,p.z)<14.5&&!obstacles.some(o=>Math.hypot(p.x-o.x,p.z-o.z)<o.r+.3));
  if(stanceDelta.lengthSq()>0){avatar.position.add(stanceDelta);walkVelocity.copy(stanceDelta).divideScalar(Math.max(dt,.001));moving=true;stanceMoving=true;}
  if(grip?.keyboard){if(grip.body){const d=avatar.position.clone().sub(grip.avatarStart);updateGrip({x:grip.from.x+d.dot(right)*grip.gain,y:grip.from.y-d.dot(forward)*grip.gain});const spring=advanceSpring({value:grip.progress,velocity:grip.velocity},grip.target,dt,+value('mass'));grip.progress=spring.value;grip.velocity=spring.velocity;grip.ready=grip.caught;}
  else{const dx=(keys.has('arrowright')?1:0)-(keys.has('arrowleft')?1:0),dy=(keys.has('arrowdown')?1:0)-(keys.has('arrowup')?1:0);grip.cursor.x+=dx*dt*190;grip.cursor.y+=dy*dt*190;const here=screen(avatar.position),was=screen(grip.avatarStart);updateGrip({x:grip.cursor.x+(here.x-was.x)*2,y:grip.cursor.y+(here.y-was.y)*2});}}
@@ -312,7 +314,7 @@ function tick(now:number){requestAnimationFrame(tick);const frameMs=now-last;con
  const inRing=Math.hypot(avatar.position.x-treeOrigin.x,avatar.position.z-treeOrigin.z)<5.5;
  encounter.readTiming();
  const stateBefore=encounter.sequence.state;
- if(encounter.enabled&&preferencesReady&&loaded){
+ if(encounter.enabled&&preferencesReady&&loaded&&document.body.dataset.sceneEditing!=='true'){
   if(encounter.sequence.state==='dormant'&&inRing&&!insideRing)hostSpread=spread;
   encounter.sequence.update(dt,inRing&&!insideRing,solved(tree)&&!animation&&!grip,encounter.timing);
  }
@@ -331,10 +333,10 @@ function tick(now:number){requestAnimationFrame(tick);const frameMs=now-last;con
  requestPose(now);controls.update();frameTree(dt);updateHands(now,dt,moving);drawGuides();
  encounter.update(dt,poseNow,walk(hostTree).filter(n=>n.kind!=='op').map(n=>n.id));
  const envelope=encounter.enabled?{...channels,...encounter.departure,flash:channels.flash*encounter.flashStrength,force:true}:undefined;
- sound.update({phase:encounter.enabled?channels.state:'dormant',age:encounter.sequence.age,reduction:Math.max(0,Math.min(1,(count(hostTree)-count(tree))/Math.max(1,count(hostTree)-5))),x:avatar.position.x,z:avatar.position.z,dt,recoveryCount:recoveryTrace.length,recoveryDuration:encounter.timing.recovery,paused:encounter.enabled&&encounter.sequence.paused});
+ sound.update({phase:encounter.enabled?channels.state:'dormant',age:encounter.sequence.age,reduction:Math.max(0,Math.min(1,(count(hostTree)-count(tree))/Math.max(1,count(hostTree)-5))),x:avatar.position.x,z:avatar.position.z,dt,recoveryCount:recoveryTrace.length,recoveryDuration:encounter.timing.recovery,paused:document.body.dataset.sceneEditing==='true'||encounter.enabled&&encounter.sequence.paused});
  inhabitation.update(dt,poseNow,shapeSeed,envelope);backdrop.decals.update(obstacles,encounter.enabled?channels:undefined);burntBark.update(poseNow,treeScale,encounter.enabled?channels.burn:1);
  $('world').dataset.encounterState=encounter.enabled?channels.state:'study';$('world').dataset.encounterProgress=String(channels.growth);
- mist.render(scene,camera,dt,{enabled:value('mistMode')==='on'&&value('backdrop')!=='plain'&&!new URLSearchParams(location.search).has('matteCapture'),strength:+value('mistDensity'),radius:+value('mistRadius'),texture:+value('mistTexture'),speed:+value('mistSpeed')},inhabitation.active?drawBase=>inhabitation.render(drawBase):undefined);stats.update(now,frameMs);
+ mist.render(scene,camera,dt,{enabled:value('mistMode')==='on'&&value('backdrop')!=='plain'&&!new URLSearchParams(location.search).has('matteCapture'),strength:+value('mistDensity'),radius:+value('mistRadius'),texture:+value('mistTexture'),speed:+value('mistSpeed')},inhabitation.active?drawBase=>inhabitation.render(drawBase):undefined);sceneEditor?.render();stats.update(now,frameMs);
  if(startup.pending){
   // Both the original and current rock controls enable layout after loading;
   // failed optional art retains the procedural scenery beneath it.
@@ -404,8 +406,26 @@ titleToggle.onclick=()=>{titlePinned=!titlePinned;updateTitle();};
 sound.mount();
 for(const button of [titleToggle,...studyTools.querySelectorAll('button')])button.addEventListener('keydown',e=>{if([' ','Enter'].includes((e as KeyboardEvent).key))e.stopPropagation();});
 setupControlReadouts();
-let preferencesReady=false;
-setupSettings(inhabitedStudy?'clearing-019':'clearing-018',$('settings'),'.dock input,.dock select',true).finally(()=>{preferencesReady=true;});
+let preferencesReady=false,sceneEditor:ReturnType<typeof mountSceneEditor>|undefined;
+let editorWasPaused=false,editorWasFree=false;
+function createEditor(){
+return mountSceneEditor(scene,camera,renderer,controls,{
+ canEdit:()=>loaded&&!animation&&!grip&&!pin,
+ setEditing(on){clearMovement();if(on){editorWasPaused=encounter.sequence.paused;editorWasFree=freeStudyCamera;encounter.sequence.paused=true;freeStudyCamera=true;lehi.stopIdlePreview();lehi.setIdleMode('rest');lehi.settleIdleProps();}else{encounter.sequence.paused=editorWasPaused;freeStudyCamera=editorWasFree;lehi.setIdleMode(value('idleCatch') as any);}resize();if(on){releaseGrip(false);pin=undefined;handFocus=false;hoverId=undefined;spotlight=undefined;groundDown=undefined;}ui(false);},
+ capture:()=>({treeSeed:String(shapeSeed),viewX:String(camera.position.x),viewY:String(camera.position.y),viewZ:String(camera.position.z),viewTargetX:String(controls.target.x),viewTargetY:String(controls.target.y),viewTargetZ:String(controls.target.z),viewZoom:String(camera.zoom)}),
+ apply(values){
+  // Scene definitions restart the encounter; they never restore an in-progress rewrite.
+  encounter.sequence.automatic=true;encounter.sequence.paused=document.body.dataset.sceneEditing==='true';jumpEncounter('dormant');
+  const number=(key:string)=>Number(values[key]);
+  if(Number.isInteger(number('treeSeed'))&&number('treeSeed')>=0&&number('treeSeed')<=1000000){shapeSeed=number('treeSeed');lastKey='';}
+  if(['viewX','viewY','viewZ','viewTargetX','viewTargetY','viewTargetZ','viewZoom'].every(key=>Number.isFinite(number(key)))){
+   camera.position.set(number('viewX'),number('viewY'),number('viewZ'));controls.target.set(number('viewTargetX'),number('viewTargetY'),number('viewTargetZ'));preferredZoom=T.MathUtils.clamp(number('viewZoom'),.4,3);camera.zoom=preferredZoom;controls.update();camera.updateProjectionMatrix();
+  }
+ }
+});
+
+}
+setupSettings(inhabitedStudy?'clearing-019':'clearing-018',$('settings'),'.dock input,.dock select',true).finally(async()=>{sceneEditor=createEditor();await sceneEditor.ready;preferencesReady=true;});
 ui();requestAnimationFrame(tick);
 
 // Read-only integration diagnostics; rendering uses the displayed worker pose.

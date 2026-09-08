@@ -1,3 +1,5 @@
+import {validateScene,type RockPlacement} from '../../scene-tools/schema';
+import {registerRockAuthoring} from './rock-authoring';
 import * as T from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {enclosedPlacements} from './rock-enclosure';
@@ -9,7 +11,11 @@ import {toCreasedNormals} from 'three/addons/utils/BufferGeometryUtils.js';
 /** Approved formations, available in the ordinary prototype and its Appearance panel. */
 export function mountRockStudy(scene:T.Scene,obstacles:{x:number;z:number;r:number}[],touchPoints:T.Vector3[]){
  const originals=scene.children.filter(o=>typeof o.userData.rockSeed==='number');
+ const props=scene.children.filter(o=>o.userData.formation?.kind==='mushroom'||o.userData.rockSeed>=100&&o.userData.rockSeed<200);
+ for(const o of props)if(o.userData.rockSeed!==undefined){o.userData.formation={id:'stone-'+(o.userData.rockSeed-100),kind:'fragment'};o.name='Loose stone '+(o.userData.rockSeed-99);o.userData.contact=new T.Vector3(0,1,0);}
+ const defaults=new Map(props.map(o=>[o,{position:o.position.clone(),scale:o.scale.clone(),yaw:o.rotation.y}]));
  const oldObstacles=[...obstacles],oldTouches=[...touchPoints];
+ const staticTouches=oldTouches.filter(p=>![...originals,...props].some(o=>Math.hypot(p.x-o.position.x,p.z-o.position.z)<.01));
  const gateObstacles=oldObstacles.filter(o=>o.z===-7.5);
  const panel=document.getElementById('settings')!;
  function select(id:string,title:string,options:[string,string][]){
@@ -60,9 +66,12 @@ export function mountRockStudy(scene:T.Scene,obstacles:{x:number;z:number;r:numb
    const bare=bareRock(o.geometry);
    variants.set(o,{mesh:o,soft,edges,cel,geometry:o.geometry,creased:toCreasedNormals(o.geometry.clone(),Math.PI/8),bare,bareCreased:toCreasedNormals(bare.clone(),Math.PI/8)});
   });
+  const formations:T.Group[]=[],copies=new Map<string,T.Group>();
+  const copiedScenery=new T.Group();copiedScenery.name='Authored scenery copies';scene.add(copiedScenery);
   const colliders:{x:number;z:number;r:number}[]=[],newTouches:T.Vector3[]=[],enclosingColliders:typeof colliders=[],enclosingTouches:T.Vector3[]=[];
   function place(parent:T.Group,source:T.Group,x:number,z:number,y:number,sx:number,sy:number,sz:number,angle:number){
    const g=new T.Group();g.position.set(x,y,z);g.scale.set(sx,sy,sz);g.rotation.y=angle;parent.add(g);
+   g.userData.formation={id:'rock-'+formations.length,kind:source===crest.scene?'basalt-group':'bedrock'};g.name=(source===crest.scene?'Basalt crest ':'Low bedrock ')+(formations.length+1);formations.push(g);
    source.traverse(o=>{if(!(o instanceof T.Mesh))return;const v=variants.get(o)!;const m=new T.Mesh(v.geometry,v.soft);m.position.copy(o.position);m.quaternion.copy(o.quaternion);m.scale.copy(o.scale);m.castShadow=true;m.receiveShadow=true;g.add(m);meshes.push({...v,mesh:m});});
    if(parent!==single){
     const targets=parent===enclosing?enclosingColliders:colliders,contacts=parent===enclosing?enclosingTouches:newTouches;
@@ -121,22 +130,96 @@ export function mountRockStudy(scene:T.Scene,obstacles:{x:number;z:number;r:numb
   const bankSeeds=new Set([9,10,11,12,13,16,17,18]);
   function update(){
    const enclosed=arrangement.value==='enclosed',full=arrangement.value==='full'||enclosed;
+   copiedScenery.visible=full;
    single.visible=arrangement.value==='single';banks.visible=arrangement.value==='full'||arrangement.value==='banks';completion.visible=arrangement.value==='full';enclosing.visible=enclosed;
    originals.forEach(o=>o.visible=full?o.userData.rockSeed>=100:arrangement.value==='original'||!(arrangement.value==='single'?new Set([11,12]):bankSeeds).has(o.userData.rockSeed));
+   for(const o of [...formations,...props])if(o.userData.formation)o.visible=!o.userData.formation.deleted;
    replacements.forEach(v=>{v.root.material=full?v.clear:v.material;v.root.castShadow=full?false:v.casts;v.children.forEach(c=>c.visible=!full);v.mesh.visible=full;});
    obstacles.splice(0,obstacles.length,...(full?[...(enclosed?enclosingColliders:colliders),...gateObstacles]:oldObstacles));
-   const otherTouches=oldTouches.filter(p=>!originals.some(o=>Math.hypot(p.x-o.position.x,p.z-o.position.z)<.01));
+   const otherTouches=[...staticTouches,...allProps().map(o=>{o.updateWorldMatrix(true,false);return o.userData.contact.clone().applyMatrix4(o.matrixWorld) as T.Vector3;})];
    touchPoints.splice(0,touchPoints.length,...(full?[...otherTouches,...(enclosed?enclosingTouches:newTouches)]:oldTouches));
    document.dispatchEvent(new CustomEvent('grow-rock-touch-points',{detail:touchPoints}));
    growthControls.setVisible(growth.value==='raster');
    decals?.configure(growthControls.settings);
    decals?.setVisible(growth.value==='raster');
    meshes.forEach(v=>{v.mesh.material=shading.value==='cel'?v.cel:shading.value==='edges'?v.edges:v.soft;v.mesh.geometry=growth.value==='simple'?(shading.value==='soft'?v.geometry:v.creased):(shading.value==='soft'?v.bare:v.bareCreased);});
+   refreshFormations(false);
    status.dataset.ready='true';status.dataset.layout=arrangement.value;status.dataset.shading=shading.value;status.dataset.growth=growth.value;status.dataset.patches=String(decals?.count??0);status.dataset.patchCounts=JSON.stringify(decals?.counts??{moss:0,lichen:0});status.dataset.patchSettings=JSON.stringify(growthControls.settings);
   }
   scene.add(single,banks,completion,enclosing);arrangement.onchange=shading.onchange=growth.onchange=update;
   growthControls.onChange=()=>{decals?.configure(growthControls.settings);status.dataset.patches=String(decals?.count??0);status.dataset.patchCounts=JSON.stringify(decals?.counts??{moss:0,lichen:0});status.dataset.patchSettings=JSON.stringify(growthControls.settings);};
+  const layoutBases=()=>formations.filter(g=>g.parent?.visible);
+  const baseActive=()=>layoutBases().filter(g=>g.visible);
+  const active=()=>[...baseActive(),...[...copies.values()].filter(g=>['basalt-group','bedrock'].includes(g.userData.formation.kind)&&copiedScenery.visible)];
+  const allProps=()=>[...props.filter(g=>g.visible),...[...copies.values()].filter(g=>['fragment','mushroom'].includes(g.userData.formation.kind)&&copiedScenery.visible)];
+  function refreshFormations(refreshGrowth=true){
+   const full=['full','enclosed'].includes(arrangement.value);if(!full)return;
+   const targets:{x:number;z:number;r:number}[]=[],contacts:T.Vector3[]=[];
+   for(const g of active()){
+    g.updateWorldMatrix(true,true);
+    for(const box of footprints[g.userData.formation.kind as 'basalt-group'|'bedrock'].bounds){
+     const min=new T.Vector3(...box.min as [number,number,number]),max=new T.Vector3(...box.max as [number,number,number]);
+     if(max.y*g.scale.y+g.position.y<.5)continue;
+     const dx=(max.x-min.x)*g.scale.x,dz=(max.z-min.z)*g.scale.z,r=Math.max(.22,Math.min(1.25,Math.min(dx,dz)*.49)),count=Math.max(1,Math.ceil(Math.max(dx,dz)/(r*1.5)));
+     for(let i=0;i<count;i++){const p=min.clone().lerp(max,.5);if(dx>dz)p.x=T.MathUtils.lerp(min.x,max.x,(i+.5)/count);else p.z=T.MathUtils.lerp(min.z,max.z,(i+.5)/count);p.applyMatrix4(g.matrixWorld);targets.push({x:p.x,z:p.z,r});}
+     const p=min.clone().lerp(max,.5).applyMatrix4(g.matrixWorld),ray=new T.Raycaster(new T.Vector3(p.x,40,p.z),new T.Vector3(0,-1,0));
+     const hit=ray.intersectObjects(g.children.filter(o=>o instanceof T.Mesh&&!o.name.includes('surface patch')),false)[0];if(hit)contacts.push(hit.point.clone().add(new T.Vector3(0,.025,0)));
+    }
+   }
+   obstacles.splice(0,obstacles.length,...targets,...gateObstacles);
+   const otherTouches=[...staticTouches,...allProps().map(o=>{o.updateWorldMatrix(true,false);return o.userData.contact.clone().applyMatrix4(o.matrixWorld) as T.Vector3;})];
+   touchPoints.splice(0,touchPoints.length,...otherTouches,...contacts);
+   document.dispatchEvent(new CustomEvent('grow-rock-touch-points',{detail:touchPoints}));if(refreshGrowth){decals?.refresh();status.dataset.patches=String(decals?.count??0);status.dataset.patchCounts=JSON.stringify(decals?.counts??{moss:0,lichen:0});}
+  }
   growthControls.setEnabled(!!decals);update();
+  const editable=()=>[...baseActive(),...props.filter(o=>o.visible),...[...copies.values()].filter(()=>copiedScenery.visible)];
+  const baseObjects=new Map([...formations,...props].map(o=>[o.userData.formation.id,o]));
+  function capture():RockPlacement[]{return [...layoutBases(),...props,...formations.filter(g=>!g.parent?.visible&&g.userData.formation.deleted),...copies.values()].map(g=>({...g.userData.formation,position:g.position.toArray() as [number,number,number],scale:g.scale.toArray() as [number,number,number],yaw:g.rotation.y}));}
+  function transform(g:T.Object3D,r:RockPlacement){g.position.fromArray(r.position);g.scale.fromArray(r.scale);g.rotation.set(0,r.yaw,0);}
+  function createCopy(r:RockPlacement){
+   const source=baseObjects.get(r.source!)!,g=new T.Group();g.name=source.name+' · copy '+r.id.slice(5,9);g.userData.formation={id:r.id,kind:r.kind,source:r.source};
+   // Construct from the original asset's solid meshes, excluding disposable growth decals
+   // and obsolete hidden stone geometry. Copies share the same shading variants.
+   for(const child of source.children){
+    if(!(child instanceof T.Mesh)||child.name.includes('surface patch')||!child.visible)continue;
+    const v=meshes.find(v=>v.mesh===child),m=child.clone(false);g.add(m);if(v)meshes.push({...v,mesh:m});
+   }
+   if(source.userData.contact)g.userData.contact=(source.userData.contact as T.Vector3).clone();
+   transform(g,r);copiedScenery.add(g);copies.set(r.id,g);
+   if(['basalt-group','bedrock'].includes(r.kind))decals?.add(g,r.kind==='basalt-group',source as T.Group);
+   return g;
+  }
+  function removeCopy(g:T.Group){
+   decals?.remove(g);const members=new Set(g.children);
+   for(let i=meshes.length-1;i>=0;i--)if(members.has(meshes[i].mesh))meshes.splice(i,1);
+   g.removeFromParent();copies.delete(g.userData.formation.id);
+   // Solid geometry/materials are shared with the asset kit; only decal geometry is owned.
+  }
+  function validateLayout(rocks:RockPlacement[]){
+   validateScene({schema:1,sceneId:'validation',title:'Scenery',controls:{rockLayout:arrangement.value},rocks});
+   if(layoutBases().some(g=>!rocks.some(r=>r.id===g.userData.formation.id))||rocks.some(r=>{
+    const source=baseObjects.get(r.source??r.id);return !source||source.userData.formation.kind!==r.kind||!r.source&&!r.deleted&&!layoutBases().includes(source as T.Group)&&!props.includes(source);
+   }))throw new Error('This version uses a different scenery asset layout');
+  }
+  registerRockAuthoring({list:editable,capture,
+   apply(rocks){
+    validateLayout(rocks);
+    for(const g of copies.values())if(!rocks.some(r=>r.id===g.userData.formation.id&&r.source===g.userData.formation.source))removeCopy(g);
+    for(const o of baseObjects.values())delete o.userData.formation.deleted;
+    // Older formation-only saves restore loose props to their authored positions.
+    for(const o of props){const d=defaults.get(o)!;o.position.copy(d.position);o.scale.copy(d.scale);o.rotation.set(0,d.yaw,0);}
+    for(const r of rocks){const g=r.source?(copies.get(r.id)??createCopy(r)):baseObjects.get(r.id)!;transform(g,r);if(r.deleted)g.userData.formation.deleted=true;}update();refreshFormations();
+   },
+   paste(placement){
+    const r={...placement,id:'copy-'+crypto.randomUUID(),source:placement.source??placement.id};delete r.deleted;
+    validateLayout([...capture(),r]);const g=createCopy(r);update();refreshFormations();return g;
+   },
+   remove(id){
+    const g=editable().find(g=>g.userData.formation.id===id);if(!g)throw new Error('Select editable scenery first');
+    if(copies.has(id))removeCopy(g as T.Group);else g.userData.formation.deleted=true;
+    update();refreshFormations();
+   },refresh:refreshFormations});
+
   arrangement.disabled=shading.disabled=growth.disabled=false;status.textContent=decals?'Rock formations ready':'Rock formations ready · texture unavailable; simple patches retained';
   }catch(error){
    const detail=error instanceof Error?error.message:String(error);

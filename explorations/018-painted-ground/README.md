@@ -230,3 +230,21 @@ The ordinary route now lets idle hands pick up a nearby small loose stone and pl
 ## Finger-walking idle hands
 
 The earlier scenery inspection is replaced by a grounded finger walk with varied routes around rocks and fungi. Both hands take turns in each activity; a shared 12–22 second quiet interval prevents an ended catch from immediately starting a walk. Traveller → Idle hands offers mixed, walking-only, catch-only and resting comparisons. See [IDLE-HANDS.md](IDLE-HANDS.md) for gait, obstacle clearance, scheduling and checks. Rock climbing remains outside this ground-walking pass.
+
+### Scene editor selection and transforms · integrated gameplay
+
+On both live port 3100 and frozen port 3101, Inspect → Scene → Edit scenery now uses a one-pixel visible-silhouette outline and a combined move / yaw / proportional-size widget. Green Y is height; red X and blue Z are ground directions. The outer arc turns, and the cream square scales. Q restores all handles; W/E/R isolate a tool. Handles render above atmosphere, and picking respects opaque occlusion.
+
+The object list separates formations, 17 loose stones, and 36 individual mushrooms (cap + stem). Attached formation fragments remain grouped. Puzzle gates, tree, avatar and painted terrain stay gameplay-owned. Prop transforms participate in undo/redo and scene saves; old formation-only saves load with props at their authored defaults. Formation collisions, projected growth and prop hand-contact points refresh after edits. This is integrated into gameplay, including study 019. Edit pauses encounter progression and idle hands, and temporarily enables camera orbiting. Play restores the previous camera/pause mode. Both local servers save versions to this project’s `scenes/` directory; use Save version then Use as scene default to retain a layout.
+
+
+### Scenery copy / paste
+
+The scene editor exposes Copy, Paste and Duplicate below the object selector, with Cmd/Ctrl+C, V and D shortcuts while editing scenery. Pasted objects are selected and offset one unit on each ground axis per successive paste, ready for placement. Copy captures the current transform; later edits to the original do not change the clipboard. Text inputs keep their normal clipboard behavior.
+
+The scenery clipboard persists in browser storage across reload and works between scenes on the same editor origin. It is separate from the OS text clipboard. Copied formations, loose stones and mushrooms participate in undo/redo, saved versions and defaults. Formation copies share geometry/shading assets, retain the source growth pattern seed, and have independent projected growth, collision footprints and hand contacts. Copies of copies store the original asset reference, and earlier saves remain readable. `npm run test:clipboard` exercises these paths in Chrome.
+
+
+### Delete scenery
+
+In Edit scenery, Delete beside Copy/Paste/Duplicate removes the selected formation, loose stone, mushroom or copied instance. Delete and Backspace are keyboard equivalents; text fields and Play mode retain their usual behavior. Undo restores and selects the object; Redo removes it again. Save version/default retains deletions, and loading an older version restores its objects. Attached growth, collision footprints and hand contacts follow removals. Original-source deletion does not invalidate a copied object or the scenery clipboard. `npm run test:delete` checks these behaviors in Chrome.

@@ -10,4 +10,6 @@ Use `npm run check`, `npm test`, and checks appropriate to the change. Browser p
 
 ## Local preview separation
 
-Port 3100 is live gameplay, 3101 is its frozen preview. The full scenery editor (move/rotate/scale, clipboard, delete, scene versions) exists in `../supernool-scene-editor` on `codex/scene-editor`, served on **3102** with `npm run dev:editor`. It has not yet been integrated into this gameplay branch. Its previous use of 3101 caused confusion when that address became the frozen gameplay preview. Do not reuse these ports or assume the editor never existed because it is absent here. Editor URL: `http://127.0.0.1:3102/explorations/018-painted-ground/?mode=body&rockLayout=enclosed&editor=1`.
+Port 3100 is live gameplay; 3101 is its frozen preview. Both now include the full scenery editor at **Inspect → Scene → Edit scenery**. Both save immutable scene versions and default pointers to this checkout’s `scenes/` directory. Frozen rendering stays fixed until explicitly rebuilt/restarted; saved scene documents are shared live. Use `?scene=<key>` to open another scene definition.
+
+The separate `../supernool-scene-editor` worktree on `codex/scene-editor`, port 3102, is an older editor checkpoint. Its editor was merged here; do not treat it as the only place rock controls exist or reuse its port for another service.

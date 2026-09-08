@@ -26,9 +26,11 @@ export async function loadRockGrowth(){
  atlas.colorSpace=T.SRGBColorSpace;atlas.anisotropy=4;
  const moss=createGrowthLayer(atlas,'moss'),lichen=createGrowthLayer(atlas,'lichen');
  return {
-  add(group:T.Group,tall:boolean){moss.add(group,tall);lichen.add(group,tall);},
+  add(group:T.Group,tall:boolean,source?:T.Group){moss.add(group,tall,source);lichen.add(group,tall,source);},
+  remove(group:T.Group){moss.remove(group);lichen.remove(group);},
   configure(next:GrowthLayers){moss.configure(next.moss);lichen.configure(next.lichen);},
   setVisible(on:boolean){moss.setVisible(on);lichen.setVisible(on);},
+  refresh(){moss.refresh();lichen.refresh();},
   get count(){return moss.count+lichen.count;},
   get counts(){return {moss:moss.count,lichen:lichen.count};}
  };
@@ -51,12 +53,13 @@ function createGrowthLayer(atlas:T.Texture,kind:GrowthKind){
   `);
  };
  material.customProgramCacheKey=()=> 'growth-adjustments-v1';
- const patches:T.Mesh[]=[],formations:{group:T.Group;tall:boolean;surfaces:T.Mesh[]}[]=[];
+ const patches:T.Mesh[]=[],formations:{group:T.Group;tall:boolean;surfaces:T.Mesh[];index:number}[]=[];
  const sites=[[-1.05,-.65],[-1.15,.42],[-2.22,.30],[1.38,.12],[.76,-.80]];
  let settings={...growthDefaults[kind]},visible=true,geometryKey='';
  function rebuild(){
   for(const p of patches){p.removeFromParent();p.geometry.dispose();}patches.length=0;
-  formations.forEach(({group,tall,surfaces},index)=>{
+  formations.forEach(({group,tall,surfaces,index})=>{
+   if(group.userData.formation?.deleted)return;
    group.updateWorldMatrix(true,true);
    // Each formation owns a stable random stream. Changing color/opacity never moves patches.
    let state=(settings.seed*9301+index*49297+233280+(kind==='lichen'?71093:0))>>>0;
@@ -110,7 +113,11 @@ function createGrowthLayer(atlas:T.Texture,kind:GrowthKind){
   });
  }
  return {
-  add(group:T.Group,tall:boolean){formations.push({group,tall,surfaces:group.children.filter(o=>o instanceof T.Mesh) as T.Mesh[]});},
+  add(group:T.Group,tall:boolean,source?:T.Group){formations.push({group,tall,index:formations.find(f=>f.group===source)?.index??formations.length,surfaces:group.children.filter(o=>o instanceof T.Mesh) as T.Mesh[]});},
+  remove(group:T.Group){
+   const i=formations.findIndex(f=>f.group===group);if(i>=0)formations.splice(i,1);
+   for(let j=patches.length-1;j>=0;j--)if(patches[j].parent===group){patches[j].removeFromParent();patches[j].geometry.dispose();patches.splice(j,1);}
+  },
   configure(next:GrowthSettings){
    settings={...next};material.opacity=settings.opacity;
    uniforms.growthSaturation.value=settings.saturation;uniforms.growthBrightness.value=settings.brightness;
@@ -122,6 +129,7 @@ function createGrowthLayer(atlas:T.Texture,kind:GrowthKind){
    if(key!==geometryKey){geometryKey=key;rebuild();}
   },
   setVisible(on:boolean){visible=on;patches.forEach(p=>p.visible=on);},
+  refresh(){rebuild();},
   get count(){return patches.length;}
  };
 }
