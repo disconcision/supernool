@@ -22,9 +22,27 @@ export function createEncounterAudio(ctx:BaseAudioContext,destination:AudioNode=
  function air(t:number,duration:number,level:number,frequency:number,endFrequency=frequency,pan=0,layer:AudioLayer='effects',attack=.01,q=.6){
  const s=ctx.createBufferSource(),f=ctx.createBiquadFilter(),g=ctx.createGain(),p=ctx.createStereoPanner();s.buffer=noise;s.loop=true;f.type='bandpass';f.Q.value=q;f.frequency.setValueAtTime(frequency,t);f.frequency.exponentialRampToValueAtTime(endFrequency,t+duration);p.pan.value=pan;envelope(g,t,level,attack,duration);s.connect(f);f.connect(g);g.connect(p);p.connect(buses[layer]);s.start(t,random()*3);finish(s,[f,g,p],t+duration+.05);
  }
+ // Two continuous, independently evolving air layers. Their noise loops are long,
+ // unequal and seam-corrected; a gust changes the bed rather than restarting it.
+ const windLayers:{source:AudioBufferSourceNode;gain:GainNode;pan:StereoPannerNode}[]=[];
+ function startWind(t:number){
+  if(windLayers.length)return;
+  for(let layer=0;layer<2;layer++){
+   const length=Math.floor(ctx.sampleRate*(layer?27.7:19.1)),buffer=ctx.createBuffer(1,length,ctx.sampleRate),d=buffer.getChannelData(0);let slow=0,mid=0,fast=0;
+   for(let i=0;i<length;i++){const w=random()*2-1;slow=.985*slow+.015*w;mid=.9*mid+.1*w;fast=.7*fast+.3*w;d[i]=layer?(fast-mid)*1.3:(mid-slow)*2;}
+   const seam=d[length-1]-d[0];for(let i=0;i<length;i++)d[i]-=seam*i/(length-1);
+   const source=ctx.createBufferSource(),gain=ctx.createGain(),pan=ctx.createStereoPanner();source.buffer=buffer;source.loop=true;gain.gain.setValueAtTime(0,t);pan.pan.value=layer?.5:-.4;
+   source.connect(gain);gain.connect(pan);pan.connect(buses.environment);source.start(t);source.onended=()=>{source.disconnect();gain.disconnect();pan.disconnect();};windLayers.push({source,gain,pan});
+  }
+ }
  function environment(t:number,phase:AudioPhase,variation:number){
- mark('wind');const storm=phase==='awakening'||phase==='active';air(t,3.8,storm?.2:.16,380+variation*180,650,Math.sin(variation*9)*.65,'environment',1.1,.4);
- air(t+.2,1.7,.06,2200,3200,-.5+variation,'environment',.35,.5);
+  startWind(t);mark('wind-change');const interval=5+random()*8,storm=phase==='awakening'||phase==='active';
+  windLayers.forEach((layer,i)=>{const end=t+interval*(.8+i*.12);
+   layer.gain.gain.linearRampToValueAtTime((i?.024:.055)+(i?.035:.07)*random()*(storm?1.1:1),end);
+   layer.pan.pan.linearRampToValueAtTime((i?.3:-.3)+(random()-.5)*.4,end);
+  });
+  if(variation>.72){mark('rustle');air(t+.4+random()*1.5,1.1+random()*1.8,.02+random()*.025,1800+random()*900,2400,(random()-.5)*1.3,'environment',.35+random()*.45,.35);}
+  return interval;
  }
  function beat(t:number,index:number,intensity:number){
  mark('beat');const i=index%16,root=[73.416,73.416,87.307,73.416,77.782,73.416,65.406,73.416][Math.floor(i/2)];
@@ -60,5 +78,5 @@ export function createEncounterAudio(ctx:BaseAudioContext,destination:AudioNode=
  }
  return {master,buses,environment,beat,melody,cue,thunder,footstep,gesture,tone,
   mix(volume:number,music:number,environment:number,effects:number,t=ctx.currentTime){master.gain.setTargetAtTime(volume,t,.06);buses.music.gain.setTargetAtTime(music,t,.15);buses.environment.gain.setTargetAtTime(environment,t,.15);buses.effects.gain.setTargetAtTime(effects,t,.06);},
-  inspect:()=>({voices,peakVoices,events:{...events}})};
+  inspect:()=>({voices,peakVoices,windLayers:windLayers.length,events:{...events}})};
 }

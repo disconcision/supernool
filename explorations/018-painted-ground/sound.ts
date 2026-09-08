@@ -14,7 +14,7 @@ export function createSound(){
  if(mode!=='off'&&scoreOn()){
   if(lastPhase!==frame.phase){lastPhase=frame.phase;step=0;nextBeat=now+.025;bank.cue(now+.01,frame.phase);}
   if(nextWind<now-.2)nextWind=now;
-  if(nextWind<now+.12){bank.environment(nextWind,frame.phase,Math.random());nextWind+=2.6;}
+  if(nextWind<now+.12){nextWind+=bank.environment(nextWind,frame.phase,Math.random());}
   const dark=frame.phase==='active'||frame.phase==='awakening',calm=frame.phase==='recovery'||frame.phase==='healthy';
   if(nextBeat<now-.2)nextBeat=now+.015; // Drop missed beats after a stalled/hidden tab; never catch up in a burst.
   if(dark||calm)while(nextBeat<now+.12){if(dark)bank.beat(nextBeat,step,frame.reduction);else bank.melody(nextBeat,step,frame.phase==='healthy');step++;nextBeat+=dark?.3125:frame.phase==='healthy'?2.4:.8;}
