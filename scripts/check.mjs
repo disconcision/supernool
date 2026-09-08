@@ -14,3 +14,5 @@ execFileSync(process.execPath,['explorations/018-painted-ground/idle-catch-check
 execFileSync(process.execPath,['explorations/018-painted-ground/finger-walk-check.cjs'],{stdio:'inherit'});
 
 execFileSync(process.execPath,['explorations/018-painted-ground/idle-roam-check.cjs'],{stdio:'inherit'});
+
+execFileSync(process.execPath,['explorations/018-painted-ground/sound-lifecycle-check.cjs'],{stdio:'inherit'});

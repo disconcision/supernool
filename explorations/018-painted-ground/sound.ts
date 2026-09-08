@@ -6,7 +6,7 @@ export function createSound(){
  let ctx:AudioContext|undefined,bank:ReturnType<typeof createEncounterAudio>|undefined,buffer:AudioBuffer|undefined,loading=false,mode='thematic',volume=.3,lastBucket=0,lastAt=0,lastAudibleMode='thematic';
  let frame:SoundFrame={phase:'dormant',age:0,reduction:0,x:0,z:0,dt:0,paused:false},lastPhase='',step=0,nextBeat=0,nextWind=0,lastPosition:{x:number;z:number}|undefined,travel=0,foot=0,lastThunder=-99;
  let lastRecoveryCue=-1,lastRecoveryAge=-1;
- let lastMix='';let timer:ReturnType<typeof setInterval>|undefined,owner=true,channel:BroadcastChannel|undefined;
+ let unlocked=false,session=0;let lastMix='';let timer:ReturnType<typeof setInterval>|undefined,owner=true,channel:BroadcastChannel|undefined;
  const ownerId=Math.random().toString(36);try{channel=new BroadcastChannel('supernool-audio-owner');channel.onmessage=e=>{if(e.data!==ownerId){owner=false;if(ctx)void ctx.suspend();}};}catch{}
  const numeric=(id:string,f:number)=>{const el=document.getElementById(id) as HTMLInputElement|null;return el?+el.value:f;};
  const scoreOn=()=>((document.getElementById('audioScore') as HTMLSelectElement|null)?.value??'on')==='on';
@@ -31,16 +31,37 @@ export function createSound(){
   if(nextBeat<now-.2)nextBeat=now+.015; // Drop missed beats after a stalled/hidden tab; never catch up in a burst.
   if(dark||calm)while(nextBeat<now+.12){if(dark)bank.beat(nextBeat,step,frame.reduction);else bank.melody(nextBeat,step,frame.phase==='healthy');step++;nextBeat+=dark?.3125:2.4;}
  }
- const status=document.getElementById('audioStatus');if(status){const i=bank.inspect();status.textContent=`${mode==='off'?'Muted':frame.phase+' · '+(scoreOn()?'procedural score':'effects only')} · ${i.voices} audio voices`;status.dataset.phase=frame.phase;status.dataset.context=ctx.state;status.dataset.events=JSON.stringify(i.events);status.dataset.peakVoices=String(i.peakVoices);}
+ const status=document.getElementById('audioStatus');if(status){const i=bank.inspect();status.textContent=`${mode==='off'?'Muted':frame.phase+' · '+(scoreOn()?'procedural score':'effects only')} · ${i.voices} audio voices`;status.dataset.phase=frame.phase;status.dataset.context=ctx.state;status.dataset.events=JSON.stringify(i.events);status.dataset.peakVoices=String(i.peakVoices);status.dataset.session=String(session);}
  }
- function unlock(){owner=true;channel?.postMessage(ownerId);if(!ctx){ctx=new AudioContext();bank=createEncounterAudio(ctx);timer=setInterval(scheduler,25);}if(ctx.state!=='running')void ctx.resume().catch(()=>{});if(mode==='recorded')loadSample();mix();}
- document.addEventListener('visibilitychange',()=>{if(!ctx)return;if(document.hidden){void ctx.suspend();lastPhase='';}else if(owner){nextBeat=nextWind=ctx.currentTime+.03;void ctx.resume().catch(()=>{});}});
+ function stopAudio(){
+  const old=ctx;if(old&&bank){bank.master.gain.cancelScheduledValues(old.currentTime);bank.master.gain.setTargetAtTime(0,old.currentTime,.01);}ctx=undefined;bank=undefined;lastMix='';travel=0;lastPosition=undefined;
+  if(timer){clearInterval(timer);timer=undefined;}
+  if(old){
+   // Retire this graph, not just its gain: no old loops or queued voices on unmute.
+   // Closing is deferred for the short output fade; a quick unmute owns a new context.
+   setTimeout(()=>{void old.close().catch(()=>{});},80);
+  }
+  const status=document.getElementById('audioStatus');if(status){status.textContent='Muted · audio engine stopped';status.dataset.context='closed';}
+ }
+ function unlock(){
+  unlocked=true;if(mode==='off'||document.hidden)return;
+  owner=true;channel?.postMessage(ownerId);
+  if(!ctx){
+   ctx=new AudioContext();bank=createEncounterAudio(ctx);session++;lastMix='';
+   const now=ctx.currentTime;nextBeat=now+.025;nextWind=now+.025;lastThunder=-99;
+   // Rejoin the current phase without replaying an awakening/release cue.
+   lastPhase=frame.phase;step=Math.floor(frame.age/(frame.phase==='healthy'?2.4:.3125));lastRecoveryCue=-1;lastRecoveryAge=-1;
+   timer=setInterval(scheduler,25);
+  }
+  if(ctx.state!=='running')void ctx.resume().catch(()=>{});if(mode==='recorded')loadSample();mix();
+ }
+ document.addEventListener('visibilitychange',()=>{if(!ctx)return;if(document.hidden){void ctx.suspend();lastPhase='';}else if(owner&&mode!=='off'){nextBeat=nextWind=ctx.currentTime+.03;void ctx.resume().catch(()=>{});}});
  addEventListener('pagehide',()=>{if(timer)clearInterval(timer);channel?.close();if(ctx)void ctx.close();});
  const ready=()=>!!ctx&&!!bank&&owner&&!document.hidden&&mode!=='off'&&ctx.state==='running';
  function legacy(notes:number[],level=.15,duration=.2){if(!ready())return;notes.forEach((hz,i)=>bank!.tone(ctx!.currentTime+i*.012,hz,duration,level/notes.length,'triangle','effects'));}
  function gesture(kind:Parameters<ReturnType<typeof createEncounterAudio>['gesture']>[1],p=0){if(ready())bank!.gesture(ctx!.currentTime,kind,p);}
- function loadSample(){if(loading||!ctx)return;loading=true;fetch(new URL('../../assets/audio/tiup-comm-out.wav',import.meta.url)).then(r=>r.arrayBuffer()).then(b=>ctx!.decodeAudioData(b)).then(b=>buffer=b).catch(()=>{});}
- return {unlock,setMode(v:string){mode=v;if(v!=='off')lastAudibleMode=v;const mute=document.getElementById('audioMute');if(mute){mute.textContent=v==='off'?'Unmute audio':'Mute audio';mute.setAttribute('aria-pressed',String(v==='off'));}mix();if(v==='recorded')loadSample();},setVolume(v:number){volume=v;mix();},
+ function loadSample(){if(loading||buffer||!ctx)return;loading=true;const decoder=ctx;fetch(new URL('../../assets/audio/tiup-comm-out.wav',import.meta.url)).then(r=>r.arrayBuffer()).then(b=>decoder.decodeAudioData(b)).then(b=>buffer=b).catch(()=>{}).finally(()=>loading=false);}
+ return {unlock,setMode(v:string){const wasMuted=mode==='off';mode=v;if(v!=='off')lastAudibleMode=v;const mute=document.getElementById('audioMute');if(mute){mute.textContent=v==='off'?'Unmute audio':'Mute audio';mute.setAttribute('aria-pressed',String(v==='off'));}if(v==='off')stopAudio();else if(wasMuted&&unlocked)unlock();else mix();if(v==='recorded')loadSample();},setVolume(v:number){volume=v;mix();},
   update(next:SoundFrame){const distance=lastPosition?Math.hypot(next.x-lastPosition.x,next.z-lastPosition.z):0;lastPosition={x:next.x,z:next.z};frame=next;
    if(!ready()||distance>1||distance<.0001){if(distance>1||!ready())travel=0;return;}travel+=distance;const speed=distance/Math.max(.001,next.dt),stride=speed>3?.95:.6;
    if(travel>=stride){travel%=stride;bank!.footstep(ctx!.currentTime,speed,(foot++%2)*2-1);}
