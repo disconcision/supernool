@@ -5,6 +5,7 @@ The scene now exposes Encounter → Browse tree problems, a modal card library r
 `explorations/018-painted-ground/rule-workshop.html` is the standalone comparison page, linked from the library and the main study catalogue:
 
 - A: Formula stamps, stacked source/target expressions and a small downward arrow. The interim scene implementation.
+- A1: Compact identity bars, with equal expressions separated by a horizontal rule sized to their average measured width. The study defaults to this treatment; the playable scene retains its arrow tiles.
 - B: Pocket seals, short mnemonic symbols inside a hexagonal outline. These need a learned legend and are not full equations.
 - C: Branch marks, tiny SVG gesture mnemonics. These are not executable rewrite diagrams.
 - D: Flat porcelain tray, a restrained white menu containing the tiles.
@@ -23,3 +24,9 @@ Reference move counts are upper bounds on minimum move count. They are not lower
 ## Verification and preservation
 
 Inspected the catalogue over the real scene, the formula/seal/motion comparisons and both trays. Checked card selection updates the existing problem control, Escape returns focus, all eleven Noolbox inputs retain their tiles, and removing factoring updates both tray selections and the known-route list. Type checks and the full core suite pass. Concurrent touch-input work and existing user app defaults were preserved.
+
+## Compact bars and simultaneous equipment review
+
+The inventory section now keeps the tray and supported-problem list beside one another. Pocket and hovering trays are switchable views of the same selection; the result list scrolls independently. Removing factoring was checked to change the supported count from 12 to 4 without leaving the tray. Branch marks now mask connecting strokes with opaque paper discs beneath their tinted node circles, keeping the glyphs readable.
+
+All current algebraic laws are equalities, reversible mathematically. Available game moves are narrower: commutativity and associativity work both ways, expansion and factoring are separate equipped actions, and identity removal, zero absorption and numeral evaluation currently run toward simplification. The compact bar is a graphical identity separator, not a division symbol or a new directional inference rule. No inverse actions were added in this UI pass.

@@ -4,3 +4,4 @@
 @media(max-width:850px){.problem-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:540px){.problem-grid{grid-template-columns:1fr;padding:15px}.problem-dialog header{padding:17px}.problem-dialog h2{font-size:25px}.problem-dialog{max-height:94dvh;width:96vw}.problem-card .equation{min-height:0}}
 /* The scene's title styles target header globally; the modal owns its own header. */
 .problem-dialog header{left:0;right:auto;max-width:none;pointer-events:auto;color:#344239;text-shadow:none;isolation:auto}.problem-dialog header:before{display:none}.problem-dialog header a{letter-spacing:normal;font-weight:400;text-shadow:none}.problem-dialog .catalogue-close{padding:0;line-height:1;display:grid;place-items:center;color:#53634f}.problem-dialog{overflow-x:hidden}.problem-dialog header p{display:block}
+.rule-tile.bar{height:43px}.rule-strip .rule-tile.bar{height:36px}
