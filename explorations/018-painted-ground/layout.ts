@@ -15,9 +15,10 @@ export function layout(tree:Term,o:LayoutOptions):Pose{
  for(const n of walk(tree)){const parent=parents.get(n.id);if(parent)edges.push({id:n.id,a:points.get(parent)!,b:points.get(n.id)!,r:.15*Math.sqrt(weight(n))});}
  return {points,parents,nodes,edges};
 }
-export function transition(before:Term,after:Term,t:number,o:LayoutOptions,kind:string,merge:Record<string,string>={},surface?:Options):Pose{
- if(kind.startsWith('group'))return regroup(before,after,t,o,surface);
- const a=layout(before,o),b=layout(after,o),points=new Map<string,T.Vector3>(),ease=t*t*(3-2*t);
+export const motionEase=(t:number,flow=0)=>flow*t+(1-flow)*t*t*(3-2*t);
+export function transition(before:Term,after:Term,t:number,o:LayoutOptions,kind:string,merge:Record<string,string>={},surface?:Options,flow=0):Pose{
+ if(kind.startsWith('group'))return regroup(before,after,t,o,surface,flow);
+ const a=layout(before,o),b=layout(after,o),points=new Map<string,T.Vector3>(),ease=motionEase(t,flow);
  const ancestor=(id:string,source:Pose,target:Pose):string=>{let p:string|undefined=id;while(p&&!target.points.has(p))p=source.parents.get(p);return p??(target===b?after.id:before.id);};
  const all=new Set([...a.points.keys(),...b.points.keys()]);
  for(const id of all){const start=a.points.get(id)??a.points.get(ancestor(id,b,a))!,end=b.points.get(id)??b.points.get(merge[id]??ancestor(id,a,b))!;const p=start.clone().lerp(end,ease);
@@ -56,12 +57,12 @@ export function transition(before:Term,after:Term,t:number,o:LayoutOptions,kind:
 
 /** Exchange the two junctions as one connected structure. Edge identity here is
  * physical: the P–Q connector and incoming support survive a parent reversal. */
-function regroup(before:Term,after:Term,t:number,o:LayoutOptions,surface?:Options):Pose{
+function regroup(before:Term,after:Term,t:number,o:LayoutOptions,surface?:Options,flow=0):Pose{
  const a=layout(before,o),b=layout(after,o);
  if(t<=0)return a;if(t>=1)return b;
  const pair=[...a.parents].find(([q,p])=>b.parents.get(p)===q);
  if(!pair)throw new Error('Regroup requires a reversed junction pair');
- const [q,p]=pair,u=t*t*(3-2*t),points=new Map<string,T.Vector3>();
+ const [q,p]=pair,u=motionEase(t,flow),points=new Map<string,T.Vector3>();
  for(const [id,start] of a.points)points.set(id,start.clone().lerp(b.points.get(id)!,u));
  const old=new Map(a.edges.map(e=>[e.id,e])),fresh=new Map(b.edges.map(e=>[e.id,e]));
  const curve=(e:Edge)=>surface?prepare(e,surface).curve:new T.Vector3();

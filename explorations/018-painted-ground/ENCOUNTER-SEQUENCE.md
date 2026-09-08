@@ -40,3 +40,16 @@ Validation: TypeScript, full existing automated checks, settings API tests; stat
 Release now spins the canopy about its own center, expanding to 3.8× its starting size while rising slightly. Rotation is fastest initially and eases off. Opacity and fringe decrease with expansion; noise erodes the painted patches before the last part of the fade. The wood, sigils and collision geometry do not receive this transform, and the existing skeleton-readability mask is retained. This is a geometric/painterly effect, not a fluid simulation.
 
 **Canopy release** in the encounter panel selects the new effect or the earlier fade-in-place comparison. **Release turns**, **Release expansion**, and **Release seconds** adjust it; they use the existing sequence settings persistence. Release can be paused and scrubbed without accumulating rotation. Both painted patch clouds and procedural billow forms support the motion. The old S1–S3 legacy studies are untouched.
+
+
+## Continuous unfurling and storm arrival · 8 September
+
+Recovery still reverses the recorded operations in the working plane, followed by the spatial return. **Regrowth flow** now blends linear movement with the earlier per-operation smoothstep: default .8, zero restores the full eased stops. Swap keeps its curved depth excursion. Each move still reaches its exact recorded endpoint; this does not claim continuous velocity through every direction change. The saved eight-second total is retained; **Rewind + spatial return seconds** can shorten it.
+
+Living clusters are built ahead of recovery, with stable host IDs. Their scale and attachment positions ease toward new worker poses, so a newly returned branch does not produce a full-size tuft in one frame. Paused scrubbing lets these followers settle briefly to the selected pose.
+
+Awakening gathers the cloud around the crown with a rising, turning, slightly tumbling transform and temporarily stronger roiling. Erosion clears as it forms. **Awakening turns** controls the rotation; zero removes the broad turn but retains the swell/tumble. The transform reaches identity at the end, leaving the steady shadow settings intact.
+
+Performance: hidden sigils and their associated interaction UI are no longer recreated on every cinematic mesh result. Surface generation rejects samples outside a conservative curved-member capsule before expensive field evaluation. A 40-pose local comparison measured about 13% less field-generation time (67.1 to 58.4 ms average in that Node benchmark); that is not a claim of 13% higher game FPS. Full-box reference tests preserve the surface and adjacent normal samples, including stronger curvature, width, blending and roots. Resolution is unchanged. Browser worker samples during the actual solution/recovery were roughly 18–35 ms; discrete worker updates remain a source of motion stepping even when the rest of the scene renders quickly.
+
+Verified intermediate awakening and regrowth frames, healthy endpoint, the six-drag mouse solution through automatic recovery, audio events, TypeScript and all automated checks. Chrome remained unavailable through the browser integration; the visual/play check used the in-app browser. No new body-only playthrough in this pass.

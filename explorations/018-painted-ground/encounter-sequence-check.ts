@@ -1,11 +1,11 @@
 import * as T from 'three';
-import {canopyDeparture} from './canopy-departure';
+import {canopyDeparture,canopyArrival} from './canopy-departure';
 import assert from 'node:assert/strict';
 import {EncounterSequence,sequenceStates,sequenceTiming} from './encounter-sequence';
 import {stormEvents,arcDefaults} from '../019-inhabited-trees/storm-lightning';
 import {initial,hint,replace,solved,walk} from './algebra';
-import {recoveryRoute,replayRecovery,recoveryReplayFraction} from './recovery-replay';
-import {transition,layout} from './layout';
+import {recoveryRoute,replayRecovery,recoveryReplayFraction,recoveryCueTimes} from './recovery-replay';
+import {transition,layout,motionEase} from './layout';
 import {prepare,valueAt,Options} from './surface';
 const seq=new EncounterSequence();
 seq.update(2,false,false);assert.equal(seq.state,'dormant');assert.equal(seq.sample().shadow,0);
@@ -41,7 +41,7 @@ for(let index=0;index<route.records.length;index++){
   const progress=(index+local)/route.records.length*recoveryReplayFraction;
   const replay=replayRecovery(route.records,original,progress,config,opt,1);
   assert.equal(replay.phase,'rewind');assert.equal(replay.spread,0,'No spatial curling during reversal');assert.equal(replay.kind,record.kind);
-  const expected=local===0?layout(record.after,config):transition(record.before,record.after,1-local,config,record.kind,record.merge,opt);
+  const expected=local===0?layout(record.after,config):transition(record.before,record.after,1-local,config,record.kind,record.merge,opt,.8);
   try{samePose(replay.pose,expected);}catch(e){console.error({index,local,kind:record.kind,replayIndex:replay.index,replayLocal:replay.local});throw e;}
   for(const e of replay.pose.edges){const m=prepare(e,opt);for(const p of m.points)assert(Number.isFinite(valueAt(p.x,p.y,p.z,m,opt)));}
  }
@@ -71,3 +71,14 @@ const a=canopyDeparture(0,pivot).rotation.angleTo(canopyDeparture(.01,pivot).rot
 const b=canopyDeparture(.8,pivot).rotation.angleTo(canopyDeparture(.81,pivot).rotation);assert(a>b*10,'Spin decelerates during expansion');
 assert.equal(canopyDeparture(1,pivot).dissolve,1);
 console.log('Canopy departure: continuous start, bounded erosion, expanding cloud-only transform and decelerating rotation passed.');
+
+const cues=recoveryCueTimes(route.records.length,8);
+assert.equal(cues.length,7);assert.equal(cues[6],8*recoveryReplayFraction);
+for(let i=0;i<6;i++)assert.equal(replayRecovery(route.records,original,(cues[i]+1e-6)/8,config,opt,1).index,i);
+assert(motionEase(.01,.8)>.008,'Flow starts moving without a long eased pause');
+for(let i=0;i<=100;i++){
+ const u=i/100,d=canopyArrival(u,pivot);assert(d.matrix.elements.every(Number.isFinite));assert(d.scale>=.35&&d.scale<=1);assert(d.dissolve>=0&&d.dissolve<=1);
+ if(i)assert(motionEase(u,.8)>=motionEase(u-.01,.8));
+}
+assert(sample.clone().applyMatrix4(canopyArrival(1,pivot).matrix).distanceTo(sample)<1e-9,'Awakening ends at the steady canopy with no pose jump');
+console.log('Flow pacing, music cue boundaries and storm arrival endpoints passed.');

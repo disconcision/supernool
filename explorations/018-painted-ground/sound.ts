@@ -1,9 +1,11 @@
+import {recoveryCueTimes} from './recovery-replay';
 import {createEncounterAudio,AudioPhase} from './encounter-audio';
-export type SoundFrame={phase:AudioPhase;age:number;reduction:number;x:number;z:number;dt:number;paused:boolean};
+export type SoundFrame={phase:AudioPhase;age:number;reduction:number;x:number;z:number;dt:number;paused:boolean;recoveryCount?:number;recoveryDuration?:number};
 /** One audio-clock scheduler per page, unlocked by a real user gesture. */
 export function createSound(){
  let ctx:AudioContext|undefined,bank:ReturnType<typeof createEncounterAudio>|undefined,buffer:AudioBuffer|undefined,loading=false,mode='thematic',volume=.3,lastBucket=0,lastAt=0,lastAudibleMode='thematic';
  let frame:SoundFrame={phase:'dormant',age:0,reduction:0,x:0,z:0,dt:0,paused:false},lastPhase='',step=0,nextBeat=0,nextWind=0,lastPosition:{x:number;z:number}|undefined,travel=0,foot=0,lastThunder=-99;
+ let lastRecoveryCue=-1,lastRecoveryAge=-1;
  let lastMix='';let timer:ReturnType<typeof setInterval>|undefined,owner=true,channel:BroadcastChannel|undefined;
  const ownerId=Math.random().toString(36);try{channel=new BroadcastChannel('supernool-audio-owner');channel.onmessage=e=>{if(e.data!==ownerId){owner=false;if(ctx)void ctx.suspend();}};}catch{}
  const numeric=(id:string,f:number)=>{const el=document.getElementById(id) as HTMLInputElement|null;return el?+el.value:f;};
@@ -12,12 +14,22 @@ export function createSound(){
  const levels=[audible?volume:0,score?numeric('audioMusic',.65)*(frame.phase==='release'?.14:1):0,score?numeric('audioEnvironment',.55):0,numeric('audioEffects',.75)] as const;const key=levels.join(':');if(key!==lastMix){lastMix=key;bank.mix(...levels);}}
  function scheduler(){if(!ctx||!bank||ctx.state!=='running'||!owner||document.hidden)return;mix();const now=ctx.currentTime;
  if(mode!=='off'&&scoreOn()){
-  if(lastPhase!==frame.phase){lastPhase=frame.phase;step=0;nextBeat=now+.025;bank.cue(now+.01,frame.phase);}
+  if(lastPhase!==frame.phase){lastPhase=frame.phase;step=0;lastRecoveryCue=-1;lastRecoveryAge=-1;nextBeat=now+.025;bank.cue(now+.01,frame.phase);}
   if(nextWind<now-.2)nextWind=now;
   if(nextWind<now+.12){nextWind+=bank.environment(nextWind,frame.phase,Math.random());}
-  const dark=frame.phase==='active'||frame.phase==='awakening',calm=frame.phase==='recovery'||frame.phase==='healthy';
+  if(frame.phase==='recovery'){
+   const cues=recoveryCueTimes(frame.recoveryCount??0,frame.recoveryDuration??8);
+   if(frame.age<lastRecoveryAge-.02)lastRecoveryCue=-1;
+   // The visual sequence owns the rhythm, including scrub/pause and duration edits.
+   // Missed notes are skipped rather than bunched together after a slow frame.
+   cues.forEach((age,i)=>{if(i<=lastRecoveryCue)return;const delay=age-frame.age;
+    if(delay<-.06||frame.paused&&delay<=0){lastRecoveryCue=i;return;}
+    if(!frame.paused&&delay<=.09){bank!.melody(now+Math.max(.005,delay),i);lastRecoveryCue=i;}
+   });lastRecoveryAge=frame.age;
+  }
+ const dark=frame.phase==='active'||frame.phase==='awakening',calm=frame.phase==='healthy';
   if(nextBeat<now-.2)nextBeat=now+.015; // Drop missed beats after a stalled/hidden tab; never catch up in a burst.
-  if(dark||calm)while(nextBeat<now+.12){if(dark)bank.beat(nextBeat,step,frame.reduction);else bank.melody(nextBeat,step,frame.phase==='healthy');step++;nextBeat+=dark?.3125:frame.phase==='healthy'?2.4:.8;}
+  if(dark||calm)while(nextBeat<now+.12){if(dark)bank.beat(nextBeat,step,frame.reduction);else bank.melody(nextBeat,step,frame.phase==='healthy');step++;nextBeat+=dark?.3125:2.4;}
  }
  const status=document.getElementById('audioStatus');if(status){const i=bank.inspect();status.textContent=`${mode==='off'?'Muted':frame.phase+' · '+(scoreOn()?'procedural score':'effects only')} · ${i.voices} audio voices`;status.dataset.phase=frame.phase;status.dataset.context=ctx.state;status.dataset.events=JSON.stringify(i.events);status.dataset.peakVoices=String(i.peakVoices);}
  }

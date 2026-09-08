@@ -52,8 +52,15 @@ export function fill(field:Float32Array,size:number,edges:Edge[],o:Options){
  const bound=(x:number)=>Math.max(1,Math.min(size-2,Math.floor((x/6+1)*size/2))),world=(i:number)=>(i/size*2-1)*6;
  for(const m of members){const pad=(m.r+m.flare)*1.6+o.blend+.15,box=new T.Box3().setFromPoints(m.points).expandByScalar(pad);
  const xmin=bound(box.min.x),xmax=Math.min(size-2,bound(box.max.x)+1),ymin=bound(box.min.y-5),ymax=Math.min(size-2,bound(box.max.y-5)+1),zmin=bound(box.min.z),zmax=Math.min(size-2,bound(box.max.z)+1);
+ const rejectRadius2=Math.pow((m.r+m.flare+o.blend+24/size)*(1+Math.abs(o.facets)*.22)/Math.cos(Math.PI/7)+m.curve.length(),2);
  for(let z=zmin;z<=zmax;z++)for(let y=ymin;y<=ymax;y++)for(let x=xmin;x<=xmax;x++){
- const q=valueAt(world(x),world(y)+5,world(z),m,o),index=z*size*size+y*size+x,d=field[index],h=o.blend>0?Math.max(o.blend-Math.abs(d-q),0)/o.blend:0;
+ const px=world(x),py=world(y)+5,pz=world(z);
+ // Conservative capsule around the curved member. Its sinusoidal bow stays
+ // within |curve| of the chord. Preserve two outside samples for MC normals.
+ const ax=px-m.e.a.x,ay=py-m.e.a.y,az=pz-m.e.a.z;
+ const t=clamp((ax*m.d.x+ay*m.d.y+az*m.d.z)/(m.len*m.len));
+ if((ax-t*m.d.x)**2+(ay-t*m.d.y)**2+(az-t*m.d.z)**2>rejectRadius2)continue;
+ const q=valueAt(px,py,pz,m,o),index=z*size*size+y*size+x,d=field[index],h=o.blend>0?Math.max(o.blend-Math.abs(d-q),0)/o.blend:0;
  field[index]=Math.max(d,q)+h*h*o.blend*.25;
  }}
  return members;

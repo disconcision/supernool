@@ -1,3 +1,4 @@
+import {recoveryCueTimes} from './recovery-replay';
 import {createEncounterAudio,AudioPhase} from './encounter-audio';
 const button=document.getElementById('render') as HTMLButtonElement;
 button.onclick=async()=>{
@@ -12,7 +13,7 @@ button.onclick=async()=>{
  for(let i=0,t=4;t<18;t+=.3125,i++)bank.beat(t,i,Math.max(0,(t-7)/11));
  for(const t of [8,10,12,14,16]){bank.gesture(t,'start');bank.gesture(t+.2,'progress',.7);bank.gesture(t+.5,'catch');bank.gesture(t+.65,'commit');}
  bank.thunder(9.4,'small',.8,.4);bank.thunder(13.2,'medium',.9,-.4);bank.thunder(16.5,'large',1,.5);
- bank.cue(18,'release');bank.cue(20,'recovery');for(let i=0,t=20;t<31;t+=1.1,i++)bank.melody(t,i,t>28);
+ bank.cue(18,'release');bank.cue(20,'recovery');recoveryCueTimes(6,8).forEach((t,i)=>bank.melody(20+t,i));for(let i=0,t=28;t<34;t+=2.4,i++)bank.melody(t,i,true);
  }
  const rendered=await ctx.startRendering();let peak=0,squares=0,nonfinite=0;for(let c=0;c<2;c++)for(const sample of rendered.getChannelData(c)){if(!Number.isFinite(sample))nonfinite++;peak=Math.max(peak,Math.abs(sample));squares+=sample*sample;}
  if(nonfinite||peak>=1)throw new Error(`Audio validation failed: ${nonfinite} invalid samples, peak ${peak}. No WAV exported.`);

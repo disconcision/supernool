@@ -22,11 +22,11 @@ export class EncounterSequence{
  }
  sample(timing:SequenceTiming=sequenceTiming){
   const s=this.state,u=clamp(this.age/(timing[s as keyof SequenceTiming]||1));
-  const awake=s==='awakening'?smooth(u/.65):s==='active'?1:s==='release'?1-smooth(u/.85):0;
+  const awake=s==='awakening'?smooth(u/.85):s==='active'?1:s==='release'?1-smooth(u/.85):0;
   const growth=s==='healthy'?1:s==='recovery'?smooth(u):0;
   const release=s==='release'?u:0;
-  return {state:s,shadow:awake,cloudGrowth:s==='awakening'?.08+.92*smooth(u/.8):1,
-   burn:s==='healthy'?0:s==='recovery'?1-smooth(u/.65):1,
+  return {state:s,shadow:awake,cloudGrowth:1,arrival:s==='awakening'?u:undefined,
+   burn:s==='healthy'?0:s==='recovery'?1-smooth(u/.85):1,
    growth,leaves:s==='healthy'?1:s==='recovery'?smooth((u-.1)/.9):0,
    scorch:s==='healthy'?.18:s==='recovery'?1-.82*smooth(u):1,
    ring:s==='release'?1-smooth(u):s==='recovery'||s==='healthy'?0:1,

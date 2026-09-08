@@ -1,4 +1,4 @@
-import {canopyDeparture} from './canopy-departure';
+import {canopyDeparture,canopyArrival} from './canopy-departure';
 import * as T from 'three';
 import {Pose} from './layout';
 import {makeShadowCanopy,ShadowOptions} from '../019-inhabited-trees/shadow-canopy';
@@ -43,13 +43,14 @@ export function createInhabitation(renderer:T.WebGLRenderer,scene:T.Scene,camera
  const original={sun:sun.intensity,fill:ambient.intensity};let wasOn=false;
  let settings:ShadowOptions|undefined,lastSettings:ArcSettings=arcDefaults;
  const heard=new Map<string,number>();let previousCue=-1;
- function update(dt:number,p:Pose|undefined,seed:number,envelope:{shadow:number;cloudGrowth:number;flash:number;cueAge:number;force?:boolean;release?:number;depart?:boolean;departureTurns?:number;departureExpansion?:number}={shadow:1,cloudGrowth:1,flash:0,cueAge:-1}){
+ function update(dt:number,p:Pose|undefined,seed:number,envelope:{shadow:number;cloudGrowth:number;flash:number;cueAge:number;force?:boolean;release?:number;arrival?:number;arrivalTurns?:number;depart?:boolean;departureTurns?:number;departureExpansion?:number}={shadow:1,cloudGrowth:1,flash:0,cueAge:-1}){
  clock+=dt;const on=(envelope.force||v('spiritMode')==='on')&&!!p&&(envelope.shadow>.001||envelope.flash>.001);
  if(!on){pool.forEach(l=>{l.visible=false;l.intensity=0;l.castShadow=false;});bark.forEach(b=>b.barkPower.value=0);paint.setLocalLight([],new T.Color(),18,0);if(wasOn){sun.intensity=original.sun;ambient.intensity=original.fill;}wasOn=false;status.textContent='Clear-tree checkpoint';settings=undefined;return;}
  wasOn=true;if(!effect)effect=makeShadowCanopy(renderer);
  if(p!==lastPose){lastPose=p;worldPose={...p,points:new Map([...p!.points].map(([id,p])=>[id,transform(p)])),edges:p!.edges.map(e=>({...e,a:transform(e.a),b:transform(e.b),r:e.r*scale}))};effect.setPose(worldPose);}
  treeMesh.layers.enable(1);
  const departure=envelope.depart&&envelope.release!==undefined&&envelope.release>0?canopyDeparture(envelope.release,new T.Box3().setFromPoints([...worldPose!.points.values()].filter(p=>p.y>transform(new T.Vector3()).y+scale)).getCenter(new T.Vector3()),envelope.departureTurns,envelope.departureExpansion):undefined;
+ const arrival=envelope.arrival!==undefined?canopyArrival(envelope.arrival,new T.Box3().setFromPoints([...worldPose!.points.values()]).getCenter(new T.Vector3()),envelope.arrivalTurns):undefined;
  const colour=v('spiritPalette')==='blue'?'#507fcf':v('spiritPalette')==='amber'?'#c79548':'#9260d9',tint=new T.Color(colour),anger=n('spiritAnger');
  if(clock>previewUntil)preview=undefined;
  lastSettings={...arcDefaults,timingSeed:seed};for(const [id]of specs)(lastSettings as any)[id]=n('spirit_'+id);lastSettings.cueAge=envelope.cueAge;lastSettings.cuePower=1.2;
@@ -69,7 +70,7 @@ export function createInhabitation(renderer:T.WebGLRenderer,scene:T.Scene,camera
  sun.intensity=n('spiritSun');ambient.intensity=n('spiritFill');paint.setLocalLight(pool,tint,n('spiritReach'),n('spiritGround'));
  bark.forEach(b=>{b.barkClock.value=clock;b.barkPower.value=n('spiritBark')*envelope.shadow+envelope.flash*.7;b.barkTint.value.copy(tint);b.barkFlow.value=n('spiritFlow');});
  const dispersal=departure?1/(1+.7*(departure.scale-1)):1;
- settings={departure,form:v('spiritForm'),opacity:n('spiritOpacity')*envelope.shadow*dispersal,fringe:n('spiritFringe')*envelope.shadow*dispersal,texture:n('spiritTexture'),anger,size:n('spiritSize')*scale*envelope.cloudGrowth,colour,arcs:true,time:clock,enabled:true,drift:n('spiritDrift'),strike:candidates[0]??new T.Vector3(),strikePoints:candidates,visibility:v('spiritVisibility'),roil:n('spiritRoil'),seed,density:n('spiritDensity'),fray:n('spiritFray'),lightning:lastSettings,arcPreview:preview,arcGlow:n('spiritHalo'),cloudFlash:flash*n('spiritCloudFlash')};
+ settings={departure:departure??arrival,form:v('spiritForm'),opacity:n('spiritOpacity')*envelope.shadow*dispersal,fringe:n('spiritFringe')*envelope.shadow*dispersal,texture:n('spiritTexture'),anger,size:n('spiritSize')*scale*envelope.cloudGrowth,colour,arcs:true,time:clock,enabled:true,drift:n('spiritDrift'),strike:candidates[0]??new T.Vector3(),strikePoints:candidates,visibility:v('spiritVisibility'),roil:n('spiritRoil')+(envelope.arrival!==undefined?2*Math.sin(Math.PI*envelope.arrival):0),seed,density:n('spiritDensity'),fray:n('spiritFray'),lightning:lastSettings,arcPreview:preview,arcGlow:n('spiritHalo'),cloudFlash:flash*n('spiritCloudFlash')};
  status.textContent=`Same live tree · ${worldPose!.nodes.size} sigils · ${events.length?'discharge':'quiet'} · ${pool.filter(l=>l.intensity>0).length} local lights`;
  }
  return {mount(parent:HTMLElement){parent.append(panel);},update,get active(){return !!settings;},render(drawBase?:()=>void){if(settings)effect!.render(scene,camera,settings,drawBase);},inspect(){return {active:!!settings,poseIds:worldPose?[...worldPose.nodes.keys()]:[],lights:pool.map(l=>({power:l.intensity,position:l.position.toArray(),shadow:l.castShadow})),shadow:effect?.inspect()};}};
