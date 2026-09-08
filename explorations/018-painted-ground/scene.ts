@@ -1,6 +1,7 @@
 import {setupSettings} from './settings';
 import {createStartup} from './startup';
 import {createInhabitation} from './inhabited';
+import {createBurntBark} from './burnt-bark';
 import type {IdlePreview} from './lehi';
 import {addTravelHandControl} from './hand-travel';
 import {setupControlReadouts} from './control-readouts';
@@ -39,6 +40,7 @@ const materials={carved:treeShade.carved(wood()),cel:treeShade.carved(cel()),smo
 const treeMesh=new T.Mesh<T.BufferGeometry,T.Material>(new T.BufferGeometry(),materials.carved);treeMesh.position.y=5;treeMesh.scale.setScalar(6);treeMesh.castShadow=true;treeMesh.receiveShadow=true;hero.add(treeMesh);
 const runes=new T.Group();hero.add(runes);
 const inhabitation=createInhabitation(renderer,scene,camera,treeMesh,Object.values(materials),treeWorld,treeScale,clearing.touchPoints,backdrop,sun);
+const burntBark=createBurntBark(Object.values(materials));
 let tree=initial(),selected=tree.id,steps=0,history:{tree:Term;steps:number}[]=[],future:{tree:Term;steps:number}[]=[],near=false,loaded=false,epoch=0,shapeSeed=2,spread=1,navTarget:T.Vector3|undefined,suggested:{id:string;key:string}|undefined;
 let exitAfterSettle=false;
 let animation:{before:Term;after:Term;start:number;kind:string;merge:Record<string,string>;from:number;to:number;duration:number}|undefined,poseNow:Pose|undefined,lastKey='',idCounter=0;
@@ -289,7 +291,7 @@ function tick(now:number){requestAnimationFrame(tick);const frameMs=now-last;con
  const target=near?0:+value('spread'),next=spread+(target-spread)*(1-Math.exp(-dt*4));spread=Math.abs(next-target)<.008?target:Math.round(next*1000)/1000;
  if(near!==nearOld){nearOld=near;if(!near&&grip)releaseGrip(false);ui();}runes.visible=near;(ring.material as T.MeshBasicMaterial).color.set(solved(tree)?'#f1ce79':near?'#e6ddb7':'#bac8a8');
  if(!animation&&!grip&&spread===0&&near&&document.querySelector<HTMLButtonElement>('#actions button')?.disabled)ui(false);
- requestPose(now);controls.update();frameTree(dt);updateHands(now,dt,moving);drawGuides();inhabitation.update(dt,poseNow,shapeSeed);backdrop.decals.update(obstacles);mist.render(scene,camera,dt,{enabled:value('mistMode')==='on'&&value('backdrop')!=='plain'&&!new URLSearchParams(location.search).has('matteCapture'),strength:+value('mistDensity'),radius:+value('mistRadius'),texture:+value('mistTexture'),speed:+value('mistSpeed')},inhabitation.active?drawBase=>inhabitation.render(drawBase):undefined);stats.update(now,frameMs);
+ requestPose(now);controls.update();frameTree(dt);updateHands(now,dt,moving);drawGuides();inhabitation.update(dt,poseNow,shapeSeed);backdrop.decals.update(obstacles);burntBark.update(poseNow,treeScale);mist.render(scene,camera,dt,{enabled:value('mistMode')==='on'&&value('backdrop')!=='plain'&&!new URLSearchParams(location.search).has('matteCapture'),strength:+value('mistDensity'),radius:+value('mistRadius'),texture:+value('mistTexture'),speed:+value('mistSpeed')},inhabitation.active?drawBase=>inhabitation.render(drawBase):undefined);stats.update(now,frameMs);
  if(startup.pending){
   // Both the original and current rock controls enable layout after loading;
   // failed optional art retains the procedural scenery beneath it.
@@ -336,6 +338,7 @@ if(inhabitedStudy){
 }
 inhabitation.mount($('settings'));
 backdrop.decals.mount($('settings'));
+burntBark.mount($('settings'));
 setupControlReadouts();
 let preferencesReady=false;
 setupSettings(inhabitedStudy?'clearing-019':'clearing-018',$('settings'),'.dock input,.dock select',true).finally(()=>{preferencesReady=true;});
