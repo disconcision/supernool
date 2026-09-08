@@ -1,8 +1,10 @@
 import * as T from 'three';
+import {createGroundDecals,groundDecalGLSL} from './ground-decals';
 /** Low relief beyond the playable clearing. Paint is projected onto this actual
  * geometry from a fixed authoring camera, so it moves with the ground. */
 export function addBackdrop(scene:T.Scene,world:HTMLElement,renderer:T.WebGLRenderer){
  world.style.backgroundColor='#9ba68f';renderer.setClearColor('#9ba68f',1);
+ const decals=createGroundDecals();
  const localLight={positions:{value:Array.from({length:4},()=>new T.Vector4())},tint:{value:new T.Color()},reach:{value:16},gain:{value:1}};
  const group=new T.Group();scene.add(group);
  const geometry=new T.PlaneGeometry(220,220,128,128);geometry.rotateX(-Math.PI/2);
@@ -33,9 +35,10 @@ export function addBackdrop(scene:T.Scene,world:HTMLElement,renderer:T.WebGLRend
  const capture=new URLSearchParams(location.search).has('matteCapture');let ready=capture;
  if(!capture){const loader=new T.TextureLoader();Promise.all([new URL('./assets/clearing-dirt-v6.png',import.meta.url).href,new URL('./assets/clearing-dirt-v5.png',import.meta.url).href].map(url=>loader.loadAsync(url))).then(([map,margin])=>{
   for(const texture of [map,margin]){texture.colorSpace=T.SRGBColorSpace;texture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());}
-  painted=new T.ShaderMaterial({uniforms:{paint:{value:map},marginPaint:{value:margin},localPositions:localLight.positions,localTint:localLight.tint,localReach:localLight.reach,localGain:localLight.gain},vertexShader:`varying vec2 vUv; varying vec3 vColor; varying vec3 vWorld;varying vec3 vGroundNormal; attribute vec3 color;
+  painted=new T.ShaderMaterial({uniforms:{...decals.uniforms,paint:{value:map},marginPaint:{value:margin},localPositions:localLight.positions,localTint:localLight.tint,localReach:localLight.reach,localGain:localLight.gain},vertexShader:`varying vec2 vUv; varying vec3 vColor; varying vec3 vWorld;varying vec3 vGroundNormal; attribute vec3 color;
    void main(){vUv=uv;vColor=color;vWorld=(modelMatrix*vec4(position,1.)).xyz;vGroundNormal=mat3(modelMatrix)*normal;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
-   fragmentShader:`uniform sampler2D paint;uniform sampler2D marginPaint;varying vec2 vUv;varying vec3 vColor;varying vec3 vWorld;varying vec3 vGroundNormal;uniform vec4 localPositions[4];uniform vec3 localTint;uniform float localReach,localGain;
+   fragmentShader:`${groundDecalGLSL}
+uniform sampler2D paint;uniform sampler2D marginPaint;varying vec2 vUv;varying vec3 vColor;varying vec3 vWorld;varying vec3 vGroundNormal;uniform vec4 localPositions[4];uniform vec3 localTint;uniform float localReach,localGain;
    void main(){
     vec2 paintUv=vUv;
     float border=min(min(paintUv.x,1.-paintUv.x),min(paintUv.y,1.-paintUv.y));float a=smoothstep(0.,.025,border);
@@ -46,11 +49,11 @@ export function addBackdrop(scene:T.Scene,world:HTMLElement,renderer:T.WebGLRend
     float luma=dot(outer,vec3(.2126,.7152,.0722));
     outer=mix(vec3(luma),outer,.55)*vec3(1.5,1.57,1.08);
     outer=mix(vColor,outer,smoothstep(0.,.025,outerBorder));
-    vec3 c=mix(outer,texture2D(paint,paintUv).rgb,a);for(int i=0;i<4;i++){vec3 delta=localPositions[i].xyz-vWorld;float d=length(delta),falloff=pow(max(0.,1.-d/localReach),2.)/(1.+d*d*.2);float facing=max(.1,dot(normalize(vGroundNormal),normalize(delta)));float energy=1.-exp(-localPositions[i].w*falloff*facing*.12*localGain);float brightness=max(.18,dot(c,vec3(.2126,.7152,.0722)));c+=localTint*brightness*energy*3.;}
+    vec3 c=groundDecals(mix(outer,texture2D(paint,paintUv).rgb,a),vWorld);for(int i=0;i<4;i++){vec3 delta=localPositions[i].xyz-vWorld;float d=length(delta),falloff=pow(max(0.,1.-d/localReach),2.)/(1.+d*d*.2);float facing=max(.1,dot(normalize(vGroundNormal),normalize(delta)));float energy=1.-exp(-localPositions[i].w*falloff*facing*.12*localGain);float brightness=max(.18,dot(c,vec3(.2126,.7152,.0722)))*(1.-.88*groundChar);c+=localTint*brightness*energy*3.;}
     gl_FragColor=vec4(c,1.);
     #include <colorspace_fragment>
    }`,toneMapped:false});
   if(mode!=='block')terrain.material=painted;status.textContent='Original-scale dirt painting · separate outer margin';
  }).catch(()=>{status.textContent='Terrain blockout · painting unavailable';}).finally(()=>{ready=true;});}
- return {get ready(){return ready;},setLocalLight(lights:{position:T.Vector3;intensity:number}[],tint:T.Color,reach:number,gain:number){localLight.positions.value.forEach((p,i)=>{const l=lights[i];if(l)p.set(l.position.x,l.position.y,l.position.z,l.intensity);else p.w=0;});localLight.tint.value.copy(tint);localLight.reach.value=reach;localLight.gain.value=gain;},setGroundShadows(on:boolean){shadows=on;terrain.receiveShadow=on;contact.visible=on&&mode==='painted';},set(next:string){mode=next;group.visible=next!=='plain';terrain.material=next==='block'||!painted?block:painted;contact.visible=shadows&&next==='painted';}};
+ return {decals,get ready(){return ready;},setLocalLight(lights:{position:T.Vector3;intensity:number}[],tint:T.Color,reach:number,gain:number){localLight.positions.value.forEach((p,i)=>{const l=lights[i];if(l)p.set(l.position.x,l.position.y,l.position.z,l.intensity);else p.w=0;});localLight.tint.value.copy(tint);localLight.reach.value=reach;localLight.gain.value=gain;},setGroundShadows(on:boolean){shadows=on;terrain.receiveShadow=on;contact.visible=on&&mode==='painted';},set(next:string){mode=next;group.visible=next!=='plain';terrain.material=next==='block'||!painted?block:painted;contact.visible=shadows&&next==='painted';}};
 }

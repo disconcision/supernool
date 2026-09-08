@@ -8,7 +8,8 @@ const valueOf=(el:Control)=>el instanceof HTMLInputElement&&el.type==='checkbox'
 export async function setupSettings(scope:string,parent:HTMLElement,selector:string,waitForRocks=false){
  const controls=new Map<string,Control>();
  for(const el of document.querySelectorAll<Control>(selector)){
-  if(el instanceof HTMLInputElement&&['hidden','file','button','submit'].includes(el.type))continue;
+  if(el.dataset.transient==='true')continue;
+  if(el instanceof HTMLInputElement&&['hidden','file','button','submit'].includes(el.type)&&el.dataset.presetJson!=='true')continue;
   const id=el.id||(el.dataset.rule?'rule:'+el.dataset.rule:'');if(id)controls.set(id,el);
  }
  const baseline:Values=Object.fromEntries([...controls].map(([id,el])=>[id,valueOf(el)]));
@@ -21,6 +22,7 @@ export async function setupSettings(scope:string,parent:HTMLElement,selector:str
   if(el.type==='checkbox')return typeof value==='boolean';
   if(typeof value!=='string')return false;
   if(['range','number'].includes(el.type))return value.trim()!==''&&Number.isFinite(+value)&&(!el.min||+value>=+el.min)&&(!el.max||+value<=+el.max);
+  if(el.dataset.presetJson==='true'){if(value.length>32000)return false;try{const data=JSON.parse(value);return data!==null&&typeof data==='object'&&!Array.isArray(data);}catch{return false;}}
   return value.length<=200;
  }
  function apply(values:Values){
@@ -49,8 +51,10 @@ export async function setupSettings(scope:string,parent:HTMLElement,selector:str
  const group=document.createElement('select');group.id='presetGroup';group.setAttribute('aria-label','Settings set');group.add(new Option('All controls','all'));
  const shadowIds=[...controls.keys()].filter(id=>id.startsWith('spirit'));
  if(shadowIds.length){group.add(new Option('Shadow & lighting only','shadow'));group.value='shadow';}
+ const groundIds=[...controls.keys()].filter(id=>document.getElementById(id)?.closest('#groundDecalStudy'));
+ if(groundIds.length)group.add(new Option('Ground decals only','ground'));
  panel.append(group);
- const subset=(values:Values)=>Object.fromEntries(Object.entries(values).filter(([id])=>group.value!=='shadow'||shadowIds.includes(id)));
+ const subset=(values:Values)=>Object.fromEntries(Object.entries(values).filter(([id])=>group.value==='shadow'?shadowIds.includes(id):group.value==='ground'?groundIds.includes(id):true));
  const status=document.createElement('p');status.id='settingsPresetStatus';status.setAttribute('role','status');
  const actions=document.createElement('div');actions.style.cssText='display:flex;flex-wrap:wrap;gap:6px;margin:10px 0';panel.append(actions);
  function button(label:string,fn:()=>void|Promise<void>){const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=async()=>{b.disabled=true;try{await fn();}catch(e){status.textContent=(e as Error).message;}finally{b.disabled=false;}};actions.append(b);return b;}

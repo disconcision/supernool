@@ -5,7 +5,7 @@ export const defaultsPath = root => resolve(root, 'public/settings/app-defaults.
 export function validateValues(values) {
  if(!values || typeof values !== 'object' || Array.isArray(values) || Object.keys(values).length>300) throw Error('Invalid controls');
  for(const [id,value] of Object.entries(values)) {
-  if(!/^[A-Za-z][\w:-]{0,79}$/.test(id) || !['string','boolean'].includes(typeof value) || (typeof value==='string'&&value.length>200)) throw Error('Invalid control value');
+  if(!/^[A-Za-z][\w:-]{0,79}$/.test(id) || !['string','boolean'].includes(typeof value) || (typeof value==='string'&&value.length>(id==='groundFootPlacements'?32000:200))) throw Error('Invalid control value');
  }
  return values;
 }

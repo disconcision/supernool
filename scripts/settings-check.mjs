@@ -21,5 +21,10 @@ try{
  assert.deepEqual(data.scopes['clearing-019'].values,{spiritOpacity:'0.55',spiritPalette:'blue'});
  assert.equal(data.scopes['clearing-019'].revision,2);
  assert.equal((await save({scope:'shadow-019',revision:0,values:{opacity:'0.3'}})).status,200);
+ const placements=JSON.stringify(Object.fromEntries(Array.from({length:20},(_,i)=>['full:'+i,{x:1,z:0,scale:1,angle:15}])));
+ assert.ok(placements.length>200);
+ assert.equal((await save({scope:'clearing-019',revision:2,values:{groundFootPlacements:placements}})).status,200);
+ assert.equal((await save({scope:'clearing-019',revision:3,values:{groundFootPlacements:'x'.repeat(32001)}})).status,400);
+ assert.equal((await save({scope:'clearing-019',revision:3,values:{ordinary:'x'.repeat(201)}})).status,400);
  console.log('Settings: project writes, partial merge, revision conflicts, scope isolation, origin checks and malformed payload rejection passed.');
 }finally{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));await rm(root,{recursive:true});}
