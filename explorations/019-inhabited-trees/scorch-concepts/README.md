@@ -1,6 +1,6 @@
 # Lightning strike scar — concept pass
 
-Latest: [Round 3 — uneven reach and concentrated sigils](round-03.md). [Round 2](round-02.md) established straight explosive marks but was too regular. The curved branching marks below are superseded.
+Latest: [Round 4 — continuous scorch trajectories](round-04.md). Sigils are shelved at the user's request. [Round 3](round-03.md) had disconnected outer marks; [Round 2](round-02.md) was too regular. The curved branching marks below are superseded.
 
 Built-in image generation; scene-guided ideation, not approved or integrated assets.
 
