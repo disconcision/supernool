@@ -1,7 +1,7 @@
 const {chromium}=require('playwright');const assert=require('node:assert/strict');const fs=require('node:fs/promises');const path=require('node:path');
 (async()=>{const sceneId='check-'+Date.now(),folder=path.resolve('scenes',sceneId),b=await chromium.launch({channel:'chrome',headless:true});try{
  const page=await b.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&m.text().includes('THREE.WebGLProgram'))errors.push(m.text());});
- const url='http://127.0.0.1:3101/explorations/018-painted-ground/?mode=body&rockLayout=enclosed&editor=1&scene='+sceneId;
+ const url='http://127.0.0.1:3102/explorations/018-painted-ground/?mode=body&rockLayout=enclosed&editor=1&scene='+sceneId;
  await page.goto(url);await page.waitForFunction(()=>document.querySelector('#sceneStatus')?.textContent.includes('Built-in scene'));
  await page.locator('#editScene').click();await page.locator('#editorSelection').selectOption('rock-16');
  const start=await page.locator('#editorX').inputValue();
@@ -38,12 +38,12 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
  await page.locator('#sceneVersions').selectOption(first.versionId);await page.locator('#loadScene').click();await page.waitForFunction(()=>document.querySelector('#sceneStatus').textContent.includes('Loaded Saved layout and settings'));await page.locator('#editorSelection').selectOption('fungus-0');assert.equal(await page.locator('#editorY').inputValue(),'0.25');await page.locator('#editorSelection').selectOption('stone-0');assert.equal(await page.locator('#editorScale').inputValue(),'0.90');await page.locator('#editorSelection').selectOption('rock-16');assert.equal(await page.locator('#editorX').inputValue(),'-11.00');
  await page.screenshot({path:'.cache/editor/saved-version.png'});
  // Malformed snapshots and cross-origin writes must not reach the project files.
- const invalid=await page.request.post('http://127.0.0.1:3101/__scene-editor/'+sceneId,{data:{...first,rocks:[{...first.rocks[0],scale:[0,1,1]}]}});assert.equal(invalid.status(),400);
- const foreign=await page.request.post('http://127.0.0.1:3101/__scene-editor/'+sceneId,{headers:{Origin:'https://unrelated.example'},data:first});assert.equal(foreign.status(),403);
+ const invalid=await page.request.post('http://127.0.0.1:3102/__scene-editor/'+sceneId,{data:{...first,rocks:[{...first.rocks[0],scale:[0,1,1]}]}});assert.equal(invalid.status(),400);
+ const foreign=await page.request.post('http://127.0.0.1:3102/__scene-editor/'+sceneId,{headers:{Origin:'https://unrelated.example'},data:first});assert.equal(foreign.status(),403);
 
  // Formation-only saves from the previous editor still load; new props use authored defaults.
- const legacyResponse=await page.request.post('http://127.0.0.1:3101/__scene-editor/'+sceneId,{data:{...first,title:'Legacy formation-only scene',rocks:first.rocks.filter(r=>r.id.startsWith('rock-'))}});assert.equal(legacyResponse.status(),201);const legacy=await legacyResponse.json();
- await page.request.put('http://127.0.0.1:3101/__scene-editor/'+sceneId+'/default',{data:{versionId:legacy.versionId}});
+ const legacyResponse=await page.request.post('http://127.0.0.1:3102/__scene-editor/'+sceneId,{data:{...first,title:'Legacy formation-only scene',rocks:first.rocks.filter(r=>r.id.startsWith('rock-'))}});assert.equal(legacyResponse.status(),201);const legacy=await legacyResponse.json();
+ await page.request.put('http://127.0.0.1:3102/__scene-editor/'+sceneId+'/default',{data:{versionId:legacy.versionId}});
  await page.reload();await page.waitForFunction(()=>document.querySelector('#sceneStatus').textContent.includes('Loaded Legacy formation-only scene'));
  await page.locator('#editScene').click();await page.locator('#editorSelection').selectOption('fungus-0');assert.equal(await page.locator('#editorY').inputValue(),'0.00');
  await page.locator('#editorSelection').selectOption('rock-16');assert.equal(await page.locator('#editorX').inputValue(),'-11.00');

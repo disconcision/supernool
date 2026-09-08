@@ -1,7 +1,7 @@
 const {chromium}=require('playwright');const assert=require('node:assert/strict');const fs=require('node:fs/promises');const path=require('node:path');
 (async()=>{const sceneId='delete-check-'+Date.now(),folder=path.resolve('scenes',sceneId),browser=await chromium.launch({channel:'chrome',headless:true});try{
  const p=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];p.on('pageerror',e=>errors.push(e.message));p.on('dialog',d=>d.accept());
- await p.goto('http://127.0.0.1:3101/explorations/018-painted-ground/?mode=body&rockLayout=enclosed&editor=1&scene='+sceneId);await p.waitForFunction(()=>document.querySelector('#sceneStatus')?.textContent.includes('Built-in scene'));await p.locator('#editScene').click();
+ await p.goto('http://127.0.0.1:3102/explorations/018-painted-ground/?mode=body&rockLayout=enclosed&editor=1&scene='+sceneId);await p.waitForFunction(()=>document.querySelector('#sceneStatus')?.textContent.includes('Built-in scene'));await p.locator('#editScene').click();
  const state=()=>p.evaluate(async()=>{const {rockAuthoring}=await import('/explorations/018-painted-ground/rock-authoring.ts');return {saved:rockAuthoring.capture(),visible:rockAuthoring.list().map(o=>o.userData.formation.id)};});
  const save=async title=>{await p.locator('#sceneTitle').fill(title);await p.locator('#saveScene').click();await p.waitForFunction(()=>document.querySelector('#sceneStatus').textContent.startsWith('Saved “'));return p.locator('#sceneVersions').inputValue();};
  const originalVersion=await save('Before deletion');await p.locator('#editorSelection').selectOption('rock-16');await p.locator('#copyScenery').click();

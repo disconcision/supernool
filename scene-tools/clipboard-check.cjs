@@ -3,7 +3,7 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
  const sceneId='copy-check-'+Date.now(),folder=path.resolve('scenes',sceneId),browser=await chromium.launch({channel:'chrome',headless:true});
  try{
   const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
-  const url='http://127.0.0.1:3101/explorations/018-painted-ground/?mode=body&rockLayout=enclosed&editor=1&scene='+sceneId;
+  const url='http://127.0.0.1:3102/explorations/018-painted-ground/?mode=body&rockLayout=enclosed&editor=1&scene='+sceneId;
   await page.goto(url);await page.waitForFunction(()=>document.querySelector('#sceneStatus')?.textContent.includes('Built-in scene'));await page.locator('#editScene').click();
   const count=()=>page.locator('#editorSelection option').count();const selected=()=>page.locator('#editorSelection').inputValue();
   const capture=()=>page.evaluate(async()=>{const {rockAuthoring}=await import('/explorations/018-painted-ground/rock-authoring.ts');return rockAuthoring.capture();});

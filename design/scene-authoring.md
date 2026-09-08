@@ -2,7 +2,7 @@
 
 ## Working arrangement
 
-Develop this feature on `codex/scene-editor` in the separate `supernool-scene-editor` worktree, served with `npm run dev:editor` on port 3101. The main `supernool` checkout and its port 3100 server remain available to the other task. A branch name alone does not isolate a shared checkout; the separate directory does. Bring back small verified changes, preserving the other task's work. Saved versions use unique filenames, so independently created versions can merge; competing changes to a scene's default pointer need an explicit choice.
+Develop this feature on `codex/scene-editor` in the separate `supernool-scene-editor` worktree, served with `npm run dev:editor` on port 3102. The main `supernool` checkout and its port 3100 server remain available to the other task. A branch name alone does not isolate a shared checkout; the separate directory does. Bring back small verified changes, preserving the other task's work. Saved versions use unique filenames, so independently created versions can merge; competing changes to a scene's default pointer need an explicit choice.
 
 The branch starts with a checkpoint of the art task's previously uncommitted rock work. It does not include the other task's untracked study 019. The main checkout's original files were left in place.
 
@@ -26,7 +26,7 @@ For user-facing creation, retain the Play/Edit distinction, explicit save/defaul
 
 ## Validation
 
-`npm run test:editor` launches Chrome against port 3101. It exercises real combined X/height/yaw/size drags, loose-stone and mushroom picking, prop persistence, legacy formation-only saves, clear/misty outline rendering, numeric edits, undo/redo, input isolation, disk saves, configuration plus layout reload, retained versions, explicit default promotion, malformed input and cross-origin rejection. Test scene directories are uniquely named and removed afterwards. Core checks, TypeScript, production build, and the existing six-step mouse/body playthrough are also run. Review screenshots are in `.cache/editor/`.
+`npm run test:editor` launches Chrome against port 3102. It exercises real combined X/height/yaw/size drags, loose-stone and mushroom picking, prop persistence, legacy formation-only saves, clear/misty outline rendering, numeric edits, undo/redo, input isolation, disk saves, configuration plus layout reload, retained versions, explicit default promotion, malformed input and cross-origin rejection. Test scene directories are uniquely named and removed afterwards. Core checks, TypeScript, production build, and the existing six-step mouse/body playthrough are also run. Review screenshots are in `.cache/editor/`.
 
 ## Copy, paste and duplicate
 
@@ -41,3 +41,5 @@ Copies are ordinary editable scene objects with stable `copy-<UUID>` IDs and a `
 Delete sits beside Copy/Paste/Duplicate and acts on the selection in Edit scenery. Delete or Backspace does the same, with normal text-field behavior retained. A deletion clears the selection; Undo restores and selects the removed object, and Redo removes it again. Formation deletion removes its attached growth and collision footprint; prop hand-contact targets are refreshed. The scenery clipboard remains usable after deleting its source.
 
 Original objects are retained internally as asset templates and represented with `deleted: true` records in schema 1. This distinguishes intentional removal from an older save that did not include props, and retains deletions across layout/shading changes. Inactive-layout deletions also survive saving. Copied instances are removed from the snapshot entirely and their owned decals are disposed. Loading earlier versions clears deletion flags and restores their layout. Shared source geometry and materials remain available for copying. The document allows up to 200 total records with at most 100 live objects; deleted records must be original asset IDs. `npm run test:delete` covers original/copy deletion, both undo directions, growth cleanup, clipboard retention, text/play isolation, layout/shader changes, saved reload and older-version restoration.
+
+Port correction, 8 September: 3101 now serves the main gameplay frozen preview. The editor remains an unmerged feature worktree and uses 3102. Do not replace either server with the other; the identical scene route does not imply identical features.
