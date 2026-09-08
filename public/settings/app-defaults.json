@@ -133,7 +133,7 @@
         "mistRadius": "10.5",
         "mistTexture": "1",
         "mistSpeed": "2",
-        "soundMode": "chords",
+        "soundMode": "thematic",
         "volume": "0.3",
         "groundScorch": "on",
         "groundScorchOpacity": "0.87",

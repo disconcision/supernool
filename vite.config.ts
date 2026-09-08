@@ -7,6 +7,6 @@ export default defineConfig({
  assetsInclude:['**/*.m4a','**/*.wav','**/*.glb'],
  build:{target:'esnext',rollupOptions:{input:Object.fromEntries([
  'index.html','explorations/index.html','explorations/019-inhabited-trees/index.html','explorations/019-inhabited-trees/canopy.html','explorations/019-inhabited-trees/canopy-growth.html','explorations/019-inhabited-trees/shadow.html',
- ...['index.html','symbols.html','notes.html','avatar-review.html'].map(p=>'explorations/018-painted-ground/'+p)
+ ...['index.html','symbols.html','notes.html','avatar-review.html','audio-review.html'].map(p=>'explorations/018-painted-ground/'+p)
  ].map(p=>[p,resolve(__dirname,p)]))}}
 });

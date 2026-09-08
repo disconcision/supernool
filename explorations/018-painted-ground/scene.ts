@@ -31,7 +31,7 @@ const preClearing=new Set(scene.children);const clearing=makeClearing(scene),obs
 function mesh(geo:T.BufferGeometry,mat:T.Material,pos:T.Vector3){const m=new T.Mesh(geo,mat);m.position.copy(pos);scene.add(m);return m;}
 const mist=createMist(renderer);
 const stats=createPerformanceStats(renderer);const ribbon=createRibbon(scene),stance=new StanceAdjustment();let stanceMoving=false;
-const sound=createSound();addEventListener('pointerdown',()=>sound.unlock(),{once:true});addEventListener('keydown',()=>sound.unlock(),{once:true});
+const sound=createSound();addEventListener('pointerdown',e=>{if(e.isTrusted)sound.unlock();});addEventListener('keydown',e=>{if(e.isTrusted)sound.unlock();});
 const treeScale=1.35*1.15*.92,treeOrigin=new T.Vector3(-1,0,-3),hero=new T.Group();hero.position.copy(treeOrigin);hero.scale.setScalar(treeScale);scene.add(hero);
 const treeWorld=(p:T.Vector3)=>p.clone().multiplyScalar(treeScale).add(treeOrigin);
 const ring=mesh(new T.RingGeometry(5.5,5.58,80),new T.MeshBasicMaterial({color:'#e6ddb7',side:T.DoubleSide,transparent:true,opacity:.45}),treeOrigin.clone().setY(.025));ring.rotation.x=-Math.PI/2;
@@ -43,7 +43,7 @@ const wood=()=>new T.MeshStandardMaterial({color:'#bba078',roughness:.9});const 
 const materials={carved:treeShade.carved(wood()),cel:treeShade.carved(cel()),smooth:wood(),smoothCel:cel()};
 const treeMesh=new T.Mesh<T.BufferGeometry,T.Material>(new T.BufferGeometry(),materials.carved);treeMesh.position.y=5;treeMesh.scale.setScalar(6);treeMesh.castShadow=true;treeMesh.receiveShadow=true;hero.add(treeMesh);
 const runes=new T.Group();hero.add(runes);
-const inhabitation=createInhabitation(renderer,scene,camera,treeMesh,Object.values(materials),treeWorld,treeScale,clearing.touchPoints,backdrop,sun);
+const inhabitation=createInhabitation(renderer,scene,camera,treeMesh,Object.values(materials),treeWorld,treeScale,clearing.touchPoints,backdrop,sun,(kind,power,pan)=>sound.thunder(kind,power,pan));
 const burntBark=createBurntBark(Object.values(materials));
 const encounter=createEncounterPresentation(scene,treeOrigin,treeScale);
 const mayRewrite=()=>!encounter.enabled||encounter.sequence.state==='active';
@@ -331,6 +331,7 @@ function tick(now:number){requestAnimationFrame(tick);const frameMs=now-last;con
  requestPose(now);controls.update();frameTree(dt);updateHands(now,dt,moving);drawGuides();
  encounter.update(dt,poseNow);
  const envelope=encounter.enabled?{...channels,...encounter.departure,flash:channels.flash*encounter.flashStrength,force:true}:undefined;
+ sound.update({phase:encounter.enabled?channels.state:'dormant',age:encounter.sequence.age,reduction:Math.max(0,Math.min(1,(count(hostTree)-count(tree))/Math.max(1,count(hostTree)-5))),x:avatar.position.x,z:avatar.position.z,dt,paused:encounter.enabled&&encounter.sequence.paused});
  inhabitation.update(dt,poseNow,shapeSeed,envelope);backdrop.decals.update(obstacles,encounter.enabled?channels:undefined);burntBark.update(poseNow,treeScale,encounter.enabled?channels.burn:1);
  $('world').dataset.encounterState=encounter.enabled?channels.state:'study';$('world').dataset.encounterProgress=String(channels.growth);
  mist.render(scene,camera,dt,{enabled:value('mistMode')==='on'&&value('backdrop')!=='plain'&&!new URLSearchParams(location.search).has('matteCapture'),strength:+value('mistDensity'),radius:+value('mistRadius'),texture:+value('mistTexture'),speed:+value('mistSpeed')},inhabitation.active?drawBase=>inhabitation.render(drawBase):undefined);stats.update(now,frameMs);
@@ -350,7 +351,7 @@ function tick(now:number){requestAnimationFrame(tick);const frameMs=now-last;con
  $('pullStatus').textContent=bodyMode()&&animation?'SETTLING · The tree is catching up; the motion is finishing':grip?.body?`PULL · Keep Space held · Spring ${Math.round(grip.progress*100)}% · pull ${Math.round(grip.target*100)}%${grip.ready?' · CAUGHT — release':''}`:bodyMode()?(handFocus?'HAND · Arrows choose a sigil · Hold Space, then move to pull · Esc leaves':'WALK · Arrows move the traveller · Space reaches into the tree'):'Hold a rune and pull · Shift-click to pin';
 }
 $('groundShadows').onchange=()=>{const on=value('groundShadows')==='on';clearing.setGroundShadows(on);backdrop.setGroundShadows(on);};
-$('backdrop').onchange=()=>{backdrop.set(value('backdrop'));clearing.setGroundPainted(value('backdrop')!=='plain');resize();};$('resetView').onclick=()=>{framingFloor=Infinity;preferredZoom=1;camera.position.set(39,32,63);camera.zoom=1;controls.target.set(0,2,0);controls.update();resize();};$('previewSound').onclick=()=>{sound.unlock();sound.catch();};$('soundMode').onchange=()=>{sound.unlock();sound.setMode(value('soundMode'));};$('volume').oninput=()=>sound.setVolume(+value('volume'));setupHUD();
+$('backdrop').onchange=()=>{backdrop.set(value('backdrop'));clearing.setGroundPainted(value('backdrop')!=='plain');resize();};$('resetView').onclick=()=>{framingFloor=Infinity;preferredZoom=1;camera.position.set(39,32,63);camera.zoom=1;controls.target.set(0,2,0);controls.update();resize();};$('previewSound').onclick=()=>{sound.unlock();sound.catch();};$('soundMode').onchange=()=>sound.setMode(value('soundMode'));$('volume').oninput=()=>sound.setVolume(+value('volume'));setupHUD();
 const travellerPanel=Array.from($('settings').querySelectorAll('details')).find(d=>d.querySelector('summary')?.textContent==='Traveller')!;
 addTravelHandControl(travellerPanel,style=>lehi.setTravelStyle(style));
 const idleCatchLabel=document.createElement('label');idleCatchLabel.textContent='Idle hands';
@@ -393,6 +394,7 @@ function jumpEncounter(state:EncounterState){
 encounter.mount($('settings'),jumpEncounter);
 for(const [id,state]of [['charQuiet','dormant'],['charSpirit','active']] as const){const previous=$(id).onclick;$(id).onclick=e=>{if(encounter.enabled){encounter.sequence.automatic=false;encounter.sequence.paused=true;jumpEncounter(state);}else previous?.call($(id),e);};}
 
+sound.mount();
 setupControlReadouts();
 let preferencesReady=false;
 setupSettings(inhabitedStudy?'clearing-019':'clearing-018',$('settings'),'.dock input,.dock select',true).finally(()=>{preferencesReady=true;});

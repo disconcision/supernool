@@ -8,7 +8,7 @@ import {ArcClass} from '../019-inhabited-trees/lightning-timing';
 import {hash} from '../019-inhabited-trees/canopy';
 
 /** An optional renderer on the existing scene. Never owns an AST, layout or input loop. */
-export function createInhabitation(renderer:T.WebGLRenderer,scene:T.Scene,camera:T.OrthographicCamera,treeMesh:T.Mesh,materials:(T.MeshStandardMaterial|T.MeshToonMaterial)[],transform:(p:T.Vector3)=>T.Vector3,scale:number,contacts:T.Vector3[],paint:{setLocalLight:(lights:{position:T.Vector3;intensity:number}[],tint:T.Color,reach:number,gain:number)=>void},sun:T.DirectionalLight){
+export function createInhabitation(renderer:T.WebGLRenderer,scene:T.Scene,camera:T.OrthographicCamera,treeMesh:T.Mesh,materials:(T.MeshStandardMaterial|T.MeshToonMaterial)[],transform:(p:T.Vector3)=>T.Vector3,scale:number,contacts:T.Vector3[],paint:{setLocalLight:(lights:{position:T.Vector3;intensity:number}[],tint:T.Color,reach:number,gain:number)=>void},sun:T.DirectionalLight,onDischarge?:(kind:ArcClass,power:number,pan:number)=>void){
  const panel=document.createElement('details');panel.id='inhabitedControls';const title=document.createElement('summary');title.textContent='Inhabited tree · shadow & light';panel.append(title);
  const values:Record<string,HTMLInputElement|HTMLSelectElement>={};
  function select(id:string,label:string,choices:[string,string][],value:string){const el=document.createElement('select');el.id=id;for(const [v,t] of choices)el.add(new Option(t,v));el.value=value;const wrap=document.createElement('label');wrap.textContent=label;wrap.append(el);panel.append(wrap);values[id]=el;return el;}
@@ -42,6 +42,7 @@ export function createInhabitation(renderer:T.WebGLRenderer,scene:T.Scene,camera
  const ambient=scene.children.find(o=>o instanceof T.HemisphereLight) as T.HemisphereLight;
  const original={sun:sun.intensity,fill:ambient.intensity};let wasOn=false;
  let settings:ShadowOptions|undefined,lastSettings:ArcSettings=arcDefaults;
+ const heard=new Map<string,number>();let previousCue=-1;
  function update(dt:number,p:Pose|undefined,seed:number,envelope:{shadow:number;cloudGrowth:number;flash:number;cueAge:number;force?:boolean;release?:number;depart?:boolean;departureTurns?:number;departureExpansion?:number}={shadow:1,cloudGrowth:1,flash:0,cueAge:-1}){
  clock+=dt;const on=(envelope.force||v('spiritMode')==='on')&&!!p&&(envelope.shadow>.001||envelope.flash>.001);
  if(!on){pool.forEach(l=>{l.visible=false;l.intensity=0;l.castShadow=false;});bark.forEach(b=>b.barkPower.value=0);paint.setLocalLight([],new T.Color(),18,0);if(wasOn){sun.intensity=original.sun;ambient.intensity=original.fill;}wasOn=false;status.textContent='Clear-tree checkpoint';settings=undefined;return;}
@@ -55,6 +56,10 @@ export function createInhabitation(renderer:T.WebGLRenderer,scene:T.Scene,camera
  const branch=worldPose!.edges.filter(e=>e.id!=='stem').map(e=>e.a.clone().lerp(e.b,.72)),project=(p:T.Vector3)=>{const q=p.clone().project(camera);return new T.Vector2(q.x*.5+.5,q.y*.5+.5);};camera.updateMatrixWorld();
  const candidates=contacts.filter(p=>p.y>.05&&p.distanceTo(transform(new T.Vector3()))<25);
  const events=(['large','medium','small'] as ArcClass[]).flatMap(kind=>stormEvents(kind,clock,anger,lastSettings,preview).map(e=>({...e,kind})));
+ // Deduplicate strokes/reflashes into one sound per flash. Re-arm authored cues on a new transition.
+ if(envelope.cueAge>=0&&(previousCue<0||envelope.cueAge<previousCue))for(const key of heard.keys())if(key.includes(':10000'))heard.delete(key);previousCue=envelope.cueAge;
+ for(const [key,t]of heard)if(clock-t>15)heard.delete(key);
+ for(const e of events){const key=e.kind+':'+e.slot;if(!heard.has(key)){heard.set(key,clock);onDischarge?.(e.kind,e.power,(hash(key+'pan')-.5)*1.1);}}
  for(const l of pool){l.visible=true;l.intensity=0;l.color.copy(tint);l.distance=n('spiritReach');l.castShadow=false;}
  pool[0].position.copy(transform(new T.Vector3(0,0,0))).add(new T.Vector3(0,0,2.2));pool[0].position.y=n('spiritHeight');pool[0].intensity=n('spiritLight')*envelope.shadow*(1-n('spiritPulse')*.5+n('spiritPulse')*.5*Math.sin(clock*1.8));
  let flash=0;events.slice(0,3).forEach((e,i)=>{if(!branch.length)return;const l=pool[i+1];let point=branch[Math.floor(hash(e.kind+e.slot+'origin')*branch.length)].clone();
