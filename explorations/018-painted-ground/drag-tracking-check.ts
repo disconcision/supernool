@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {trackAt,glideEase} from './drag-tracking';
+import {trackAt,glideEase,ambiguityGain,fineCursor,advanceFineCursor,precisionStickiness} from './drag-tracking';
 import {capturePose,glidePose} from './pose-glide';
 import {derivedGestures} from './derived-gestures';
 import {layout,transition,Pose} from './layout';
@@ -42,3 +42,28 @@ for(const problem of problems){
 }
 assert.ok(switches>100);
 console.log(`Continuous drag: late correction/drop/stickiness and ${switches} preset route-switch/release pose pairs pass.`);
+
+// Accumulated precision: no gain-induced teleport, no idle drift, no dead zone.
+assert.equal(ambiguityGain(tracks,{x:0,y:0}),1,'full response at shared launch point');
+assert.equal(ambiguityGain(tracks.slice(0,1),{x:90,y:2}),1,'single route stays direct');
+assert.ok(ambiguityGain(tracks,{x:90,y:2})<.4,'close competing routes get more control space');
+assert.equal(ambiguityGain(tracks,{x:90,y:100}),1,'away from tracks stays direct');
+let steady=fineCursor({x:90,y:2});
+for(let i=0;i<120;i++)steady=advanceFineCursor(steady,steady.raw,tracks);
+assert.deepEqual(steady.point,{x:90,y:2},'stationary character cannot drift or get pulled into a route');
+const short=advanceFineCursor(fineCursor({x:90,y:2}),{x:92,y:2},tracks);
+assert.ok(short.point.x>90&&short.point.x<90.8,'small key movement stays responsive but finer');
+const whole=advanceFineCursor(fineCursor({x:0,y:0}),{x:110,y:5},tracks);
+let pieces=fineCursor({x:0,y:0});
+for(let i=1;i<=55;i++)pieces=advanceFineCursor(pieces,{x:2*i,y:5*i/55},tracks);
+assert.ok(Math.hypot(whole.point.x-pieces.point.x,whole.point.y-pieces.point.y)<.03,'frame partition should not change control materially');
+const unambiguous=advanceFineCursor(short,{x:94,y:2},[]);
+assert.ok(Math.abs(unambiguous.point.x-short.point.x-2)<1e-9,'gain change applies only to new displacement');
+let correction=fineCursor({x:90,y:0}),chosen='identity';
+for(let i=1;i<=100;i++){correction=advanceFineCursor(correction,{x:90,y:i},tracks);chosen=trackAt(tracks,correction.point,chosen,3)!.item;}
+assert.equal(chosen,'regroup','precision and stickiness still allow late correction');
+console.log('Ambiguity precision: local gain, idle stability, continuous gain changes, frame partition, and late correction pass.');
+
+assert.equal(precisionStickiness(tracks,'identity'),1.25,'bias stays below closely spaced endpoint separation');
+const tiny=[tracks[0],{...tracks[1],to:{x:100,y:.5}}];
+assert.equal(trackAt(tiny,tiny[1].to,'identity',precisionStickiness(tiny,'identity'))!.item,'regroup','subpixel-separated target is not made unreachable by hysteresis');

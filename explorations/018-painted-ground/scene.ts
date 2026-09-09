@@ -15,7 +15,7 @@ import {addTravelHandControl} from './hand-travel';
 import {setupControlReadouts} from './control-readouts';
 import {createMist} from './mist';
 import {fitZoom} from './framing';
-import {trackAt,glideEase} from './drag-tracking';
+import {trackAt,glideEase,fineCursor,advanceFineCursor,FineCursor,precisionStickiness} from './drag-tracking';
 import {capturePose,glidePose} from './pose-glide';
 import * as T from 'three';import {createPerformanceStats} from './stats';import {StanceAdjustment} from './stance';import {createRibbon} from './ribbon';import {ScreenGuides} from './guides';import {addBackdrop} from './backdrop';import {makeClearing} from './terrain';import {makeSigil,disposeSigil} from './sigils';import {setupHUD} from './hud';import {createSound} from './sound';import {directionalContact} from './navigation';import {rules,ruleId,ruleColor,Pin,allowsPin,advanceSpring,catchPull} from './interaction';import {createTraveller} from './traveller';import {Gesture,gestures,scoreDrag} from './gestures';import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {Term,Action,fitsScene,initial,walk,count,format,readable,find,actions,replace,solved as matchesGoal,hint} from './algebra';import {Pose,layout,transition} from './layout';import {Options,prepare} from './surface';import {makeShading} from './shading';
@@ -171,7 +171,7 @@ $('sigils').onchange=()=>{if(poseNow)updateRunes(poseNow);};
 $('lighting').onchange=()=>{treeMesh.material=materials[value('lighting') as keyof typeof materials];};
 for(const id of ['surface','resolution','thickness','taper','bow','random','irregularity','twist','facets','blend','spread','height'])$(id).addEventListener('input',()=>{lastKey='';});$('seed').onclick=()=>{shapeSeed++;lastKey='';};
 type ScreenPoint={x:number;y:number};
-type Grip={id:string;options:Gesture[];moved?:boolean;chosen?:Gesture;intent?:Gesture;progress:number;target:number;velocity:number;ready:boolean;cursorReady:boolean;caught:boolean;cursor:ScreenPoint;feedbackCursor?:ScreenPoint;from:ScreenPoint;keyboard:boolean;body:boolean;avatarStart:T.Vector3;gain:number;zoom:number;anchors:Map<Gesture,{from:ScreenPoint;to:ScreenPoint}>};
+type Grip={id:string;options:Gesture[];moved?:boolean;fine:FineCursor;chosen?:Gesture;intent?:Gesture;progress:number;target:number;velocity:number;ready:boolean;cursorReady:boolean;caught:boolean;cursor:ScreenPoint;feedbackCursor?:ScreenPoint;from:ScreenPoint;keyboard:boolean;body:boolean;avatarStart:T.Vector3;gain:number;zoom:number;anchors:Map<Gesture,{from:ScreenPoint;to:ScreenPoint}>};
 let trackGlide:{origin:Pose;start:number}|undefined;
 const continuousTracking=()=>value('dragTracking')!=='locked';
 let grip:Grip|undefined,spotlight:Gesture|undefined,hoverId:string|undefined,activeHand=0,lastGesture:Gesture|undefined;
@@ -192,12 +192,17 @@ function anchors(g:Gesture){const before=layout(tree,layoutOptions()),after=layo
 function available(id:string){return candidateGestures(tree,id).filter(g=>allowed(g.owner,g.action)).filter(g=>{const a=anchors(g);return Math.hypot(a.to.x-a.from.x,a.to.y-a.from.y)>10;});}
 function togglePin(id=selected){if(grip||animation||!near||spread>.12)return;if(pin?.id===id)pin=undefined;else{const p=poseNow?.points.get(id);if(!p)return;pin={id,position:{x:p.x,y:p.y,z:p.z}};}spotlight=undefined;ui(false);status(pin?'The other hand holds this node fixed. Moves that relocate or reparent it are unavailable.':'Second-hand pin released.');}
 function beginGrip(id:string,at:ScreenPoint,keyboard=false){if(!mayRewrite())return;if(bodyMode()&&!handFocus)return;if(animation||grip||!near||spread>.12||!loaded)return;const list=available(id);selected=id;if(!list.length){ui(false);status('No equipped gesture can move this contact with the current pin. Choose another node, release the pin, or open the noolbox.');return;}
- trackGlide=undefined;spotlight=undefined;grip={id,options:list,progress:0,target:0,velocity:0,ready:false,cursorReady:false,caught:false,cursor:at,from:at,keyboard:keyboard||bodyMode(),body:bodyMode(),avatarStart:avatar.position.clone(),gain:+value('pullGain'),zoom:camera.zoom,anchors:new Map(list.map(g=>[g,anchors(g)]))};sound.start();clearMovement();controls.enabled=false;renderer.domElement.style.cursor='grabbing';epoch++;lastKey='';ui(false);status(bodyMode()?'GRIP · Keep Space held. Arrows move the traveller to pull; release Space to settle.':continuousTracking()?'Hold and move between routes; release nearer a destination to finish.':'Hold and pull along a colored path. Return to the source to change direction.');}
+ trackGlide=undefined;spotlight=undefined;grip={id,options:list,fine:fineCursor(at),progress:0,target:0,velocity:0,ready:false,cursorReady:false,caught:false,cursor:at,from:at,keyboard:keyboard||bodyMode(),body:bodyMode(),avatarStart:avatar.position.clone(),gain:+value('pullGain'),zoom:camera.zoom,anchors:new Map(list.map(g=>[g,anchors(g)]))};sound.start();clearMovement();controls.enabled=false;renderer.domElement.style.cursor='grabbing';epoch++;lastKey='';ui(false);status(bodyMode()?'GRIP · Keep Space held. Arrows move the traveller to pull; release Space to settle.':continuousTracking()?'Hold and move between routes; release nearer a destination to finish.':'Hold and pull along a colored path. Return to the source to change direction.');}
 function updateGrip(at:ScreenPoint){if(!grip)return;const h=grip;h.feedbackCursor=at;
  // Camera fitting must not manufacture body pull or shift a frozen gesture's target.
  if(!h.keyboard){const ratio=h.zoom/camera.zoom;at={x:innerWidth/2+(at.x-innerWidth/2)*ratio,y:innerHeight/2+(at.y-innerHeight/2)*ratio};}
  if(continuousTracking()){
-  const result=trackAt(h.options.map(g=>({item:g,...h.anchors.get(g)!})),at,h.chosen,value('dragTracking')==='sticky'?3:0,h.intent);
+  const tracks=h.options.map(g=>({item:g,...h.anchors.get(g)!}));
+  const precision=value('dragTracking')==='precision';
+  // Body/keyboard input is relative. Direct pointer dragging stays one-to-one.
+  if(precision&&h.keyboard){h.fine=advanceFineCursor(h.fine,at,h.intent?[]:tracks);at=h.fine.point;}
+  $('world').dataset.precisionGain=(precision&&h.keyboard?h.fine.gain:1).toFixed(3);
+  const result=trackAt(tracks,at,h.chosen,precision?precisionStickiness(tracks,h.chosen):value('dragTracking')==='sticky'?3:0,h.intent);
   if(!result)return;
   if(result.item!==h.chosen){
    // Only the display origin changes. Every candidate still starts at grab-time tree.
@@ -495,7 +500,7 @@ return mountSceneEditor(scene,camera,renderer,controls,{
 });
 
 }
-setupSettings(inhabitedStudy?'clearing-019':'clearing-018',$('settings'),'.dock input,.dock select',true).finally(async()=>{const comparison=new URLSearchParams(location.search).get('drag');if(comparison==='derived'||comparison==='authored'){($('dragDerivation') as HTMLSelectElement).value=comparison;$('dragDerivation').dispatchEvent(new Event('change'));}const tracking=new URLSearchParams(location.search).get('tracking');if(tracking&&['locked','glide','sticky'].includes(tracking))($('dragTracking') as HTMLSelectElement).value=tracking;sceneEditor=createEditor();await sceneEditor.ready;preferencesReady=true;});
+setupSettings(inhabitedStudy?'clearing-019':'clearing-018',$('settings'),'.dock input,.dock select',true).finally(async()=>{const comparison=new URLSearchParams(location.search).get('drag');if(comparison==='derived'||comparison==='authored'){($('dragDerivation') as HTMLSelectElement).value=comparison;$('dragDerivation').dispatchEvent(new Event('change'));}const tracking=new URLSearchParams(location.search).get('tracking');if(tracking&&['locked','glide','sticky','precision'].includes(tracking))($('dragTracking') as HTMLSelectElement).value=tracking;sceneEditor=createEditor();await sceneEditor.ready;preferencesReady=true;});
 ui();requestAnimationFrame(tick);
 
 // Read-only integration diagnostics; rendering uses the displayed worker pose.
