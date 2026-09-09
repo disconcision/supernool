@@ -183,3 +183,23 @@ The upstream AST matcher was executed on the minimal witness with the exact chec
 Keep three axes separate: (1) where a rule matches, (2) which roles in that match may initiate it, and (3) how node identities and physical joints correspond. A blanket ancestor-depth limit would conflate them and may lose useful deep compound-factor handles. In this exact witness a self-or-parent cutoff would remove none of the four candidates: all rewrite sites already satisfy it.
 
 A useful next comparison could distinguish the two actively rearranged junctions from a whole unchanged outer operand being carried. Offer both junction handles, with carrying that outer operand as an optional broader scope; derive the positions from the same results. This would remove the fourth row here while retaining the other regroupings. Alternatively, comparing fixed-outer versus exchanged-junction associativity changes the second new handle for a different reason. Neither restriction is decided: the user finds broader movement potentially interesting. Rule-schema trigger/role annotations would permit these distinctions without reinstating hand-authored destination coordinates or changing algebraic legality. Target density, geometry/projection overlap, and route-switch dynamics should be evaluated independently on this same witness.
+
+### Concrete scope comparison data
+
+`design/experiments/drag-correspondence/scope-study-data.ts` generates the original tree, persistent junction labels and candidate/result diagrams for six policies: current; associativity junctions only; self/parent sites only; fixed outer-plus identity; fixed outer plus + junctions only; earlier authored handles. These are explanatory alternatives, not new gameplay settings. An inline interactive comparison was rendered in the task on 2026-09-09. The generator imports actual authored/derived candidates; fixed-outer associativity swaps the two junction IDs in the result and re-derives mover handles, including the unchanged-subtree passenger filter. Other rules are unchanged.
+
+Labels: R is the whole root; P is `((2x+0)+y)`; Q is `(2x+0)`; M is its `2×x`; S is `(3x+0)`; N is `3×x`. The selected junction keeps its letter across results, so identical equations can visibly differ in correspondence.
+
+| Held node | Current | Junctions | Self/parent | Outer stays | Outer + junctions | Authored |
+| --- | --- | --- | --- | --- | --- | --- |
+| P | 4 | 3 | 4 | 3 | 2 | 2 |
+| M | 3 | 2 | 2 | 3 | 2 | 1 |
+| Q | 3 | 2 | 2 | 3 | 2 | 2 |
+| R | 2 | 2 | 2 | 0 | 0 | 0 |
+| Left zero | 2 | 1 | 1 | 2 | 1 | 2 |
+| 2 inside M | 1 | 1 | 1 | 1 | 1 | 1 |
+| x inside M | 1 | 1 | 1 | 1 | 1 | 1 |
+
+These are syntactic counts, before camera minimum-distance, equipped-rule and pin filters. For M, the removed regroup in the junction-only and self/parent comparisons is rooted at P; removing zero at Q and swapping M with zero remain. For the whole root R, preserving its outer identity removes both associativity handles because it no longer changes its local syntactic slot. For the left zero, authored/current both have two targets but different content: authored swap + identity, current swap + ancestor regroup. Fewer dots do not mean fewer legal rewrites; an excluded move may remain reachable by another grip.
+
+The inline drawings show before/after topology, not measured in-game target spacing or animation. The generator checks expected P counts, unique occurrence IDs and numerical meaning across several assignments. Browser interaction checks covered P correspondence changes, M's ancestor restriction, the root's zero-target case and the zero's replacement of regroup by identity; diagram layout inspected in light/dark and 360/736/1024-width surfaces. No gameplay policy was changed.
