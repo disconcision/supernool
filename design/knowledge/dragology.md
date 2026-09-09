@@ -69,7 +69,7 @@ This is not the upstream SVG renderer transplanted unchanged. Corresponding 3D m
 
 - Original clearing: grab the left `2x` in `(((2x + 0) + y) + (3x + 0))`. Additive identity and regroup have close destinations. Try heading most of the way toward regroup, then moving toward identity **without returning to the start**. Try reverse correction, cancellation, and release during a switch.
 - Hollow Crown: the right compound factor T in `(3T + (-3)T) + y`, `T=(x+y)(x+y)+x`, has factor/distribute targets only 0.15 tree units / approximately 2.726° apart in the controlled planar depth layout. Derivation alone does not remove this collision. Actual pixel distances depend on layout/camera.
-- `A+0 → A` tracks A; `A×0 → 0` tracks zero. Pulling the disappearing object is an authored metaphor, not surviving-occurrence derivation.
+- `A+0 → A` tracks A; `A×0 → 0` tracks zero. Pulling a disappearing object cannot derive from surviving occurrences alone. An explicit visual exit anchor could support it declaratively; see the exit-anchor proposal below.
 
 First compare no stickiness against the old lock/catch and modest stickiness. Measure late corrections, cancellation, unintended commits, mesh continuity, and mouse/body differences. If this still feels wrong, consider a small diagnostic study of true multi-candidate mixing or gesture-path distance, using these same witnesses. Exact coincident endpoints still need additional information; two-hand context, alternate handles and named subtree chunks remain separate proposals in the mechanism notes.
 
@@ -87,3 +87,44 @@ node .cache/factor-support-audit.cjs
 ```
 
 This is a diagnostic, not a claimed repair or a complete mesh-connectivity test: thick surfaces may overlap despite centerline discrepancies. The physical-motion bug remains open. Prioritize a connected factor/distribute motion plan and attachment tests, preserving the declared dragged-occurrence endpoints. Also validate connections during cross-route glides; finite vectors and legal endpoint expressions alone cannot certify either motion family. Do not hide the defect by removing valid rewrite contacts or reverting to dragging a disappearing term without discussing that separate interaction choice.
+
+
+## Exit anchors for disappearing occurrences — proposal, not implemented
+
+User discussion, 2026-09-08: an occurrence absent from the final expression can still have a meaningful terminal **visual** position. For `0+A → A`, zero could contract into the local plus junction. This could make both pulling A and pulling zero intelligible handles for the same rewrite, without pretending zero survives algebraically. The user relates this to factoring: two equal copies can physically converge even though only one occurrence remains in the resulting tree.
+
+A possible motion contract distinguishes:
+
+- `survive(resultOccurrence)` — an occurrence continues in the result.
+- `mergeInto(resultOccurrence)` — material/occurrence provenance converges onto a retained copy.
+- `exitAt(visualAnchor)` — the occurrence retires at a declared location, possibly a junction that itself disappears symbolically.
+
+The anchor belongs to the physical transition, not to the final term. It may follow the scene's relayout, remain fixed for that movement, or attach to a surviving ancestor. A retired local junction can remain a temporary visual anchor without remaining an algebra node. Once the motion plan supplies traces, candidate input endpoints can be derived from those traces. Algebra alone does not determine the trace or which retiring occurrences are ergonomic handles.
+
+### Two identity interpretations to retain
+
+The user's initial expectation was that the **local junction stays in place**, and the multiplication root of `3x` plus the zero move into it. This means preserving a physical joint/location while retiring its `+` sigil and letting the incoming `×` sigil occupy it; it need not preserve a literal addition node in the result.
+
+The user then observed that, in problem 01, the local `+` and zero instead slide toward the **outer/root plus**, with `3x` taking the local subtree's resulting position. After reconsidering, the user said this could be fine too. Do not record the local-anchor option as decided, or the upward-retirement option as rejected. No runtime changes were made during this discussion. The assistant initially called the destination a problem too categorically; this is a motion-design choice to compare. Actual detached wood remains a separate connectivity defect.
+
+### What the implementation check established
+
+Source and numerical checks compared the current ordinary identity transition against the layout implementation at `e51cea9`, before derived contacts. For root `0+x`, nested `(0+x)*y`, and deeper `((0+x)+2)*y`, sampled zero positions at progress 0, .25, .49, .5, .75 and 1 were identical. Thus deriving contacts did not remove zero retraction in these cases. This checks the ordinary rewrite preview, not equality of all release animations or all historical prototypes.
+
+- Root `0+x`: zero converges to the old plus position `(0,1.3,0)`, also x's final position in the test layout.
+- Nested `(0+x)*y`: zero retires to the surviving outer root at height 1.3; x replaces the local subtree at height 2.8. The local plus also retires upward. This matches the kind of motion the user reports for the right `3x+0` in problem 01.
+- Deeper `((0+x)+2)*y`: ordinary zero retraction ends at the surviving enclosing plus, height 2.8, while x occupies height 4.3.
+- The ordinary transition changes its visible node set halfway through: zero's glyph is absent at progress .5 even while its tracked position/member continues retracting. This behavior also predates derived contacts. Do not claim the complete zero sigil visibly reaches its endpoint.
+- The newer release glide is distinct: a sampled release from .55 in the deeper example sends the missing occurrence toward the whole-tree base (height 1.3), because the captured pose's parent map contains only result-tree relations. This is an unplanned fallback, not an explicit policy for rootward retirement. Preserve the finding for the motion-contract repair; do not confuse it with the user's openness to deliberately chosen upward retirement.
+
+### Benefits, limits, and counterexamples
+
+Exit anchors broaden derivation from final-state positions to transition endpoints. They let a tangible contraction provide an input handle and keep the input target accountable to the visible motion. The user requested recording this for later, not implementing it ahead of fundamental connectivity/selection work.
+
+A universal “deleted node goes to nearest surviving ancestor” rule is insufficient: the immediate local joint may itself be retired, yet still be the intended exit anchor. Conversely, an ancestor farther up may be an intentional destination. Choose and record the policy rather than getting it accidentally from missing IDs.
+
+`A*0 → 0` can erase an arbitrarily large A. Making every erased descendant a handle would produce a flood of equivalent gestures and make disappearance motion depend awkwardly on the chosen leaf. Prefer the maximal retiring subtree or explicitly selected contacts if exploring this family. The existing zero-survivor handle remains meaningful.
+
+`0+0 → 0` and `1*1 → 1` expose coincident routes and multiple rule justifications. An exit position cannot by itself decide which occurrence survives or which rule earns credit; grouping indistinguishable outcomes and recording justifications are separate policies. More handles can worsen spatial ambiguity even when each is physically sensible.
+
+Factoring provides a useful visual analogy but not identical semantic provenance: an equal copy merges into a retained equal copy; an additive zero is simply removed. Keep those fates distinct for reverse animation, definitions, and later proof/progression rules. Neither a universal exit policy nor every conceivable rewrite needs to be supported by the main interaction.

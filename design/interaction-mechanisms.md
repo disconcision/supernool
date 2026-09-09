@@ -117,3 +117,8 @@ Typecheck and the full core suite pass. New checks cover 440 initial derived can
 ## Dragology research and first continuity comparison
 
 See [the durable Dragology topic note](knowledge/dragology.md) for primary sources and the distinction between multi-candidate spatial interpolation and nearest-track selection with temporal display glide. The user approved the latter as the first experiment. Encounter → Route tracking now offers continuous selection, slight stickiness, and the prior lock/catch. Contacts remain independently selectable as authored or derived. Late switching no longer requires returning below 12% in continuous modes; release uses the selected track's nearest endpoint. This does not resolve identical destinations, introduce curve-shape recognition, or implement all the other mechanisms above.
+
+
+## Deferred variation: exit-anchor contacts
+
+The user proposed deriving additional contacts from the visual exit positions of retiring occurrences, e.g. zero contracting into a local junction in `0+A → A`. This is not restricted to final surviving IDs. Local replacement and retirement toward an outer ancestor are both still in consideration; the user explicitly reconsidered and did not reject the latter. See [exit anchors and the identity-motion audit](knowledge/dragology.md#exit-anchors-for-disappearing-occurrences--proposal-not-implemented). No new handles or animations were enabled by this discussion. Connectivity and the current basic selection mechanics remain the priority.
