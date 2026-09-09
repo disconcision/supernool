@@ -1,6 +1,6 @@
 # Inhabitation in the playable scene
 
-The shadow study is now an optional extension of **018**, not a second playable scene. Open `?mode=body&inhabited=1`, or use **Inspect → Appearance → Inhabited tree · shadow & light**. Choose **Clear tree · checkpoint** to compare without losing the current expression. The ordinary route still opens the clear checkpoint. The 019 workshop remains a visual reference.
+This is **study 019: Inhabited clearing**, an experimental extension of the shared 018 scene. Sharing code does not retire the study identity or imply that its visuals are finalized. Open `?mode=body&inhabited=1`, or use **Inspect → Appearance → Inhabited tree · shadow & light**. Choose **Clear tree · checkpoint** to compare without losing the current expression. The ordinary route still opens the clear checkpoint. The 019 workshop remains a visual reference.
 
 ## Ownership and correspondence
 
@@ -30,3 +30,9 @@ Real meshes respond to Three.js lights. The matte remains painted/unlit, with a 
 - `npm run check`, `npm test`, production build and the lightning distribution/contact checks pass.
 - In-app browser: body approach, Space entry, all six mouse-drag simplification moves (13 → 5 nodes), clear/shadow comparison, S7 and S5, environmental flashes and optional flash shadows inspected. No browser/shader errors in that run.
 - Existing tests cover 30 root/nested regroupings over 1,200 frames, contact navigation, catching, cancellation and mouse/body gesture mappings. A complete held-key body playthrough was not repeated for this rendering-only integration. The separate Chrome automation surface was unavailable; visual checks used the available in-app browser.
+
+## Study identity and camera correction
+
+The `inhabited=1` entry displays 019 in the header, browser title and settings captures. The ordinary route retains 018. **Free camera**, directly below the study title, starts off. Enable it for left/right-drag orbit, Shift-drag (or middle-drag) pan, and wheel zoom. Automatic tree framing and mouse tree-grabs are suspended in this inspection mode. **Return to scene camera** restores the scene framing and disables orbit/pan again.
+
+The original ground response multiplied light by each paint colour channel and nearly lost the purple against green terrain. It now uses paint luminance for a bounded additive colour wash; the existing Painted ground response slider controls it independently of the actual mesh lights. This remains an artistic light treatment on the matte.

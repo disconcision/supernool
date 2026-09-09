@@ -5,13 +5,3 @@ export function requestedInputMode(){
  const mode=new URLSearchParams(location.search).get('mode');
  return mode==='mouse'||mode==='body'?mode:undefined;
 }
-
-const preferenceKey='supernool-input-mode-v1';
-export function initialInputMode(){
- try{const saved=sessionStorage.getItem(preferenceKey);if(saved==='mouse'||saved==='body')return saved;}catch{}
- return requestedInputMode()??(touchPrimary()?'mouse':'body');
-}
-export function rememberInputMode(mode:string){
- if(mode!=='mouse'&&mode!=='body')return;
- try{sessionStorage.setItem(preferenceKey,mode);}catch{}
-}

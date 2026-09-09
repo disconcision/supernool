@@ -34,7 +34,7 @@ export function exteriorLightning(lobes:ProjectedLobe[],time:number,anger:number
 }
 
 
-export type ArcSettings=TimingSettings&{smallSize:number;mediumSize:number;largeSize:number;rockShare:number};
+export type ArcSettings=TimingSettings&{smallSize:number;mediumSize:number;largeSize:number;rockShare:number;cueAge?:number;cuePower?:number};
 export const arcDefaults:ArcSettings={smallRate:1.2,mediumRate:.16,largeRate:.035,smallSize:1,mediumSize:1,largeSize:1,rockShare:.55,duration:1,burstiness:.75,stormScale:1,restrikes:.55,timingSeed:3};
 export type MixedSegment=BoltSegment&{power:number;free:boolean};
 export type ArcPreview=ArcClass|'rock'|'branch';
@@ -55,13 +55,21 @@ export function largeContact(branches:T.Vector2[],rocks:T.Vector2[],slot:number,
  const choices=(rock?rocks:branches).map((p,index)=>({p,index})).filter(({p})=>p.distanceTo(a)>.025).sort((x,y)=>x.p.distanceTo(a)-y.p.distanceTo(a));if(!choices.length)return;
  const b=choices[Math.min(choices.length-1,Math.floor(T.MathUtils.clamp(.45+scale*.275,0,1)*(choices.length-1)))];return {from,to:b.index,rock,a,b:b.p};
 }
+/** Short authored entrance/release discharges supplement the ordinary storm timing. */
+export function stormEvents(kind:ArcClass,time:number,anger:number,o:ArcSettings,preview?:ArcPreview){
+ const forced=preview&&(preview===kind||(kind==='large'&&(preview==='rock'||preview==='branch')));
+ const events=preview?(forced?[{slot:0,start:time,power:.85}]:[]):activeFlashes(kind,time,anger,o);
+ const age=o.cueAge??-1,power=o.cuePower??1;
+ const starts=kind==='large'?[.16,.49]:kind==='medium'?[.12,.31,.68,.94]:[.04,.23,.4,.57,.78,1.08,1.28];
+ starts.forEach((start,i)=>{const t=age-start,duration=kind==='large'?.11:kind==='medium'?.075:.055;if(t>=0&&t<duration)events.push({slot:100000+i,start:time-t,power:power*(1-t/duration)});});
+ return events;
+}
 export function mixedLightning(lobes:ProjectedLobe[],branches:T.Vector2[],rocks:T.Vector2[],time:number,anger:number,o:ArcSettings,preview?:ArcPreview,memory:LightningMemory={}){
  const segments:MixedSegment[]=[],events:{kind:ArcClass;target:string;power:number}[]=[];
  if(!lobes.length)return {segments,events};
  const at=(l:ProjectedLobe,a:number)=>new T.Vector2(l.x+Math.cos(a)*l.rx,l.y+Math.sin(a)*l.ry);
  const flashes=(['large','medium','small'] as ArcClass[]).flatMap(kind=>{
- const forced=preview&&(preview===kind||(kind==='large'&&(preview==='rock'||preview==='branch')));
- return (preview?(forced?[{slot:0,start:time,power:.85}]:[]):activeFlashes(kind,time,anger,o)).map(event=>({kind,event}));
+ return stormEvents(kind,time,anger,o,preview).map(event=>({kind,event}));
  });
  for(const {kind,event} of flashes){
  if(segments.length+(kind==='small'?(anger>.72?32:16):20)>80)continue;

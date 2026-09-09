@@ -10,7 +10,13 @@
     "check": "tsc --noEmit --skipLibCheck --target es2020 --module esnext --moduleResolution bundler --lib es2020,dom,dom.iterable explorations/018-painted-ground/scene.ts explorations/018-painted-ground/avatar-review.ts explorations/018-painted-ground/symbol-library.ts",
     "test": "node scripts/check.mjs",
     "test:browser": "node explorations/018-painted-ground/browser-check.cjs",
-    "test:body": "BODY_ALL=1 node explorations/018-painted-ground/browser-check.cjs"
+    "test:body": "BODY_ALL=1 node explorations/018-painted-ground/browser-check.cjs",
+    "freeze": "node scripts/freeze.mjs",
+    "frozen:serve": "node scripts/frozen-server.mjs",
+    "test:settings": "node scripts/settings-check.mjs",
+    "test:editor": "node scene-tools/editor-check.cjs",
+    "test:clipboard": "node scene-tools/clipboard-check.cjs",
+    "test:delete": "node scene-tools/delete-check.cjs"
   },
   "license": "MIT",
   "devDependencies": {

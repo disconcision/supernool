@@ -55,7 +55,7 @@ export function createMist(renderer:T.WebGLRenderer){
  const quad=new T.Mesh(new T.PlaneGeometry(2,2),material);quad.frustumCulled=false;screen.add(quad);
  let time=0;
  return {
-  render(scene:T.Scene,view:T.Camera,dt:number,settings:{enabled:boolean;strength:number;radius:number;texture:number;speed:number},drawWorld?:()=>void){
+  render(scene:T.Scene,view:T.Camera,dt:number,settings:{enabled:boolean;strength:number;radius:number;texture:number;speed:number},drawWorld?:(drawBase:()=>void)=>void){
    if((!settings.enabled||settings.strength===0)&&!drawWorld){renderer.render(scene,view);return;}
    time+=dt*settings.speed;uniforms.mistTime.value=time;
    uniforms.strength.value=settings.enabled?settings.strength:0;uniforms.startRadius.value=settings.radius;uniforms.textureAmount.value=settings.texture;
@@ -74,9 +74,17 @@ export function createMist(renderer:T.WebGLRenderer){
    renderer.info.autoReset=false;renderer.info.reset();
    try{
     roots.forEach(o=>o.visible=false);
-    renderer.setRenderTarget(target);if(drawWorld)drawWorld();else renderer.render(scene,view);
+    // The canopy wraps this fogged base, rather than being fogged according to
+    // the unrelated landscape depth behind its translucent pixels.
+    const drawBase=()=>{
+     if(!settings.enabled||settings.strength===0){renderer.render(scene,view);return;}
+     const destination=renderer.getRenderTarget();
+     renderer.setRenderTarget(target);renderer.render(scene,view);
+     renderer.setRenderTarget(destination);renderer.render(screen,camera);
+    };
+    if(drawWorld)drawWorld(drawBase);else drawBase();
     roots.forEach(o=>o.visible=true);
-    renderer.setRenderTarget(previous);renderer.render(screen,camera);
+    renderer.setRenderTarget(previous);
     // Preserve the established sigil → ribbon → hand → guide draw order.
     // These legibility aids intentionally remain clear, rather than inheriting
     // fog computed from whatever landscape happens to lie behind their pixels.

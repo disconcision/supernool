@@ -8,7 +8,7 @@ const origin=process.env.SUPERNOOL_TEST_ORIGIN??'http://127.0.0.1:3100';
  try{
   const context=await browser.newContext({...devices['iPhone 13'],deviceScaleFactor:1});
   const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
-  const ready=()=>page.waitForFunction(()=>document.querySelector('#world')?.dataset.meshing==='ready',null,{timeout:60000});
+  const ready=()=>page.waitForFunction(()=>document.documentElement.dataset.boot==='ready',null,{timeout:60000});
   await page.goto(origin);await ready();assert.equal(await page.locator('#inputMode').inputValue(),'mouse');
   const cdp=await context.newCDPSession(page);
   const touch=(type,points)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:points.map(p=>({x:p.x,y:p.y,id:p.id??1,radiusX:5,radiusY:5,force:1}))});
@@ -52,12 +52,11 @@ const origin=process.env.SUPERNOOL_TEST_ORIGIN??'http://127.0.0.1:3100';
    ['tablet',devices['iPad Pro 11'],'mouse','/'],
    ['desktop',{viewport:{width:1280,height:720}},'body','/'],
    ['narrow desktop',{viewport:{width:390,height:844}},'body','/'],
-   ['explicit mobile body',devices['iPhone 13'],'body','/?mode=body&mobileTest=1#touch'],
+   ['explicit mobile body',devices['iPhone 13'],'body','/explorations/018-painted-ground/?mode=body'],
    ['explicit desktop pointer',{viewport:{width:1280,height:720}},'mouse','/explorations/018-painted-ground/?mode=mouse']
   ]){
    const ctx=await browser.newContext({...options,deviceScaleFactor:1}),p=await ctx.newPage();
-   await p.goto(origin+path);await p.waitForFunction(()=>document.querySelector('#world')?.dataset.meshing==='ready',null,{timeout:60000});assert.equal(await p.locator('#inputMode').inputValue(),mode,name);
-   if(name==='explicit mobile body'){assert.equal(new URL(p.url()).searchParams.get('mobileTest'),'1');assert.equal(new URL(p.url()).hash,'#touch');}
+   await p.goto(origin+path);await p.waitForFunction(()=>document.documentElement.dataset.boot==='ready',null,{timeout:60000});assert.equal(await p.locator('#inputMode').inputValue(),mode,name);
    if(name==='tablet')await p.screenshot({path:'.cache/touch-check/tablet.png'});
    console.log(name,'default passed');await ctx.close();
   }

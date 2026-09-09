@@ -48,3 +48,18 @@ header h1{font-family:"Avenir Next",Avenir,system-ui,sans-serif;font-size:25px;f
 .controlLabel{display:flex;align-items:baseline;justify-content:space-between;gap:12px}.controlValue{font:12px ui-monospace,monospace;font-variant-numeric:tabular-nums;color:#58685e;flex-shrink:0}#settingsSnapshot textarea{display:block;width:100%;resize:vertical;font:11px/1.45 ui-monospace,monospace;color:#435147;background:#f3f5f0;border:1px solid #d8ded4;border-radius:6px;padding:9px;margin-top:10px}#settingsSnapshot small{display:block;margin-top:7px;color:#61705f}
 
 #idleAnimationTest button{font-size:12px;margin:0 6px 6px 0}#idleAnimationTest small{display:block;line-height:1.5;margin-top:7px;color:#61705f}#idleAnimationTest [role=status]{color:#324d3e}
+
+/* Study 019 shares the scene, but keeps an explicit inspection camera. */
+.studyCamera{margin-top:10px;display:flex;align-items:flex-start;flex-direction:column;gap:5px;max-width:280px}.studyCamera button{pointer-events:auto;border:1px solid #c9d0c4;border-radius:16px;background:#f4f5efeb;color:#46534c;font:12px system-ui;padding:6px 11px;text-shadow:none}.studyCamera button[aria-pressed=true]{background:#dce5d6}.studyCamera small{font:11px/1.5 system-ui;color:#f1f1e5}
+
+/* Quiet title; its original footprint remains so revealing it cannot shift UI. */
+#sceneTitleToggle{pointer-events:auto;display:block;border:0;padding:0;border-radius:2px;background:transparent;color:#fffdf1;font:600 12px/1.5 system-ui;letter-spacing:.17em;text-shadow:inherit}
+#sceneTitleToggle:hover{background:transparent;color:#fff}
+header #sceneSubtitle{opacity:0;transform:translateY(-3px);transition:opacity .18s ease,transform .18s ease;pointer-events:none}
+header.title-revealed #sceneSubtitle{opacity:1;transform:none}
+.studyTools{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;margin:0 0 12px}
+.studyTools .studyCamera{margin:0;max-width:240px}.studyTools .studyCamera small{color:#46534c}
+.studyTools button{font:12px system-ui;border-radius:16px;padding:7px 12px}
+#audioMute[aria-pressed=true]{background:#e2e7de}
+@media(max-width:760px){#sceneTitleToggle{font-size:10px}}
+@media(prefers-reduced-motion:reduce){header #sceneSubtitle{transition:none}}

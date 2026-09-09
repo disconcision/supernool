@@ -8,7 +8,7 @@ const MAX=40,ARC=48;
 export function makeShadowCanopy(renderer:T.WebGLRenderer){
  const target=new T.WebGLRenderTarget(1,1,{type:T.HalfFloatType,depthBuffer:true,samples:4});target.depthTexture=new T.DepthTexture(1,1,T.UnsignedIntType);
  const u={sceneColour:{value:target.texture},sceneDepth:{value:target.depthTexture},invProjection:{value:new T.Matrix4()},cameraWorld:{value:new T.Matrix4()},centres:{value:Array.from({length:MAX},()=>new T.Vector4())},radii:{value:Array.from({length:MAX},()=>new T.Vector3())},count:{value:0},opacity:{value:.58},fringe:{value:.35},textureAmount:{value:.04},clock:{value:0},tint:{value:new T.Color('#9260d9')},resolution:{value:new T.Vector2()},segments:{value:Array.from({length:ARC},()=>new T.Vector4())},arcCount:{value:0},arcPower:{value:0}};
- const mat=new T.ShaderMaterial({depthTest:false,depthWrite:false,uniforms:u,vertexShader:'varying vec2 uv0;void main(){uv0=uv;gl_Position=vec4(position.xy,0.,1.);}',fragmentShader:`
+ const mat=new T.ShaderMaterial({depthTest:true,depthFunc:T.AlwaysDepth,depthWrite:true,uniforms:u,vertexShader:'varying vec2 uv0;void main(){uv0=uv;gl_Position=vec4(position.xy,0.,1.);}',fragmentShader:`
  varying vec2 uv0;uniform sampler2D sceneColour,sceneDepth;uniform mat4 invProjection,cameraWorld;
  uniform vec4 centres[40];uniform vec3 radii[40];uniform int count;uniform float opacity,fringe,textureAmount,clock;uniform vec3 tint;uniform vec2 resolution;
  uniform vec4 segments[48];uniform int arcCount;uniform float arcPower;
@@ -31,13 +31,14 @@ export function makeShadowCanopy(renderer:T.WebGLRenderer){
  colour+=tint*(rim*.34+halo)*(1.+.08*sin(clock*1.5));
  float bolt=0.;for(int j=0;j<48;j++){if(j>=arcCount)break;vec2 a=segments[j].xy*resolution,b=segments[j].zw*resolution,p=uv0*resolution;vec2 d=b-a;float t=clamp(dot(p-a,d)/max(dot(d,d),.0001),0.,1.);float dist=length(p-a-d*t);bolt=max(bolt,exp(-dist*dist/1.15)+.15*exp(-dist*dist/26.));}
  colour+=mix(tint,vec3(1.),.27)*bolt*arcPower;
- gl_FragColor=vec4(colour,1.);
+ gl_FragColor=vec4(colour,1.);gl_FragDepth=texture2D(sceneDepth,uv0).r;
  #include <tonemapping_fragment>
  #include <colorspace_fragment>
  }`});
  const screen=new T.Scene();screen.add(new T.Mesh(new T.PlaneGeometry(2,2),mat));const screenCamera=new T.Camera();let pose:Pose|undefined,anchors:{id:string;point:T.Vector3;scale:number}[]=[];
  function setPose(p:Pose){pose=p;anchors=[];for(const e of p.edges){if(e.id==='stem')continue;const node=p.nodes.get(e.id);if(node?.kind!=='op'||hash(e.id+'cloud')>.6)anchors.push({id:e.id,point:e.b.clone(),scale:Math.min(1,e.a.distanceTo(e.b)/.75)*(node?.kind==='op'?.64:1)});}}
- function render(scene:T.Scene,camera:T.OrthographicCamera,o:ShadowOptions){
+ function render(scene:T.Scene,camera:T.OrthographicCamera,o:ShadowOptions,drawBase?:()=>void){
+ const destination=renderer.getRenderTarget();
  const size=renderer.getDrawingBufferSize(new T.Vector2());if(target.width!==size.x||target.height!==size.y)target.setSize(size.x,size.y);u.resolution.value.copy(size);
  camera.updateMatrixWorld();u.invProjection.value.copy(camera.projectionMatrixInverse);u.cameraWorld.value.copy(camera.matrixWorld);u.clock.value=o.time;u.opacity.value=o.opacity;u.fringe.value=o.fringe;u.textureAmount.value=o.texture;u.tint.value.set(o.colour);
  let n=0;const positions:T.Vector3[]=[];
@@ -52,7 +53,7 @@ export function makeShadowCanopy(renderer:T.WebGLRenderer){
  for(let k=0;k<tracks;k++){const a=positions[(beat+k*3)%positions.length].clone().addScaledVector(forward,o.size*.88),end=positions[(beat+k*3+2)%positions.length].clone().addScaledVector(forward,o.size*.85);
  if(k===2){end.copy(o.strike);}const steps=12,delta=end.clone().sub(a),side=new T.Vector3().crossVectors(delta,forward).normalize();let prev=a.clone();
  for(let j=1;j<=steps;j++){const t=j/steps,point=a.clone().lerp(end,t);point.addScaledVector(side,(hash('arc:'+beat+':'+k+':'+j+':bend')-.5)*.7*Math.sin(Math.PI*t));const pa=prev.clone().project(camera),pb=point.clone().project(camera);u.segments.value[u.arcCount.value++].set(pa.x*.5+.5,pa.y*.5+.5,pb.x*.5+.5,pb.y*.5+.5);prev=point;}}}
- renderer.info.reset();renderer.info.autoReset=false;renderer.setRenderTarget(target);renderer.render(scene,camera);renderer.setRenderTarget(null);renderer.render(screen,screenCamera);renderer.info.autoReset=true;
+ const autoReset=renderer.info.autoReset;if(autoReset)renderer.info.reset();renderer.info.autoReset=false;renderer.setRenderTarget(target);if(drawBase)drawBase();else renderer.render(scene,camera);renderer.setRenderTarget(destination);renderer.render(screen,screenCamera);renderer.info.autoReset=autoReset;
  }
  return {setPose,render,inspect:()=>({volumes:u.count.value,arcs:u.arcCount.value,opacity:u.opacity.value,centres:u.centres.value.slice(0,u.count.value).map(c=>c.toArray()),radii:u.radii.value.slice(0,u.count.value).map(r=>r.toArray())})};
 }

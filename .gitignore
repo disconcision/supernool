@@ -1,4 +1,4 @@
-node_modules/
+node_modules
 dist/
 .DS_Store
 .env
@@ -7,3 +7,6 @@ dist/
 playwright-report/
 test-results/
 .cache/
+
+/public/settings/*.lock
+/public/settings/*.tmp

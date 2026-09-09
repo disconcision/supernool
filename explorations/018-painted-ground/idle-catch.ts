@@ -64,6 +64,11 @@ export class IdleCatch {
   if(this.held){this.syncHeld();this.held=false;this.loose=true;this.velocity.set(0,0,0);this.bounces=0;}
   this.phase='rest';this.idle=0;this.requestedHand=undefined;this.pickupRadius=1.6;this.cooldown=7+this.random()*4;
  }
+ settleForEditing(){
+  this.cancel();
+  if(this.loose&&this.prop){const o=this.prop.object;o.position.y=this.prop.groundY;o.quaternion.copy(this.restingRotation);this.prop.touch.set(o.position.x,this.prop.groundY+this.prop.radius,o.position.z);}
+  this.loose=false;this.velocity.setScalar(0);
+ }
  private drop(dt:number){
   if(!this.loose||!this.prop)return;
   const o=this.prop.object;

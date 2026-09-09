@@ -1,6 +1,6 @@
 # 018 · Painted ground
 
-Open `http://127.0.0.1:3100/explorations/018-painted-ground/`.
+Open `http://127.0.0.1:3100/explorations/018-painted-ground/?mode=body`.
 017 is preserved as the previous playable checkpoint. This study contains a camera-guided matte-painting loop, goal release, dimensional sigils and clearer catch feedback. The terrain is scenery; no new traversal level or rope simulation is implemented.
 
 
@@ -191,22 +191,76 @@ Inspect → Appearance → Surroundings includes a clear/mist comparison plus am
 Inspected normal, later-time, orbit and active-grip screenshots (`assets/mist-*.png`). At 1440×900 on this machine the static comparison measured 60 fps with and without mist (16.7 ms average; p95 16.8 vs 16.7 ms), and 1,016 vs 1,015 draws. These are browser frame timings, not GPU timings or a guarantee for other devices. TypeScript/build and the full six-rewrite mouse/body playthrough passed without browser errors. This is a provisional visual option, not an accepted permanent atmosphere direction.
 
 
-## Idle hands playing catch
+## Approved rock formations and generated growth · 7 September 2026
 
-The ordinary route now lets idle hands pick up a nearby small loose stone and play a short, varied game of catch, with an underhand wind-up and follow-through. Successful catches move the hands farther apart until a miss ends the rally. Walking gets a brief set-down and return animation; tree work takes priority immediately. Starts and repeat attempts are slightly less frequent. **Inspect → Appearance → Traveller → Idle hands** offers mixed finger walks and catch, walking-only, catch-only, or resting hands. See [IDLE-CATCH.md](IDLE-CATCH.md) for object eligibility, motion limits and validation. This behavior is integrated into the current playable scene.
+The user's approved study 08 rock geometry now loads on the ordinary playable route, without `rockStudy=1`. The old study URL still works. Controls live under **Inspect → Appearance → Surroundings**: Rocks, Rock shading, and Moss & lichen. Default: approved formations, cel bands, generated patches. The original rocks, two-bank/single-group comparisons, soft/crisper shading, simple painted growth, and bare stone remain available.
+
+The three unchanged GLBs in `assets/rock-study-08/` remain the source geometry. Broad mineral vertex colors are retained; the generated-patch mode removes the old growth tint and projects sparse alpha decals onto selected ledges and crowns. Most stone stays bare. Patches have varied size, rotation, silhouette and local placement; there is no all-over noise or added rock bump map. Small loose stones stay bare in this mode. The six-cell atlas is a new, unapproved surface-art exploration: `assets/growth-decals/growth-atlas-v1.png`, generated with built-in OpenAI imagegen. The unchanged original, dimensions, method and exact prompt are documented in `assets/growth-decals/PROVENANCE.md`.
+
+**More enclosing · comparison** is an optional composition, also directly selectable with `?mode=body&rockLayout=enclosed`. It uses the same rock family, brings the side banks inward, raises their crests and extends broader low beds outside the clearing. It does not replace the approved default, remodel the central ground, or repaint the backdrop. The original three route throats and moving gate rocks are retained; formation collision footprints and idle-hand contacts switch with the arrangement. This is a first composition comparison, not a completed impassable level boundary or a newly registered matte painting. Further enclosing terrain and a corresponding matte edit should follow visual feedback.
+
+Atlas failure falls back to simple painted growth while keeping the improved rocks. Model failure retains the original scene, reports the error and offers Retry; a retry replaces the scene's rock/collision/touch state after successful loading. All assets use Vite-discoverable project-local URLs; the art lab server is no longer a runtime dependency.
+
+Validation: `npm run check`, `npm test`, `npm run build`, `npm run test:browser`, and `node explorations/018-painted-ground/rock-check.cjs` pass. The latter exercises the ordinary route, dock controls, all shading/growth options, texture failure and model retry in Chrome. The existing six-rewrite body-only browser check also passed against `rockLayout=enclosed` (a temporary copy of the same check with that URL and screenshot output redirected to `.cache/rock-review/`). Inspected default, enclosing, closer-camera and intermediate rewrite screenshots in `assets/rock-integration/`. These captures include the separate task's current mist experiment; this change does not alter it.
+
+
+### Adjustable moss / lichen placement
+
+User feedback: generated patches are too small and color-intense, and their dense botanical motifs may not improve on the prior treatment. The atlas remains a comparison asset, not accepted final art. Under **Surroundings → Adjust generated patches**, distribution now offers chosen sites, surface scatter, or clusters near the chosen sites. Size, count, spread/spacing, small-patch bias and seed control placement. Normal/multiply blending, opacity, saturation and brightness control the shared material. Reshuffle changes the seed; presets provide Larger & softer, Speckled mix, and Earlier decals. Settings persist locally under `supernool-rock-growth-v1`.
+
+The starting preset uses 1.65× size, 70% opacity and 55% saturation. Scatter and cluster modes sample diameters between .16 and 1.6 world units before size scaling. At bias 1 the diameter distribution is log-uniform (density proportional to 1/diameter); larger bias favors small flecks. Surface candidates are downward raycasts, filtered to upward/sloping faces; scatter uses minimum spacing, while cluster spread offsets chosen anchors. This is a simple top-surface placement tool, not ecological growth simulation or unrestricted manual painting. The six atlas motifs themselves are unchanged; smaller/sparser source motifs could still be worthwhile after trying these controls.
+
+Material adjustments retain patch positions. Geometry adjustments are briefly debounced, rebuild deterministic placements, and dispose replaced decal geometry. The alpha cutout is independent of opacity so fading does not erode silhouettes. Multiply fades toward neutral white before destination multiplication; it darkens the stone and is unsuitable for bright lichen. Highly oblique decal triangles are excluded to avoid stretched stripes around sharp corners. TypeScript, core tests, Chrome controls/persistence/failure checks, and the full six-step mouse/body browser playthrough passed. Screenshots in `.cache/growth-controls/` include control layout, normal/multiply/scatter views and intermediate rewrites.
+
+
+### Separate moss / lichen and clear rear trails
+
+Latest preference favors scattered growth, broader moss areas and smaller lichen colonies. **Adjust moss & lichen** now contains separate Moss and Lichen groups, each with its own distribution, size, count, spacing, bias, seed, opacity, saturation, brightness and blending. Each layer uses only its corresponding three atlas cells and has independent materials, deterministic placement and geometry rebuilds. Both default to scatter; moss starts at 2.3× size with a broader size distribution (bias .6), and lichen at .85× with more small colonies (bias 1.2). Reset and reshuffle act on one layer. The new `supernool-rock-growth-v2` record stores the two groups; old shared color/blending preferences migrate, while the new scattered distribution and separate sizes take precedence over old placement defaults.
+
+The enclosing comparison retains all 14 groups and their scales. Its obstructing rear crest moves to the northwest shoulder; lower beds move away from the painted junction, and the side/front banks ease outward slightly. Positions are in `rock-enclosure.ts`; the open arrangement remains available. Both rear painted trails now have clear sightlines. The matte painting is unchanged. These are scenery clearance changes; the existing puzzle-controlled gate behavior remains.
+
+`rock-path-check.mjs` traces both routes from the existing v6 image, intersects the actual backdrop ground, and checks all enclosing GLB meshes against 486 route/corridor samples. It verifies paint-camera and live-camera sightlines plus vertical ground clearance. `rock-check.cjs` verifies independent layer counts/settings, one-layer removal, persistence and loading recovery. TypeScript, core tests and the enclosing scene's full mouse/body playthrough pass. The source atlas is still provisional; controls separate its moss and lichen rows, without repainting motifs inside those cells.
+
+
+## Idle hands playing catch · branch experiment
+
+The ordinary route now lets idle hands pick up a nearby small loose stone and play a short, varied game of catch, with an underhand wind-up and follow-through. Successful catches move the hands farther apart until a miss ends the rally. Walking gets a brief set-down and return animation; tree work takes priority immediately. Starts and repeat attempts are slightly less frequent. **Inspect → Appearance → Traveller → Idle hands → Explore only** keeps the earlier inspection comparison. See [IDLE-CATCH.md](IDLE-CATCH.md) for object eligibility, motion limits and validation. This is an experiment awaiting user feedback.
 
 
 ## Finger-walking idle hands
 
 The earlier scenery inspection is replaced by a grounded finger walk with varied routes around rocks and fungi. Both hands take turns in each activity; a shared 12–22 second quiet interval prevents an ended catch from immediately starting a walk. Traveller → Idle hands offers mixed, walking-only, catch-only and resting comparisons. See [IDLE-HANDS.md](IDLE-HANDS.md) for gait, obstacle clearance, scheduling and checks. Rock climbing remains outside this ground-walking pass.
 
-Manual previews live under **Inspect → Appearance → Traveller → Test idle animations**. Choose wandering, catch, either walking style, or either walk with a stumble, then press **Play animation**. **Stop preview** ends the activity; movement still exercises its normal disengagement. Previews preserve the automatic idle settings and skip their waiting period. Catch requires a nearby available stone, and walks require clear ground.
+### Scene editor selection and transforms · integrated gameplay
+
+On both live port 3100 and frozen port 3101, Inspect → Scene → Edit scenery now uses a one-pixel visible-silhouette outline and a combined move / yaw / proportional-size widget. Green Y is height; red X and blue Z are ground directions. The outer arc turns, and the cream square scales. Q restores all handles; W/E/R isolate a tool. Handles render above atmosphere, and picking respects opaque occlusion.
+
+The object list separates formations, 17 loose stones, and 36 individual mushrooms (cap + stem). Attached formation fragments remain grouped. Puzzle gates, tree, avatar and painted terrain stay gameplay-owned. Prop transforms participate in undo/redo and scene saves; old formation-only saves load with props at their authored defaults. Formation collisions, projected growth and prop hand-contact points refresh after edits. This is integrated into gameplay, including study 019. Edit pauses encounter progression and idle hands, and temporarily enables camera orbiting. Play restores the previous camera/pause mode. Both local servers save versions to this project’s `scenes/` directory; use Save version then Use as scene default to retain a layout.
 
 
-## Pointer play on phones and tablets
+### Scenery copy / paste
 
-Fresh sessions use Pointer grip on devices whose primary pointer is coarse and has no hover. Desktop defaults to Body pull. Encounter → Interaction mode switches between the two and preserves the choice on reload in that tab. Fresh `?mode=mouse` and `?mode=body` links override device detection; the homepage preserves URL parameters and fragments.
+The scene editor exposes Copy, Paste and Duplicate below the object selector, with Cmd/Ctrl+C, V and D shortcuts while editing scenery. Pasted objects are selected and offset one unit on each ground axis per successive paste, ready for placement. Copy captures the current transform; later edits to the original do not change the clipboard. Text inputs keep their normal clipboard behavior.
 
-Tap the ground to walk, or use Encounter → Walk to the tree. Hold a rune, drag along a colored path and release when caught. Retreat before releasing to cancel. Hint and pin controls remain in the docks. One finger controls gameplay; two-finger camera pinch is available between grips. Extra fingers cannot take over a grip. Touch cancellation and lost capture cancel rather than commit. Body pull remains keyboard driven; native gamepad bindings are not implemented.
+The scenery clipboard persists in browser storage across reload and works between scenes on the same editor origin. It is separate from the OS text clipboard. Copied formations, loose stones and mushrooms participate in undo/redo, saved versions and defaults. Formation copies share geometry/shading assets, retain the source growth pattern seed, and have independent projected growth, collision footprints and hand contacts. Copies of copies store the original asset reference, and earlier saves remain readable. `npm run test:clipboard` exercises these paths in Chrome.
 
-`node explorations/018-painted-ground/touch-browser-check.cjs` uses Chrome phone/tablet emulation against the development server. It checks device defaults, manual-choice reloads, explicit links, ground taps, cancellation, second-finger ownership and all six rewrites without keyboard input. Set `SUPERNOOL_TEST_ORIGIN` to test a different server. Intermediate and completed screenshots go to `.cache/touch-check/`. This does not replace real-device feel and performance testing.
+
+### Delete scenery
+
+In Edit scenery, Delete beside Copy/Paste/Duplicate removes the selected formation, loose stone, mushroom or copied instance. Delete and Backspace are keyboard equivalents; text fields and Play mode retain their usual behavior. Undo restores and selects the object; Redo removes it again. Save version/default retains deletions, and loading an older version restores its objects. Attached growth, collision footprints and hand contacts follow removals. Original-source deletion does not invalidate a copied object or the scenery clipboard. `npm run test:delete` checks these behaviors in Chrome.
+
+
+## Awakening · local cloud formation
+
+The rigid whole-crown intro spin is replaced by staggered condensation and counter-rotating local eddies. S7–S9 animate existing instanced patches independently on the GPU: broad, soft coverage builds first, then resolves to the authored painted texture. Coverage combines by maximum rather than accumulating opacity, retaining the skeleton readability treatment. S4–S6 use analogous local lobe movement. No new cloud instances or per-frame geometry rebuilds are added. Endpoints return exactly to the steady canopy; the release spin remains separate.
+
+**Inspect → Appearance → Encounter · states & transitions → Awakening** holds the intro for inspection. Use Transition position to scrub, or Pause / resume to play. **Awakening local swirl** reuses the saved earlier `sequenceArrivalTurns` value and controls the local eddies; Awakening seconds controls duration. This is a soft patch-field approximation, not a fluid simulation. Fine painted shapes remain visible as it settles. Interim frames were reviewed at 35%, 50%, 60% and the endpoint in the live scene, and formation endpoint/continuity checks are part of the core suite.
+
+
+## Audio mute/resume lifecycle
+
+A reported buzz returned after unmuting and cleared on page reload. Its audible cause has not been reproduced conclusively. Mute previously only reduced master gain while retaining the audio graph. It now fades out over a short interval, stops scheduling and closes that context; unmute creates a fresh instrument bank and rejoins the current encounter phase without replaying its transition cue. Muted clicks and visibility changes cannot revive an old graph, and rapid unmute does not let delayed cleanup close the replacement. Scene state and control settings are unaffected. The core lifecycle test covers repeated/rapid replacement, ownership of cleanup and no cue replay; live browser checks verified fresh session numbers and no errors. This is a targeted stale-audio-state mitigation pending the user’s audible retest.
+
+## Stable iteration 19 release
+
+The release retains encounter sequencing and authored dragging from `ca3ca65`, before expanded problem presets (`6b324b5`). Touch devices default to pointer play: tap ground to walk, then hold and drag a sigil. Desktop defaults to body controls; the input selector and explicit `?mode=mouse` / `?mode=body` remain available. One-finger play is isolated from camera gestures, and canceled touches do not commit rewrites. Audio starts muted on every load. The homepage enables the inhabited encounter by default.

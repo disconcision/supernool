@@ -1,6 +1,6 @@
 # Current repository: supernool
 
-As of 2026-09-06 the game is named **supernool** and lives in the sibling `supernool` repository. Current study: 018. Earlier Nool/Grow names and absolute paths below are historical. The separate art research workspace has not moved.
+As of 2026-09-06 the game is named **supernool** and lives in the sibling `supernool` repository. Stable release: 019. Experimental expression and movement work: 020. See `../RELEASES.md` for the boundary. Earlier Nool/Grow names and absolute paths below are historical. The separate art research workspace has not moved.
 
 # Current direction — nool / Grow
 
@@ -187,3 +187,13 @@ Inspected corrected normal and wider regrouped views (`assets/matte-scale-correc
 ## Supernool · perimeter mist experiment
 
 User requested a little textured, temporally varying fog beginning around the rock circle. Study 018 now offers a world-anchored, depth-based atmospheric wash with drifting noise and a clear-view toggle, plus density/onset/texture/speed controls. The inner clearing stays clear by default. This is an experiment awaiting feedback, not an approved replacement for the terrain art or a full volumetric atmosphere.
+
+
+## Supernool · approved simple rocks and surface-art trial
+
+The user approved study 08's simplified rock forms and cel-band shading, while finding the existing moss/lichen colors and texture off. Keep the rock geometry at this simplicity; finer detail may be confined to scattered growth patches. The ordinary 018 route now uses these formations, with integrated Appearance → Surroundings comparisons. A generated transparent moss/lichen atlas is the current surface-art trial, with the original simple patches and bare stone retained. Its provenance is in 018/assets/growth-decals/PROVENANCE.md. Subsequent user feedback found the generated patches too small and color-intense, with motifs that may be too dense; their benefit over the earlier treatment remains unresolved. Distribution, size/count, opacity, saturation and blending controls now support direct comparison, including the earlier settings. Do not treat these decals as accepted final art.
+
+A separate “More enclosing” arrangement raises/steps the same formations inward and adds larger outer bedrock. It is optional and provisional. The approved arrangement remains the default. This is not permission to revive the rejected wholesale landscape replacement; preserve the grass clearing and existing visual scale, and develop any future matte changes in tandem with foreground geometry.
+
+
+Latest rock feedback: favor scattered placement, with independently adjustable broad moss and smaller lichen colonies. The enclosing arrangement may be preferable, but it must leave both painted rear exits visible and avoid crowding the clearing. Its revised placement keeps the same rock groups/scales while moving the obstructing rear mass to the northwest shoulder and slightly spreading the sides. Separate moss/lichen controls are now the default surface workflow; neither the atlas nor the optional enclosing arrangement should be described as finalized art.

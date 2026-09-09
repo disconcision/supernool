@@ -77,7 +77,8 @@ export function createTraveller(scene:T.Scene,status:(message:string)=>void){
   const variant={model,mixer,actions,hands:handRoots,digits,wrist:arms.hands[0]??wrists[0],arms,motion:'Idle',lean:0,colors,stride};paint(variant);variants.set(name,variant);
   if(requested===name)select(name);
  }
- for(const name of ['blue-wrap','olive-cape'])load(name).catch(e=>{console.error(e);if(requested===name){status('Figure failed to load; previous figure remains available. '+e.message);}});
+ const settled=new Set<string>();
+ for(const name of ['blue-wrap','olive-cape'])load(name).catch(e=>{console.error(e);if(requested===name){status('Figure failed to load; previous figure remains available. '+e.message);}}).finally(()=>settled.add(name));
  function update(...args:Parameters<typeof controller.update>){
   const [,dt,moving,,grip,brace,,,pull]=args;
   const displacement=root.position.clone().sub(previous);const distance=initialized?displacement.length():0;previous.copy(root.position);initialized=true;
@@ -121,7 +122,7 @@ export function createTraveller(scene:T.Scene,status:(message:string)=>void){
    if(walk?.weight>.99){hand.updateMatrixWorld(true);const tips=digits.filter(d=>d.walk?.segment==='tip'),toes=tips.map(d=>d.node.localToWorld(new T.Vector3(0,.172,0)));Object.assign(root.userData.fingerWalk,walk.recordContacts(toes,hand));hand.updateMatrixWorld(true);toes.forEach((p,k)=>p.copy(tips[k].node.localToWorld(new T.Vector3(0,.172,0))));root.userData.fingerWalk.toeHeights=toes.map(p=>p.y);root.userData.fingerWalk.toes=toes.map(p=>p.toArray());root.userData.fingerWalk.knees=[1,2].map(k=>poses.get(k)?.middle);root.userData.fingerWalk.steps=walk.steps;root.userData.fingerWalk.thumb=walk.thumb;root.userData.fingerWalk.palmNormalY=new T.Vector3(0,0,1).applyQuaternion(hand.quaternion).y;}
   });
  }
- return {root,update,previewIdle:controller.previewIdle,stopIdlePreview:controller.stopIdlePreview,setCatchProps:controller.setCatchProps,setIdleCatch:controller.setIdleCatch,setTravelStyle:controller.setTravelStyle,setIdleWalkStyle:controller.setIdleWalkStyle,setIdleTerrain:controller.setIdleTerrain,setIdleMode:controller.setIdleMode,choose:select,setPalette(name:string){palette=name;variants.forEach(paint);},current:()=>current,locomotion:()=>running?'Run':active?.motion??'procedural',linkEnds(){
+ return {ready:()=>requested==='checkpoint'||settled.has(requested),root,update,previewIdle:controller.previewIdle,stopIdlePreview:controller.stopIdlePreview,settleIdleProps:controller.settleIdleProps,setCatchProps:controller.setCatchProps,setIdleCatch:controller.setIdleCatch,setTravelStyle:controller.setTravelStyle,setIdleWalkStyle:controller.setIdleWalkStyle,setIdleTerrain:controller.setIdleTerrain,setIdleMode:controller.setIdleMode,choose:select,setPalette(name:string){palette=name;variants.forEach(paint);},current:()=>current,locomotion:()=>running?'Run':active?.motion??'procedural',linkEnds(){
   const ends=controller.linkEnds();if(active){root.updateMatrixWorld(true);const m=active.wrist;if(m instanceof T.SkinnedMesh)m.skeleton.update();const p=new T.Vector3(),sum=new T.Vector3();const n=m.geometry.attributes.position.count;for(let i=0;i<n;i++)sum.add(m.getVertexPosition(i,p));ends.from.copy(m.localToWorld(sum.divideScalar(n)));ends.to.copy(active.hands[0].localToWorld(new T.Vector3(0,0,0)));}return ends;
  }};
 }

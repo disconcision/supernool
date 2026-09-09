@@ -13,7 +13,7 @@ npm ci
 npm run dev
 ```
 
-open <http://127.0.0.1:3100/>. leads to **018 · Painted ground**, the current playable prototype scene. the [study catalogue](explorations/index.html) retains experiments 001–018, generated concepts, diagrams, review notes and screenshots.
+open <http://127.0.0.1:3100/>. leads to **019 · Inhabited clearing**, the stable playable encounter. the [study catalogue](explorations/index.html) retains experiments 001–019, generated concepts, diagrams, review notes and screenshots.
 
 walk toward the tree. press Space to enter hand control. arrows determine grip. hold Space to pull. colored dots show possible targets. release space to commit. escape exits. mouse interaction is also available; the three corner marks open controls.
 
@@ -39,4 +39,4 @@ npm run test:body
 
 separate art research workspace remains in the sibling `grow-reference-lab-2026-09-06` directory. imported character and terrain handoffs used by the game are included here; their provenance accompanies the assets. That research task and its larger reference archive have not been relocated here.
 
-keep meaningful changes in Git commits. preserve useful studies, but do not duplicate the entire playable scene for every adjustment. current study stays at 018 until a new study warrants another number.
+keep meaningful changes in Git commits. preserve useful studies, but do not duplicate the entire playable scene for every adjustment. main is stable iteration 019; experimental expression and dragging work belongs to iteration 020. See [release boundaries](RELEASES.md).
