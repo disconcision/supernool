@@ -1,0 +1,75 @@
+{
+  "grammar": "binary +/*, leaves x or 0, ordered trees, 3/5/7 nodes, fixed depth layout, no irregularity, current gesture table; no semantic quotient",
+  "tested": 712,
+  "pairs": 2854,
+  "witnesses": [
+    {
+      "n": 5,
+      "expression": "*(0,+(x,x))",
+      "grip": "+(x,x)",
+      "rules": [
+        "absorb-left",
+        "distribute-right"
+      ],
+      "results": [
+        "0",
+        "+(*(0,x),*(0,x))"
+      ],
+      "survives": [
+        false,
+        true
+      ]
+    },
+    {
+      "n": 5,
+      "expression": "*(0,*(x,x))",
+      "grip": "*(x,x)",
+      "rules": [
+        "absorb-left",
+        "group-left"
+      ],
+      "results": [
+        "0",
+        "*(*(0,x),x)"
+      ],
+      "survives": [
+        false,
+        true
+      ]
+    },
+    {
+      "n": 7,
+      "expression": "+(*(x,x),*(x,0))",
+      "grip": "x",
+      "rules": [
+        "factor-n2635-n2638",
+        "absorb-right"
+      ],
+      "results": [
+        "*(+(x,0),x)",
+        "+(*(x,x),0)"
+      ],
+      "survives": [
+        false,
+        false
+      ]
+    },
+    {
+      "n": 7,
+      "expression": "+(*(x,0),*(0,0))",
+      "grip": "0",
+      "rules": [
+        "factor-n2988-n2991",
+        "calculate"
+      ],
+      "results": [
+        "*(+(x,0),0)",
+        "+(*(x,0),0)"
+      ],
+      "survives": [
+        false,
+        false
+      ]
+    }
+  ]
+}

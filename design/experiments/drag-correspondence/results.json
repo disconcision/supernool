@@ -1,0 +1,536 @@
+[
+  {
+    "name": "minimal",
+    "nodes": 11,
+    "pairs": [
+      {
+        "grip": "+(x,y)",
+        "rules": [
+          "factor-n4-n9",
+          "distribute-right"
+        ],
+        "dest": [
+          [
+            1.2,
+            2.8,
+            0
+          ],
+          [
+            2.25,
+            2.8,
+            0
+          ]
+        ],
+        "distance3D": 1.05,
+        "angle3D": 28.30075576600639,
+        "angleScreen": 32.99372237361307,
+        "gripSurvives": [
+          false,
+          true
+        ],
+        "targetIsGrab": [
+          false,
+          false
+        ]
+      },
+      {
+        "grip": "+(x,y)",
+        "rules": [
+          "factor-n4-n9",
+          "swap"
+        ],
+        "dest": [
+          [
+            1.2,
+            2.8,
+            0
+          ],
+          [
+            1.1999999999999993,
+            4.3,
+            0
+          ]
+        ],
+        "distance3D": 1.5,
+        "angle3D": 45,
+        "angleScreen": 53.702620092522096,
+        "gripSurvives": [
+          false,
+          true
+        ],
+        "targetIsGrab": [
+          false,
+          false
+        ]
+      },
+      {
+        "grip": "+(x,y)",
+        "rules": [
+          "distribute-right",
+          "swap"
+        ],
+        "dest": [
+          [
+            -1.9499999999999995,
+            2.8,
+            0
+          ],
+          [
+            -2.4,
+            4.3,
+            0
+          ]
+        ],
+        "distance3D": 1.5660459763365826,
+        "angle3D": 55.007979801441365,
+        "angleScreen": 66.03702950434874,
+        "gripSurvives": [
+          true,
+          true
+        ],
+        "targetIsGrab": [
+          false,
+          false
+        ]
+      },
+      {
+        "grip": "+(x,y)",
+        "rules": [
+          "distribute-right",
+          "swap"
+        ],
+        "dest": [
+          [
+            2.25,
+            2.8,
+            0
+          ],
+          [
+            1.1999999999999993,
+            4.3,
+            0
+          ]
+        ],
+        "distance3D": 1.8309833423600559,
+        "angle3D": 73.30075576600638,
+        "angleScreen": 86.69634246613518,
+        "gripSurvives": [
+          true,
+          true
+        ],
+        "targetIsGrab": [
+          false,
+          false
+        ]
+      }
+    ]
+  },
+  {
+    "name": "hollow",
+    "nodes": 25,
+    "pairs": [
+      {
+        "grip": "+(*(3,+(*(+(x,y),+(x,y)),x)),*(-3,+(*(+(x,y),+(x,y)),x)))",
+        "rules": [
+          "swap",
+          "group-right"
+        ],
+        "dest": [
+          [
+            3.5249999999999995,
+            2.8,
+            0
+          ],
+          [
+            0,
+            1.3,
+            0
+          ]
+        ],
+        "distance3D": 3.8308778367366396,
+        "angle3D": 19.334808537826436,
+        "angleScreen": 18.505212931460203,
+        "gripSurvives": [
+          true,
+          true
+        ],
+        "targetIsGrab": [
+          false,
+          false
+        ]
+      },
+      {
+        "grip": "+(*(+(x,y),+(x,y)),x)",
+        "rules": [
+          "factor-n25-n36",
+          "distribute-right"
+        ],
+        "dest": [
+          [
+            -0.07500000000000107,
+            4.3,
+            0
+          ],
+          [
+            0.07499999999999929,
+            4.3,
+            0
+          ]
+        ],
+        "distance3D": 0.15000000000000036,
+        "angle3D": 2.726310993906078,
+        "angleScreen": 3.435482095555793,
+        "gripSurvives": [
+          false,
+          true
+        ],
+        "targetIsGrab": [
+          false,
+          false
+        ]
+      },
+      {
+        "grip": "+(*(+(x,y),+(x,y)),x)",
+        "rules": [
+          "factor-n25-n36",
+          "swap"
+        ],
+        "dest": [
+          [
+            -0.07500000000000107,
+            4.3,
+            0
+          ],
+          [
+            -0.22499999999999964,
+            5.8,
+            0
+          ]
+        ],
+        "distance3D": 1.5074813431681333,
+        "angle3D": 42.273689006093726,
+        "angleScreen": 50.26713799696623,
+        "gripSurvives": [
+          false,
+          true
+        ],
+        "targetIsGrab": [
+          false,
+          false
+        ]
+      },
+      {
+        "grip": "+(*(+(x,y),+(x,y)),x)",
+        "rules": [
+          "distribute-right",
+          "swap"
+        ],
+        "dest": [
+          [
+            -7.425,
+            4.3,
+            0
+          ],
+          [
+            -7.425,
+            5.8,
+            0
+          ]
+        ],
+        "distance3D": 1.5,
+        "angle3D": 39.805571092265204,
+        "angleScreen": 47.14274525805858,
+        "gripSurvives": [
+          true,
+          true
+        ],
+        "targetIsGrab": [
+          false,
+          false
+        ]
+      },
+      {
+        "grip": "+(x,y)",
+        "rules": [
+          "distribute-left",
+          "swap"
+        ],
+        "dest": [
+          [
+            -8.23125,
+            7.3,
+            0
+          ],
+          [
+            -5.925000000000001,
+            8.8,
+            0
+          ]
+        ],
+        "distance3D": 2.751143228278018,
+        "angle3D": 86.42366562500266,
+        "angleScreen": 73.68254861162255,
+        "gripSurvives": [
+          true,
+          true
+        ],
+        "targetIsGrab": [
+          false,
+          false
+        ]
+      },
+      {
+        "grip": "+(x,y)",
+        "rules": [
+          "distribute-right",
+          "swap"
+        ],
+        "dest": [
+          [
+            -7.668749999999999,
+            7.3,
+            0
+          ],
+          [
+            -8.325,
+            8.8,
+            0
+          ]
+        ],
+        "distance3D": 1.6372733621787177,
+        "angle3D": 40.702613336058334,
+        "angleScreen": 48.27942014617605,
+        "gripSurvives": [
+          true,
+          true
+        ],
+        "targetIsGrab": [
+          false,
+          false
+        ]
+      },
+      {
+        "grip": "+(*(+(x,y),+(x,y)),x)",
+        "rules": [
+          "distribute-right",
+          "swap"
+        ],
+        "dest": [
+          [
+            0.07499999999999929,
+            4.3,
+            0
+          ],
+          [
+            -0.22499999999999964,
+            5.8,
+            0
+          ]
+        ],
+        "distance3D": 1.5297058540778352,
+        "angle3D": 45,
+        "angleScreen": 53.70262009252212,
+        "gripSurvives": [
+          true,
+          true
+        ],
+        "targetIsGrab": [
+          false,
+          false
+        ]
+      },
+      {
+        "grip": "+(x,y)",
+        "rules": [
+          "distribute-left",
+          "swap"
+        ],
+        "dest": [
+          [
+            -0.43125000000000036,
+            7.3,
+            0
+          ],
+          [
+            1.2749999999999986,
+            8.8,
+            0
+          ]
+        ],
+        "distance3D": 2.2718470596631275,
+        "angle3D": 65.17945866451095,
+        "angleScreen": 55.80459975378621,
+        "gripSurvives": [
+          true,
+          true
+        ],
+        "targetIsGrab": [
+          false,
+          false
+        ]
+      },
+      {
+        "grip": "+(x,y)",
+        "rules": [
+          "distribute-right",
+          "swap"
+        ],
+        "dest": [
+          [
+            0.13124999999999964,
+            7.3,
+            0
+          ],
+          [
+            -1.125,
+            8.8,
+            0
+          ]
+        ],
+        "distance3D": 1.9565694627331793,
+        "angle3D": 52.67447951689399,
+        "angleScreen": 63.21164822864531,
+        "gripSurvives": [
+          true,
+          true
+        ],
+        "targetIsGrab": [
+          false,
+          false
+        ]
+      }
+    ]
+  },
+  {
+    "name": "absorb",
+    "nodes": 5,
+    "pairs": [
+      {
+        "grip": "+(x,y)",
+        "rules": [
+          "absorb-right",
+          "distribute-left"
+        ],
+        "dest": [
+          [
+            0,
+            1.3,
+            0
+          ],
+          [
+            0,
+            1.3,
+            0
+          ]
+        ],
+        "distance3D": 0,
+        "angle3D": 0,
+        "angleScreen": 0,
+        "gripSurvives": [
+          false,
+          true
+        ],
+        "targetIsGrab": [
+          false,
+          false
+        ]
+      },
+      {
+        "grip": "+(x,y)",
+        "rules": [
+          "absorb-right",
+          "swap"
+        ],
+        "dest": [
+          [
+            0,
+            1.3,
+            0
+          ],
+          [
+            0.8999999999999999,
+            2.8,
+            0
+          ]
+        ],
+        "distance3D": 1.74928556845359,
+        "angle3D": 59.036243467926475,
+        "angleScreen": 50.90887921547073,
+        "gripSurvives": [
+          false,
+          true
+        ],
+        "targetIsGrab": [
+          false,
+          false
+        ]
+      },
+      {
+        "grip": "+(x,y)",
+        "rules": [
+          "distribute-left",
+          "swap"
+        ],
+        "dest": [
+          [
+            0,
+            1.3,
+            0
+          ],
+          [
+            0.8999999999999999,
+            2.8,
+            0
+          ]
+        ],
+        "distance3D": 1.74928556845359,
+        "angle3D": 59.036243467926475,
+        "angleScreen": 50.90887921547073,
+        "gripSurvives": [
+          true,
+          true
+        ],
+        "targetIsGrab": [
+          false,
+          false
+        ]
+      }
+    ]
+  },
+  {
+    "name": "same-destination",
+    "nodes": 5,
+    "pairs": [
+      {
+        "grip": "+(x,y)",
+        "rules": [
+          "swap",
+          "group-right"
+        ],
+        "dest": [
+          [
+            0.8999999999999999,
+            2.8,
+            0
+          ],
+          [
+            0,
+            1.3,
+            0
+          ]
+        ],
+        "distance3D": 1.74928556845359,
+        "angle3D": 59.036243467926475,
+        "angleScreen": 50.90887921547073,
+        "gripSurvives": [
+          true,
+          true
+        ],
+        "targetIsGrab": [
+          false,
+          false
+        ]
+      }
+    ]
+  }
+]
