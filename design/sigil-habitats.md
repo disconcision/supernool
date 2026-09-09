@@ -1,0 +1,13 @@
+# Sigil habitats · 019 / interface study 02
+
+User request: explore the representation of symbols, not merely substitute glyphs. Distinguish operators, literals and variables; consider flat overlays, hovering objects, and symbols materially integrated with the wood. Variable identity may use letters, made-up marks, creature emblems or objects. The present arithmetic literals are numbers, but future typed systems need not restrict literals to numbers.
+
+Page: `explorations/018-painted-ground/sigil-workshop.html`. Seven SVG mounting treatments render the same five-node expression, 5 + (x × 3). This preserves semantic comparison while varying carriers. These are 2D vector material concepts, not production 3D mesh/lighting claims. No current gameplay sigils were replaced.
+
+A: flat light impressions. B: hovering raised glyphs and metal operators. C: cut wooden faces. D: luminous inlaid seams. E: raised wooden relief. F: carved operators with suspended atoms. G: carved operators at rest, floating atoms, and an operator impression that lifts when engaged. A separate scrub/play sketch illustrates the last attachment idea; it is not an algebraic rewrite. The letters + and × remain legible in all versions.
+
+Independent controls: variable vocabulary, numeral/dots/tallies, warm/burnt wood, attention state, annotation labels. The vocabulary gallery includes +/× material variants; small quantities, grouped tallies, zero, negative and larger positional numbers; paired x/y identities as letters, invented marks, moth/snail emblems and leaf/crystal relics. The invented glyphs are original drawings, not intentionally borrowed from a historical rune alphabet. Shape, not color alone, should distinguish identities. Small-quantity pictograms need a compact fallback for large or negative numbers.
+
+Source reference: `explorations/005-orbit-concept/tree.png` and its existing prompt/provenance notes. Viewed before authoring. This early generated image integrates glowing operators into wood-grained medallions. The new page embeds the existing reference; no new raster image generation was used. The current page explores category distinctions absent from that all-medallion reference.
+
+For later 3D experiments: maintain a stable material/surface attachment through remeshing, keep glyph contact legible while a junction rotates, retain fresh node identities and copy/merge correspondence, and avoid turning decorative suspension strings into apparent semantic edges. Carved cutouts/relief require actual geometry or deliberate shader work; the SVG bevels do not establish a solution. A promising test is an integrated operator with a temporary camera-facing ghost during manipulation. This is a candidate, not an approved direction.

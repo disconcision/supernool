@@ -12,7 +12,7 @@ function mount(){
  const current=el('div','problem-current-meta');launch.after(current);
  const dialog=el('dialog','problem-dialog');dialog.id='problemCatalogue';dialog.setAttribute('aria-labelledby','catalogueTitle');
  const header=el('header'),intro=el('div');intro.append(el('div','ordinal','SUPERNOOL / PROBLEM LIBRARY'));const title=el('h2','','Trees of the clearing');title.id='catalogueTitle';intro.append(title,el('p','','Every problem is available. Badges show a known solving route, not the only possible rule set. Counts are verified reference solutions, not claims of minimum difficulty.'));
- const link=el('a','study-link','Explore rule tiles & Noolbox designs ↗');link.href='rule-workshop.html';link.target='_blank';link.rel='noopener';intro.append(link);const close=el('button','catalogue-close','×');close.type='button';close.setAttribute('aria-label','Close problem library');header.append(intro,close);dialog.append(header);
+ const link=el('a','study-link','Explore rule tiles & Noolbox designs ↗');link.href='rule-workshop.html';link.target='_blank';link.rel='noopener';intro.append(link);const sigils=el('a','study-link','Sigil habitats: mounting & vocabulary ↗');sigils.href='sigil-workshop.html';sigils.target='_blank';sigils.rel='noopener';sigils.style.marginLeft='14px';intro.append(sigils);const close=el('button','catalogue-close','×');close.type='button';close.setAttribute('aria-label','Close problem library');header.append(intro,close);dialog.append(header);
  const grid=el('div','problem-grid');dialog.append(grid);document.body.append(dialog);
  const cards=new Map<string,HTMLElement>();
  for(const p of problems){const ref=referenceSolutions[p.id][0],card=el('article','problem-card');cards.set(p.id,card);card.dataset.problem=p.id;

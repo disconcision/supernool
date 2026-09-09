@@ -3,6 +3,7 @@ import * as T from 'three';
 import {initial} from './algebra';
 import {recoveryRoute,replayRecovery} from './recovery-replay';
 import {fill,Options,valueAt} from './surface';
+import {memberBox} from './mesh-domain';
 import {rootedEdges} from './root-base';
 // Reference union visits the original complete member boxes, without the new
 // capsule rejection. Check the surface and its neighbouring normal samples.
@@ -14,7 +15,7 @@ for(const extreme of [false,true])for(const progress of [0,.12,.3,.5,.73,.84,1])
  const actual=new Float32Array(size**3),expected=new Float32Array(size**3);expected.fill(-100);
  const members=fill(actual,size,rootedEdges(p.pose.edges,o),o);
  for(const m of members){
-  const box=new T.Box3().setFromPoints(m.points).expandByScalar((m.r+m.flare)*1.6+o.blend+.15);
+  const box=memberBox(m,o).expandByScalar(24/size);
   for(let z=bound(box.min.z);z<=Math.min(size-2,bound(box.max.z)+1);z++)
    for(let y=bound(box.min.y-5);y<=Math.min(size-2,bound(box.max.y-5)+1);y++)
     for(let x=bound(box.min.x);x<=Math.min(size-2,bound(box.max.x)+1);x++){

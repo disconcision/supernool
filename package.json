@@ -7,7 +7,7 @@
     "start": "npm run dev",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "check": "tsc --noEmit --skipLibCheck --target es2020 --module esnext --moduleResolution bundler --lib es2020,dom,dom.iterable explorations/018-painted-ground/scene.ts explorations/018-painted-ground/avatar-review.ts explorations/018-painted-ground/symbol-library.ts explorations/018-painted-ground/problem-catalogue.ts explorations/018-painted-ground/rule-workshop.ts",
+    "check": "tsc --noEmit --skipLibCheck --target es2020 --module esnext --moduleResolution bundler --lib es2020,dom,dom.iterable explorations/018-painted-ground/scene.ts explorations/018-painted-ground/avatar-review.ts explorations/018-painted-ground/symbol-library.ts explorations/018-painted-ground/problem-catalogue.ts explorations/018-painted-ground/rule-workshop.ts explorations/018-painted-ground/sigil-workshop.ts",
     "test": "node scripts/check.mjs",
     "test:browser": "node explorations/018-painted-ground/browser-check.cjs",
     "test:body": "BODY_ALL=1 node explorations/018-painted-ground/browser-check.cjs",

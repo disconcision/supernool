@@ -1,4 +1,5 @@
 import * as T from 'three';
+import {legacyDomain,memberBox,GridDomain} from './mesh-domain';
 export type Edge={a:T.Vector3;b:T.Vector3;r:number;id:string;cutA?:boolean;cutB?:boolean;curve?:T.Vector3;tipRatio?:number};
 export type Options={thickness:number;taper:number;bow:number;random:number;twist:number;facets:number;seed:number;blend:number;hewn?:boolean;spread?:number;rootFlare?:number;rootReach?:number;rootAmount?:number};
 const clamp=(x:number)=>Math.max(0,Math.min(1,x));
@@ -43,18 +44,19 @@ export function valueAt(x:number,y:number,z:number,m:Member,o:Options){
  }
  return r-Math.hypot(cross,dot);
 }
-export function fill(field:Float32Array,size:number,edges:Edge[],o:Options){
+export function fill(field:Float32Array,size:number,edges:Edge[],o:Options,domain:GridDomain=legacyDomain()){
  field.fill(-100);
  const shapes=new Map(edges.filter(e=>e.a.distanceToSquared(e.b)>1e-12).map(e=>[e,prepare(e,o)]));
  const shared=(p:T.Vector3,own:Edge)=>edges.some(e=>{const m=shapes.get(e);return e!==own&&!!m&&e.r>1e-6&&valueAt(p.x,p.y,p.z,m,o)>=-1e-8;});
  const preparedEdges=edges.map(e=>({...e,cutA:!shared(e.a,e),cutB:!shared(e.b,e)}));
  const members=preparedEdges.filter(e=>e.r>1e-6&&e.a.distanceTo(e.b)>1e-6).map(e=>prepare(e,o));
- const bound=(x:number)=>Math.max(1,Math.min(size-2,Math.floor((x/6+1)*size/2))),world=(i:number)=>(i/size*2-1)*6;
- for(const m of members){const pad=(m.r+m.flare)*1.6+o.blend+.15,box=new T.Box3().setFromPoints(m.points).expandByScalar(pad);
- const xmin=bound(box.min.x),xmax=Math.min(size-2,bound(box.max.x)+1),ymin=bound(box.min.y-5),ymax=Math.min(size-2,bound(box.max.y-5)+1),zmin=bound(box.min.z),zmax=Math.min(size-2,bound(box.max.z)+1);
- const rejectRadius2=Math.pow((m.r+m.flare+o.blend+24/size)*(1+Math.abs(o.facets)*.22)/Math.cos(Math.PI/7)+m.curve.length(),2);
+ const bound=(x:number,axis:'x'|'y'|'z')=>Math.max(1,Math.min(size-2,Math.floor(((x-domain.center[axis])/domain.half[axis]+1)*size/2))),world=(i:number,axis:'x'|'y'|'z')=>(i/size*2-1)*domain.half[axis]+domain.center[axis];
+ const halo=4*Math.max(domain.half.x,domain.half.y,domain.half.z)/size;
+ for(const m of members){const box=memberBox(m,o).expandByScalar(halo);
+ const xmin=bound(box.min.x,'x'),xmax=Math.min(size-2,bound(box.max.x,'x')+1),ymin=bound(box.min.y,'y'),ymax=Math.min(size-2,bound(box.max.y,'y')+1),zmin=bound(box.min.z,'z'),zmax=Math.min(size-2,bound(box.max.z,'z')+1);
+ const rejectRadius2=Math.pow((m.r+m.flare+o.blend+halo)*(1+Math.abs(o.facets)*.22*Math.SQRT2)/Math.cos(Math.PI/7)+m.curve.length(),2);
  for(let z=zmin;z<=zmax;z++)for(let y=ymin;y<=ymax;y++)for(let x=xmin;x<=xmax;x++){
- const px=world(x),py=world(y)+5,pz=world(z);
+ const px=world(x,'x'),py=world(y,'y'),pz=world(z,'z');
  // Conservative capsule around the curved member. Its sinusoidal bow stays
  // within |curve| of the chord. Preserve two outside samples for MC normals.
  const ax=px-m.e.a.x,ay=py-m.e.a.y,az=pz-m.e.a.z;
