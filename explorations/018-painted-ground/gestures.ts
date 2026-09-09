@@ -1,5 +1,5 @@
 import {Term,Action,walk,actions,replace} from './algebra';
-export type Gesture={owner:Term;action:Action;gripId:string;braceId:string;targetId:string;instruction:string;after:Term};
+export type Gesture={derived?:boolean;owner:Term;action:Action;gripId:string;braceId:string;targetId:string;instruction:string;after:Term};
 /** Map valid term rewrites to the two physical contacts that express them. */
 export function gestures(tree:Term,gripId?:string):Gesture[]{
  const result:Gesture[]=[];

@@ -1,3 +1,4 @@
+import {derivedGestures} from './derived-gestures';
 import {problems,problemById,instantiate} from './problems';
 import {RewriteRecord,recoveryRoute,replayRecovery,recoveryEmbedding} from './recovery-replay';
 import {createEncounterPresentation} from './encounter-presentation';
@@ -131,6 +132,7 @@ for(const [x,z,scale] of [[-8,-5,.6],[7,-7,.75]]){const root=initial();const t=r
 function status(text:string){$('message').textContent=text;}
 function nextClue(){
  const nodes=walk(tree);
+ if(value('dragDerivation')==='derived')return 'Hold a surviving branch and follow its destination. For A × 0, pull the zero; for A + 0, pull A. Equal branches can merge from either copy.';
  if(nodes.some(n=>n.kind==='num'&&n.value===0))return 'Hold a rune and pull. Press zeros into their junctions, or carry a branch around its sibling. Suggest a grip shows one route.';
  if(nodes.some(n=>actions(n).some(a=>a.key.startsWith('factor'))))return 'Matching factors share a junction. Bring the matching branches together to factor them.';
  if(nodes.some(n=>actions(n).some(a=>a.key==='calculate')))return 'Numeric leaves can combine. Gather them into their operator junction.';
@@ -138,7 +140,7 @@ function nextClue(){
 }
 function ui(updateMessage=true){const busy=!!animation||!!grip;const done=solved(tree)&&!busy;$('expression').textContent=readable(tree);$('progress').textContent=`${count(tree)} nodes · ${steps} moves · start: ${count(hostTree)} nodes`;$('bar').style.width=Math.min(100,Math.max(0,(count(hostTree)-count(tree))/Math.max(1,count(hostTree)-count(goalTerm))*100))+'%';$('goal').textContent=done?readable(goalTerm)+' · same meaning, less structure.':'Simplify this tree to '+readable(goalTerm)+'.';$('problemNote').textContent=problem.note;problemSelect.disabled=busy||!!pin; $('guideTitle').textContent=done?'Paths opened':'Help';$('approach').hidden=near;$('hint').hidden=!near||done;($('hint') as HTMLButtonElement).disabled=busy||!loaded;
  ($('undo') as HTMLButtonElement).disabled=!history.length||busy;($('redo') as HTMLButtonElement).disabled=!future.length||busy;($('reset') as HTMLButtonElement).disabled=busy;($('settingsButton') as HTMLButtonElement).disabled=busy;
- ($('inputMode') as HTMLSelectElement).disabled=busy;($('pinButton') as HTMLButtonElement).disabled=busy;($('clearPin') as HTMLButtonElement).disabled=busy||!pin;
+ ($('inputMode') as HTMLSelectElement).disabled=busy;($('dragDerivation') as HTMLSelectElement).disabled=busy;($('pinButton') as HTMLButtonElement).disabled=busy;($('clearPin') as HTMLButtonElement).disabled=busy||!pin;
  $('pinStatus').textContent=pin?'Holding '+format(find(tree,pin.id)!)+': position and incoming connection fixed.':'Second hand rests. F or Shift-click pins a node.';
  for(const box of document.querySelectorAll<HTMLInputElement>('#ruleList input'))box.disabled=busy;
  $('equippedCount').textContent=`${enabled.size} / ${rules.length} rules equipped`;
@@ -151,7 +153,7 @@ function ui(updateMessage=true){const busy=!!animation||!!grip;const done=solved
  if(updateMessage)status(done?'You used local rewrites to uncover the simpler tree. Walk on, or press Space to reach back in and explore the simpler tree.':animation?'The hands are letting the tree settle…':near?nextClue():'Walk into its pale stone circle. The branches will settle into a working plane.');
  if(poseNow)updateRunes(poseNow);}
 function select(id:string){if(animation||grip||!near)return;selected=id;hoverId=undefined;ui(false);}
-function showGesture(n:Term,a:Action){if(bodyMode()&&!handFocus)setHandFocus(true);spotlight=gestures(tree).find(g=>g.owner.id===n.id&&g.action.key===a.key&&allowed(g.owner,g.action));if(spotlight){selected=spotlight.gripId;ui(false);status(spotlight.instruction+'. Grip the contact, then follow its colored path. Spell names are listed separately.');drawGuides();}}
+function showGesture(n:Term,a:Action){if(bodyMode()&&!handFocus)setHandFocus(true);spotlight=candidateGestures(tree).find(g=>g.owner.id===n.id&&g.action.key===a.key&&allowed(g.owner,g.action));if(spotlight){selected=spotlight.gripId;ui(false);status(spotlight.instruction+'. Grip the contact, then follow its colored path. Spell names are listed separately.');drawGuides();}else status('This rewrite has no movable surviving contact in this variant. Try the authored comparison.');}
 $('hint').onclick=()=>{if(!near||animation||grip)return;const h=hint(tree,(owner,a,t)=>allowed(owner,a,t),goalTerm);if(h){showGesture(find(tree,h.nodeId)!,h.action);}else status('No route found with the equipped rules and pin. Release the pin or re-enable rules in the noolbox; undo is also available.');};
 $('undo').onclick=()=>{if(animation||grip||!history.length)return;if(encounter.enabled)encounter.sequence.jump('active');const record=rewriteTrace.pop();if(record)redoTrace.push(record);future.push({tree,steps});const prev=history.pop()!;tree=prev.tree;steps=prev.steps;epoch++;selected=tree.id;suggested=undefined;spotlight=undefined;pin=undefined;lastKey='';ui();drawGuides();};
 $('redo').onclick=()=>{if(animation||grip||!future.length)return;if(encounter.enabled)encounter.sequence.jump('active');const record=redoTrace.pop();if(record)rewriteTrace.push(record);history.push({tree,steps});const next=future.pop()!;tree=next.tree;steps=next.steps;epoch++;selected=tree.id;suggested=undefined;spotlight=undefined;pin=undefined;lastKey='';ui();drawGuides();};
@@ -172,16 +174,18 @@ const enabled=new Set(rules.map(r=>r.id));
 const keys=new Set<string>(),ray=new T.Raycaster(),pointer=new T.Vector2(),plane=new T.Plane(new T.Vector3(0,1,0),0),walkVelocity=new T.Vector3();
 const guideSvg=$('gestureGuide'),spells=$('spells'),screenGuides=new ScreenGuides(scene);
 const bodyMode=()=>value('inputMode')==='body';
+let candidateCache:{source:Term;mode:string;list:Gesture[]}|undefined;
+function candidateGestures(source:Term,id?:string){const mode=value('dragDerivation');if(candidateCache?.source!==source||candidateCache.mode!==mode)candidateCache={source,mode,list:mode==='derived'?derivedGestures(source):gestures(source)};return id?candidateCache.list.filter(g=>g.gripId===id):candidateCache.list;}
 function screen(p:T.Vector3):ScreenPoint{const v=p.clone().project(camera);return {x:(v.x+1)*innerWidth/2,y:(1-v.y)*innerHeight/2};}
 function worldPoint(id:string,pose=poseNow){const p=pose?.points.get(id);return p?treeWorld(p):undefined;}
 function allowed(owner:Term,action:Action,source=tree){return mayRewrite()&&fitsScene(source,owner,action)&&enabled.has(ruleId(owner,action))&&allowsPin(source,owner,action,pin,layoutOptions());}
 function anchors(g:Gesture){const before=layout(tree,layoutOptions()),after=layout(g.after,layoutOptions());const from=screen(treeWorld(before.points.get(g.gripId)!));
- const endpoint=g.action.key==='swap'||g.action.key.startsWith('group')?after.points.get(g.gripId)!:(after.points.get(g.targetId)??before.points.get(g.targetId))!;
+ const endpoint=g.derived||g.action.key==='swap'||g.action.key.startsWith('group')?after.points.get(g.gripId)!:(after.points.get(g.targetId)??before.points.get(g.targetId))!;
  const to=screen(treeWorld(endpoint));return {from,to};}
-function available(id:string){return gestures(tree,id).filter(g=>allowed(g.owner,g.action)).filter(g=>{const a=anchors(g);return Math.hypot(a.to.x-a.from.x,a.to.y-a.from.y)>10;});}
+function available(id:string){return candidateGestures(tree,id).filter(g=>allowed(g.owner,g.action)).filter(g=>{const a=anchors(g);return Math.hypot(a.to.x-a.from.x,a.to.y-a.from.y)>10;});}
 function togglePin(id=selected){if(grip||animation||!near||spread>.12)return;if(pin?.id===id)pin=undefined;else{const p=poseNow?.points.get(id);if(!p)return;pin={id,position:{x:p.x,y:p.y,z:p.z}};}spotlight=undefined;ui(false);status(pin?'The other hand holds this node fixed. Moves that relocate or reparent it are unavailable.':'Second-hand pin released.');}
 function beginGrip(id:string,at:ScreenPoint,keyboard=false){if(!mayRewrite())return;if(bodyMode()&&!handFocus)return;if(animation||grip||!near||spread>.12||!loaded)return;const list=available(id);selected=id;if(!list.length){ui(false);status('No equipped gesture can move this contact with the current pin. Choose another node, release the pin, or open the noolbox.');return;}
- grip={id,options:list,progress:0,target:0,velocity:0,ready:false,cursorReady:false,caught:false,cursor:at,from:at,keyboard:keyboard||bodyMode(),body:bodyMode(),avatarStart:avatar.position.clone(),gain:+value('pullGain'),zoom:camera.zoom,anchors:new Map(list.map(g=>[g,anchors(g)]))};sound.start();clearMovement();controls.enabled=false;renderer.domElement.style.cursor='grabbing';epoch++;lastKey='';ui(false);status(bodyMode()?'GRIP · Keep Space held. Arrows move the traveller to pull; release Space to settle.':'Hold and pull along a colored path. Return to the source to change direction.');}
+ spotlight=undefined;grip={id,options:list,progress:0,target:0,velocity:0,ready:false,cursorReady:false,caught:false,cursor:at,from:at,keyboard:keyboard||bodyMode(),body:bodyMode(),avatarStart:avatar.position.clone(),gain:+value('pullGain'),zoom:camera.zoom,anchors:new Map(list.map(g=>[g,anchors(g)]))};sound.start();clearMovement();controls.enabled=false;renderer.domElement.style.cursor='grabbing';epoch++;lastKey='';ui(false);status(bodyMode()?'GRIP · Keep Space held. Arrows move the traveller to pull; release Space to settle.':'Hold and pull along a colored path. Return to the source to change direction.');}
 function updateGrip(at:ScreenPoint){if(!grip)return;const h=grip;h.feedbackCursor=at;
  // Camera fitting must not manufacture body pull or shift a frozen gesture's target.
  if(!h.keyboard){const ratio=h.zoom/camera.zoom;at={x:innerWidth/2+(at.x-innerWidth/2)*ratio,y:innerHeight/2+(at.y-innerHeight/2)*ratio};}
@@ -324,6 +328,7 @@ function updateHands(now:number,dt:number,moving:boolean){const g=grip?.chosen??
 for(const rule of rules){const label=document.createElement('label');label.className='rule';const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=true;checkbox.dataset.rule=rule.id;checkbox.onchange=()=>{if(checkbox.checked)enabled.add(rule.id);else enabled.delete(rule.id);spotlight=undefined;ui(false);};const text=document.createElement('span');text.textContent=rule.name;const small=document.createElement('small');small.textContent=rule.equation;text.append(small);label.append(checkbox,text);label.style.setProperty('--rule',rule.color);$('ruleList').append(label);}
 $('toolboxButton').onclick=()=>$('toolbox').hidden=!$('toolbox').hidden;$('closeToolbox').onclick=()=>$('toolbox').hidden=true;
 $('pinButton').onclick=()=>togglePin();$('clearPin').onclick=()=>{pin=undefined;spotlight=undefined;ui(false);};
+$('dragDerivation').onchange=()=>{spotlight=undefined;pin=undefined;ui(false);drawGuides();status(value('dragDerivation')==='derived'?'Derived contacts: hold a surviving branch; dots show its actual endpoint.':'Authored contacts restored.');};
 $('inputMode').onchange=()=>{cancelPointer();releaseGrip(false);keys.clear();walkVelocity.setScalar(0);hoverId=undefined;spotlight=undefined;handFocus=false;lingerPoint=undefined;pin=undefined;clearMovement();ui(false);renderer.domElement.focus();};
 ($('inputMode') as HTMLSelectElement).value=requestedInputMode()??(touchPrimary()?'mouse':'body');
 $('interact').onclick=()=>{setHandFocus(!handFocus);renderer.domElement.focus();};
@@ -467,7 +472,7 @@ return mountSceneEditor(scene,camera,renderer,controls,{
 });
 
 }
-setupSettings(inhabitedStudy?'clearing-019':'clearing-018',$('settings'),'.dock input,.dock select',true).finally(async()=>{sceneEditor=createEditor();await sceneEditor.ready;preferencesReady=true;});
+setupSettings(inhabitedStudy?'clearing-019':'clearing-018',$('settings'),'.dock input,.dock select',true).finally(async()=>{const comparison=new URLSearchParams(location.search).get('drag');if(comparison==='derived'||comparison==='authored'){($('dragDerivation') as HTMLSelectElement).value=comparison;$('dragDerivation').dispatchEvent(new Event('change'));}sceneEditor=createEditor();await sceneEditor.ready;preferencesReady=true;});
 ui();requestAnimationFrame(tick);
 
 // Read-only integration diagnostics; rendering uses the displayed worker pose.

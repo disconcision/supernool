@@ -206,3 +206,7 @@ The user reports buzzing both after unmute and after letting playback run. Recre
 ## Broader symbolic systems and casual play
 
 Read [rewriting-systems-roadmap.md](rewriting-systems-roadmap.md) before extending the calculus. It retains the 2026-09-08 discussion; next candidate is a schema with one extra variable, initially supplied by spare-hand sampling. The user also wants to consider casual, brief world interactions alongside staged encounters. Energy and its purpose remain open, not an approved economy. Identity-bar tiles are now adopted in the current scene; three additional 23/25/31-node problems are size studies, not a claim of mathematical coverage or global difficulty.
+
+### Derived dragging experiment and bounded interaction scope
+
+User authorized a less special-cased dragging comparison, with viability to be tested rather than presumed. Encounter → Drag contacts now retains authored contacts and offers derived surviving occurrences. This is an occurrence/path layer over the existing algebra, not a wholesale Nool engine port. Read `design/interaction-mechanisms.md` for concrete witnesses and the mechanism/variation list. The Hollow Crown factor/distribute near-coincidence remains under glyph-preserving correspondence; do not claim declarative derivation removes all ambiguity. Additional mechanisms remain proposals. Aim for useful, tangible rewrite families, not arbitrary-TRS completeness; named subtree definitions remain a separate future complexity-management idea.
