@@ -105,3 +105,9 @@ An alternative is finite per-object stored charge, spent on rewarding interactio
 - Higher-order rewriting course: https://www.cs.ru.nl/~cynthiakop/2024_isr/
 - Linear logic/resources: https://www.cs.cmu.edu/~fp/courses/linear/lectures/lecture01.html
 - Stephen Buckley, A note on the ring axioms: https://archive.maths.nuim.ie/staff/sbuckley/Papers/ring_axioms.pdf
+
+## Local named subtrees and gesture ambiguity · 2026-09-08
+
+See the rendered [interaction notebook](../explorations/018-painted-ground/interaction-notebook.html). The user proposes painting/encapsulating a subtree T, defining a temporary name α ≔ T, folding matching occurrences through a definition tile, and treating them atomically in the UI. Preserve the expansion and its meaning; this is neither lambda abstraction nor a globally free algebraic variable. Start with exact-match occurrences, immutable expansions, local scope and an acyclic definition environment. Goal checks must see through aliases. Decisions still open: lifetime, nested definitions, equality modulo chosen laws, inside editing, costs, undo and recovery representation. No runtime implementation yet.
+
+Hollow crown also exposed almost coincident factor/distribute and absorb/swap targets. Explicit per-grip route selection is now an interim accessibility fallback. Proposed layout optimization should consider angular and pixel separation, stable targets during a grip, branch crossings, movement of unrelated operands and a fallback when too many routes compete. A strict second-hand pin constrains topology and position; it does not protect a subtree as an atomic operand and can prohibit zero absorption.

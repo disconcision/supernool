@@ -3,7 +3,7 @@ import {createEncounterAudio,AudioPhase} from './encounter-audio';
 export type SoundFrame={phase:AudioPhase;age:number;reduction:number;x:number;z:number;dt:number;paused:boolean;recoveryCount?:number;recoveryDuration?:number};
 /** One audio-clock scheduler per page, unlocked by a real user gesture. */
 export function createSound(){
- let ctx:AudioContext|undefined,bank:ReturnType<typeof createEncounterAudio>|undefined,buffer:AudioBuffer|undefined,loading=false,mode='thematic',volume=.3,lastBucket=0,lastAt=0,lastAudibleMode='thematic';
+ let ctx:AudioContext|undefined,bank:ReturnType<typeof createEncounterAudio>|undefined,buffer:AudioBuffer|undefined,loading=false,mode='off',volume=.3,lastBucket=0,lastAt=0,lastAudibleMode='thematic';
  let frame:SoundFrame={phase:'dormant',age:0,reduction:0,x:0,z:0,dt:0,paused:false},lastPhase='',step=0,nextBeat=0,nextWind=0,lastPosition:{x:number;z:number}|undefined,travel=0,foot=0,lastThunder=-99;
  let lastRecoveryCue=-1,lastRecoveryAge=-1;
  let unlocked=false,session=0;let lastMix='';let timer:ReturnType<typeof setInterval>|undefined,owner=true,channel:BroadcastChannel|undefined;
@@ -72,13 +72,13 @@ export function createSound(){
   catch(){if(mode==='thematic'){gesture('catch');return;}if(mode==='recorded'&&buffer&&ready()){const s=ctx!.createBufferSource(),g=ctx!.createGain();s.buffer=buffer;g.gain.value=.45;s.connect(g);g.connect(bank!.buses.effects);s.start();s.onended=()=>{s.disconnect();g.disconnect();};}else legacy([523.25,783.99,1046.5],.3,.4);},
   uncatch(){mode==='thematic'?gesture('uncatch'):legacy([261.63,196],.12,.16);},
   finish(commit:boolean){mode==='thematic'?gesture(commit?'commit':'cancel'):legacy(commit?[130.81,261.63]:[146.83],commit?.1:.05,.2);},
-  mount(){const select=document.getElementById('soundMode') as HTMLSelectElement;select.insertBefore(new Option('Wood, earth & resonance','thematic',true,true),select.firstChild);select.value='thematic';
-   const mute=document.createElement('button');mute.id='audioMute';mute.type='button';mute.textContent='Mute audio';mute.setAttribute('aria-pressed','false');mute.onclick=()=>{select.value=select.value==='off'?lastAudibleMode:'off';select.dispatchEvent(new Event('change',{bubbles:true}));};(document.getElementById('studyTools')??select.closest('details')!).prepend(mute);
+  mount(){const select=document.getElementById('soundMode') as HTMLSelectElement;select.insertBefore(new Option('Wood, earth & resonance','thematic',false,false),select.firstChild);select.value='off';select.dataset.transient='true';
+   const mute=document.createElement('button');mute.id='audioMute';mute.type='button';mute.textContent='Unmute audio';mute.setAttribute('aria-pressed','true');mute.onclick=()=>{select.value=select.value==='off'?lastAudibleMode:'off';select.dispatchEvent(new Event('change',{bubbles:true}));};(document.getElementById('studyTools')??select.closest('details')!).prepend(mute);
    const panel=select.closest('details')!;const label=document.createElement('label');label.innerHTML='Encounter soundtrack<select id="audioScore"><option value="on">On · wind, pulse & regrowth</option><option value="off">Off · interaction effects only</option></select>';panel.append(label);
    for(const [id,name,value] of [['audioMusic','Music',.65],['audioEnvironment','Wind & rustling',.55],['audioEffects','Effects & footsteps',.75]] as const){const l=document.createElement('label');l.innerHTML=`${name}<input id="${id}" type="range" min="0" max="1" step=".05" value="${value}">`;panel.append(l);}
-   const note=document.createElement('p');note.textContent='Audio starts after a click/key press and pauses in background tabs. Newest interacted tab owns sound on this port. Encounter state buttons audition the mood; lightning sounds follow live flashes, not paused scrubbing.';panel.append(note);
+   const note=document.createElement('p');note.textContent='Audio starts muted on every page load, including when restoring presets. Unmute explicitly to audition; buzzing remains unresolved. Playback pauses in background tabs. Newest interacted tab owns sound on this port. Encounter state buttons audition the mood; lightning sounds follow live flashes, not paused scrubbing.';panel.append(note);
    const link=document.createElement('a');link.href='audio-review.html';link.target='_blank';link.textContent='Listen to a 34-second soundtrack sketch ↗';panel.append(link);
-   const status=document.createElement('p');status.id='audioStatus';status.textContent='Sound waiting for a click or key press.';panel.append(status);
+   const status=document.createElement('p');status.id='audioStatus';status.textContent='Muted · enable explicitly to audition.';panel.append(status);
    for(const id of ['audioScore','audioMusic','audioEnvironment','audioEffects'])document.getElementById(id)!.addEventListener('input',mix);
   }
  };

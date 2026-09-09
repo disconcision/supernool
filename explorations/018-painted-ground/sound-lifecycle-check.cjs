@@ -13,7 +13,7 @@ const {build}=require('esbuild');
  global.addEventListener=()=>{};global.BroadcastChannel=class {postMessage(){} close(){}};
  const contexts=[];global.AudioContext=class {state='running';currentTime=0;constructor(){contexts.push(this)}resume(){this.state='running';return Promise.resolve()}suspend(){this.state='suspended';return Promise.resolve()}close(){this.state='closed';return Promise.resolve()}};
  global.testBanks=[];const m={exports:{}};new Function('require','module','exports',result.outputFiles[0].text)(require,m,m.exports);
- const sound=m.exports.createSound();sound.setMode('off');sound.unlock();assert.equal(contexts.length,0,'Muted clicks must not create audio contexts');
+ const sound=m.exports.createSound();sound.unlock();assert.equal(contexts.length,0,'Muted clicks must not create audio contexts');
  sound.setMode('thematic');assert.equal(contexts.length,1);assert.equal(intervals.size,1);
  sound.update({phase:'active',age:20,reduction:.5,x:0,z:0,dt:.016,paused:false});
  for(const fn of intervals.values())fn();assert.equal(testBanks[0].inspect().events.cue,1);
