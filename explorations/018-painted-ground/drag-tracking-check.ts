@@ -64,6 +64,20 @@ for(let i=1;i<=100;i++){correction=advanceFineCursor(correction,{x:90,y:i},track
 assert.equal(chosen,'regroup','precision and stickiness still allow late correction');
 console.log('Ambiguity precision: local gain, idle stability, continuous gain changes, frame partition, and late correction pass.');
 
-assert.equal(precisionStickiness(tracks,'identity'),1.25,'bias stays below closely spaced endpoint separation');
+assert.equal(precisionStickiness(tracks,tracks[0].to,'identity'),1.25,'bias stays below closely spaced endpoint separation');
 const tiny=[tracks[0],{...tracks[1],to:{x:100,y:.5}}];
-assert.equal(trackAt(tiny,tiny[1].to,'identity',precisionStickiness(tiny,'identity'))!.item,'regroup','subpixel-separated target is not made unreachable by hysteresis');
+assert.equal(trackAt(tiny,tiny[1].to,'identity',precisionStickiness(tiny,tiny[1].to,'identity'))!.item,'regroup','subpixel-separated target is not made unreachable by hysteresis');
+
+// A route picked at the shared source must not swallow the first directional tap.
+const launch=[{item:'side',from:{x:0,y:0},to:{x:100,y:0}},{item:'down',from:{x:0,y:0},to:{x:0,y:100}}];
+const incumbent=trackAt(launch,{x:0,y:0})!.item;
+assert.equal(trackAt(launch,{x:0,y:1},incumbent,3)!.progress,0,'reproduce the previous launch resistance');
+for(const raw of [{x:0,y:.1},{x:0,y:1},{x:0,y:5}]){
+ const cursor=advanceFineCursor(fineCursor({x:0,y:0}),raw,launch);
+ assert.deepEqual(cursor.point,raw,'first small input is unscaled');
+ const result=trackAt(launch,cursor.point,incumbent,precisionStickiness(launch,cursor.point,incumbent))!;
+ assert.equal(result.item,'down','first directional input can leave arbitrary initial route');
+ assert.ok(result.progress>0,'first tap immediately advances the desired route');
+}
+assert.equal(precisionStickiness(launch,{x:-20,y:30},'side'),0,'retreat cannot retain a route clamped at zero progress');
+console.log('Precision launch: first directional input advances without incumbent resistance.');

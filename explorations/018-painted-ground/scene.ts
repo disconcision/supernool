@@ -202,7 +202,7 @@ function updateGrip(at:ScreenPoint){if(!grip)return;const h=grip;h.feedbackCurso
   // Body/keyboard input is relative. Direct pointer dragging stays one-to-one.
   if(precision&&h.keyboard){h.fine=advanceFineCursor(h.fine,at,h.intent?[]:tracks);at=h.fine.point;}
   $('world').dataset.precisionGain=(precision&&h.keyboard?h.fine.gain:1).toFixed(3);
-  const result=trackAt(tracks,at,h.chosen,precision?precisionStickiness(tracks,h.chosen):value('dragTracking')==='sticky'?3:0,h.intent);
+  const result=trackAt(tracks,at,h.chosen,precision?precisionStickiness(tracks,at,h.chosen):value('dragTracking')==='sticky'?3:0,h.intent);
   if(!result)return;
   if(result.item!==h.chosen){
    // Only the display origin changes. Every candidate still starts at grab-time tree.

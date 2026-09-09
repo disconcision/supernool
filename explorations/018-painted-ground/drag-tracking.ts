@@ -43,9 +43,12 @@ export function advanceFineCursor<T>(state:FineCursor,raw:Point2,tracks:Track<T>
  }
  return {raw:{...raw},point,gain};
 }
-/** Do not let hysteresis exceed the separation of very close destinations. */
-export function precisionStickiness<T>(tracks:Track<T>[],previous?:T){
+/** No incumbent advantage at launch or when retreating behind its start.
+ * Once underway, cap hysteresis below the separation of close destinations. */
+export function precisionStickiness<T>(tracks:Track<T>[],at:Point2,previous?:T){
  const current=tracks.find(t=>t.item===previous);if(!current)return 0;
+ if(scoreDrag(current.from,current.to,at).progress<=0)return 0;
+ const launched=smooth((Math.hypot(at.x-current.from.x,at.y-current.from.y)-10)/20);
  const separations=tracks.filter(t=>t!==current).map(t=>Math.hypot(t.to.x-current.to.x,t.to.y-current.to.y));
- return Math.min(3,...separations.map(d=>d*.25));
+ return launched*Math.min(3,...separations.map(d=>d*.25));
 }
