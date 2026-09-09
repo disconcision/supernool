@@ -1,5 +1,7 @@
 # supernool
 
+Current development: **020 — Rewrite interactions** on `codex/iteration-020`. Stable public release: **019** on `main`. Read `RELEASES.md` before moving changes between them.
+
 Current playable: `explorations/018-painted-ground/`. Development server: port 3100. Keep the current route working. Nool's separate 2D lab lives in `../nool`; do not put new game work there.
 
 Read `design/current-direction.md` and the current study README before changing mechanics or art. Preserve tactile interaction, both mouse/body modes, the hewn and smooth comparisons, arbitrary subtree correspondence, and the existing checkpoints. New visuals need inspection in the live camera and at intermediate transformation states.

@@ -1,6 +1,6 @@
 # Current repository: supernool
 
-As of 2026-09-06 the game is named **supernool** and lives in the sibling `supernool` repository. Current study: 018. Earlier Nool/Grow names and absolute paths below are historical. The separate art research workspace has not moved.
+As of 2026-09-06 the game is named **supernool** and lives in the sibling `supernool` repository. Current development: 020 — Rewrite interactions. Stable release: 019. See `../RELEASES.md` for the boundary. Earlier Nool/Grow names and absolute paths below are historical. The separate art research workspace has not moved.
 
 # Current direction — nool / Grow
 
