@@ -179,18 +179,9 @@ function anchors(g:Gesture){const before=layout(tree,layoutOptions()),after=layo
  const endpoint=g.action.key==='swap'||g.action.key.startsWith('group')?after.points.get(g.gripId)!:(after.points.get(g.targetId)??before.points.get(g.targetId))!;
  const to=screen(treeWorld(endpoint));return {from,to};}
 function available(id:string){return gestures(tree,id).filter(g=>allowed(g.owner,g.action)).filter(g=>{const a=anchors(g);return Math.hypot(a.to.x-a.from.x,a.to.y-a.from.y)>10;});}
-function chooseRoute(g:Gesture){
- if(animation)return;
- if(grip){const option=grip.options.find(o=>o.owner.id===g.owner.id&&o.action.key===g.action.key);if(!option)return;g=option;if(grip.progress>=.1||grip.target>=.1||grip.caught){status('Return close to the starting pose before choosing another route.');return;}grip.intent=g;grip.chosen=g;}
- else {spotlight=g;selected=g.gripId;hoverId=undefined;ui(false);}
- status('Chosen: '+g.action.label+'. Grip and pull; other rules remain enabled.');drawGuides();
-}
 function togglePin(id=selected){if(grip||animation||!near||spread>.12)return;if(pin?.id===id)pin=undefined;else{const p=poseNow?.points.get(id);if(!p)return;pin={id,position:{x:p.x,y:p.y,z:p.z}};}spotlight=undefined;ui(false);status(pin?'The other hand holds this node fixed. Moves that relocate or reparent it are unavailable.':'Second-hand pin released.');}
 function beginGrip(id:string,at:ScreenPoint,keyboard=false){if(!mayRewrite())return;if(bodyMode()&&!handFocus)return;if(animation||grip||!near||spread>.12||!loaded)return;const list=available(id);selected=id;if(!list.length){ui(false);status('No equipped gesture can move this contact with the current pin. Choose another node, release the pin, or open the noolbox.');return;}
- grip={id,options:list,progress:0,target:0,velocity:0,ready:false,cursorReady:false,caught:false,cursor:at,from:at,keyboard:keyboard||bodyMode(),body:bodyMode(),avatarStart:avatar.position.clone(),gain:+value('pullGain'),zoom:camera.zoom,anchors:new Map(list.map(g=>[g,anchors(g)]))};
- // An explicitly previewed route is a choice, not just decoration.
- const intended=list.find(g=>spotlight&&g.owner.id===spotlight.owner.id&&g.action.key===spotlight.action.key);if(intended){grip.intent=intended;grip.chosen=intended;}
- sound.start();clearMovement();controls.enabled=false;renderer.domElement.style.cursor='grabbing';epoch++;lastKey='';ui(false);status(bodyMode()?'GRIP · Keep Space held. Arrows move the traveller to pull; release Space to settle.':'Hold and pull along a colored path. Return to the source to change direction.');}
+ grip={id,options:list,progress:0,target:0,velocity:0,ready:false,cursorReady:false,caught:false,cursor:at,from:at,keyboard:keyboard||bodyMode(),body:bodyMode(),avatarStart:avatar.position.clone(),gain:+value('pullGain'),zoom:camera.zoom,anchors:new Map(list.map(g=>[g,anchors(g)]))};sound.start();clearMovement();controls.enabled=false;renderer.domElement.style.cursor='grabbing';epoch++;lastKey='';ui(false);status(bodyMode()?'GRIP · Keep Space held. Arrows move the traveller to pull; release Space to settle.':'Hold and pull along a colored path. Return to the source to change direction.');}
 function updateGrip(at:ScreenPoint){if(!grip)return;const h=grip;h.feedbackCursor=at;
  // Camera fitting must not manufacture body pull or shift a frozen gesture's target.
  if(!h.keyboard){const ratio=h.zoom/camera.zoom;at={x:innerWidth/2+(at.x-innerWidth/2)*ratio,y:innerHeight/2+(at.y-innerHeight/2)*ratio};}
@@ -229,11 +220,11 @@ function drawGuides(){
  const list=near&&(!bodyMode()||handFocus)?(grip?.options??available(focus)):[];guideSvg.replaceChildren();screenGuides.begin();
  const selectedKey=grip?.chosen?.action.key??spotlight?.action.key;
  const signature=JSON.stringify([list.map(g=>[g.owner.id,g.action.key]),selectedKey,grip?.ready,bodyMode(),pin?.id,value('spellPlacement')]);
- if(spells.dataset.signature!==signature){spells.dataset.signature=signature;spells.replaceChildren();for(const [i,g]of list.entries()){const row=document.createElement('button');row.type='button';row.onclick=()=>chooseRoute(g);row.setAttribute('aria-pressed',String(g.action.key===selectedKey));row.className='spell'+(g.action.key===selectedKey?' active':'');row.style.setProperty('--spell',ruleColor(g.owner,g.action));row.textContent=`${i+1} · ${g.action.label}`;spells.appendChild(row);}}
+ if(spells.dataset.signature!==signature){spells.dataset.signature=signature;spells.replaceChildren();for(const [i,g]of list.entries()){const row=document.createElement('div');row.className='spell'+(g.action.key===selectedKey?' active':'');row.style.setProperty('--spell',ruleColor(g.owner,g.action));row.textContent=`${i+1} · ${g.action.label}`;spells.appendChild(row);}}
  const minY=poseNow?Math.min(...Array.from(poseNow.points.values()).map(p=>screen(treeWorld(p)).y)):200;
  const above=value('spellPlacement')==='above'&&minY>125;spells.className=above?'above':'side';
  if(above&&spells.parentElement!==document.body)document.body.appendChild(spells);else if(!above&&spells.parentElement!==$('selection'))$('selection').insertBefore(spells,$('spellEmpty'));
- $('spellEmpty').hidden=list.length>0;$('spellCount').textContent=`${list.length} available · click a route or press 1–9 before pulling · ${pin?'second hand pinned':'second hand resting'}`;
+ $('spellEmpty').hidden=list.length>0;$('spellCount').textContent=`${list.length} available · ${pin?'second hand pinned':'second hand resting'}`;
  const el=(name:string,attrs:Record<string,string|number>)=>{const n=document.createElementNS('http://www.w3.org/2000/svg',name);for(const [k,v]of Object.entries(attrs))n.setAttribute(k,String(v));guideSvg.appendChild(n);screenGuides.add(name,attrs);return n;};
  for(const [i,g]of list.entries()){const a=anchors(g),color=ruleColor(g.owner,g.action),active=g.action.key===selectedKey,opacity=selectedKey&&!active?.55:.9;
  if(value('guideStyle')==='paths'||(value('guideStyle')==='auto'&&!bodyMode()))el('path',{d:`M ${a.from.x} ${a.from.y} L ${a.to.x} ${a.to.y}`,stroke:color,'stroke-width':active?2.5:1.5,opacity,'stroke-dasharray':i%2?'4 5':'none',fill:'none'});
@@ -303,7 +294,7 @@ addEventListener('keydown',e=>{if(document.body.dataset.sceneEditing==='true')re
  if(key==='h'&&!e.repeat){$('hint').click();return;}
  if(key==='f'&&!e.repeat){if(!bodyMode()||handFocus)togglePin();return;}
  if(!bodyMode()&&['q','e'].includes(key)&&!e.repeat){chooseContact(key==='e'?1:-1);return;}
- if(/^[1-9]$/.test(e.key)&&near&&(!bodyMode()||handFocus)&&!e.repeat){const id=bodyMode()?selected:hoverId??selected;const g=(grip?.options??available(id))[+e.key-1];if(g){e.preventDefault();chooseRoute(g);}return;}
+ if(grip&&/^[1-9]$/.test(e.key)&&grip.progress<.1){grip.intent=grip.options[+e.key-1];grip.chosen=grip.intent;return;}
  if(!bodyMode()&&key==='g'&&!e.repeat){e.preventDefault();if(grip)releaseGrip();else{const p=worldPoint(selected);if(p)beginGrip(selected,screen(p),true);}return;}
  if(e.code==='Space'){e.preventDefault();if(e.repeat)return;if(bodyMode()&&!handFocus){setHandFocus(true);return;}if(!grip){const id=bodyMode()?selected:hoverId??selected,p=worldPoint(id);if(p)beginGrip(id,screen(p),true);}return;}
  if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(key)){e.preventDefault();heldDirections.add(key);

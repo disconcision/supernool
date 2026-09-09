@@ -63,5 +63,3 @@ header.title-revealed #sceneSubtitle{opacity:1;transform:none}
 #audioMute[aria-pressed=true]{background:#e2e7de}
 @media(max-width:760px){#sceneTitleToggle{font-size:10px}}
 @media(prefers-reduced-motion:reduce){header #sceneSubtitle{transition:none}}
-
-#spells button.spell{display:block;width:100%;text-align:left;background:transparent;border-top:0;border-right:0;border-bottom:0;border-radius:3px;cursor:pointer}#spells button.spell:hover,#spells button.spell[aria-pressed="true"]{background:#e9ecdc}#spells button.spell:focus-visible{outline:2px solid var(--spell);outline-offset:2px}
