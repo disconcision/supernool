@@ -15,6 +15,8 @@ import {addTravelHandControl} from './hand-travel';
 import {setupControlReadouts} from './control-readouts';
 import {createMist} from './mist';
 import {fitZoom} from './framing';
+import {trackAt,glideEase} from './drag-tracking';
+import {capturePose,glidePose} from './pose-glide';
 import * as T from 'three';import {createPerformanceStats} from './stats';import {StanceAdjustment} from './stance';import {createRibbon} from './ribbon';import {ScreenGuides} from './guides';import {addBackdrop} from './backdrop';import {makeClearing} from './terrain';import {makeSigil,disposeSigil} from './sigils';import {setupHUD} from './hud';import {createSound} from './sound';import {directionalContact} from './navigation';import {rules,ruleId,ruleColor,Pin,allowsPin,advanceSpring,catchPull} from './interaction';import {createTraveller} from './traveller';import {Gesture,gestures,scoreDrag} from './gestures';import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {Term,Action,fitsScene,initial,walk,count,format,readable,find,actions,replace,solved as matchesGoal,hint} from './algebra';import {Pose,layout,transition} from './layout';import {Options,prepare} from './surface';import {makeShading} from './shading';
 const $=(id:string)=>document.getElementById(id)!,value=(id:string)=>($(id) as HTMLInputElement).value;
@@ -60,7 +62,7 @@ let hostTree=tree,recoveryTree:Term|undefined,hostSpread=1,insideRing=false;
 let rewriteTrace:RewriteRecord[]=[],redoTrace:RewriteRecord[]=[],recoveryTrace:RewriteRecord[]=[];
 function prepareRecovery(){const route=recoveryRoute(tree,rewriteTrace,goalTerm);recoveryTree=route.reduced;recoveryTrace=route.records;}
 let exitAfterSettle=false;
-let animation:{before:Term;after:Term;start:number;kind:string;merge:Record<string,string>;from:number;to:number;duration:number}|undefined,poseNow:Pose|undefined,lastKey='',idCounter=0;
+let animation:{before:Term;after:Term;start:number;kind:string;merge:Record<string,string>;from:number;to:number;duration:number;origin?:Pose}|undefined,poseNow:Pose|undefined,lastKey='',idCounter=0;
 function options():Options{return {...rootOptions(),thickness:+value('thickness'),taper:+value('taper'),bow:+value('bow'),random:+value('random'),twist:+value('twist'),facets:+value('facets'),seed:shapeSeed,blend:+value('blend'),hewn:value('surface')==='hewn',spread};}
 function layoutOptions(){return {spread,seed:shapeSeed,irregularity:+value('irregularity'),height:value('height')};}
 function updateRunes(pose:Pose){runes.children.forEach(disposeSigil);runes.clear();for(const [id,n] of pose.nodes){const p=pose.points.get(id);if(!p)continue;
@@ -118,10 +120,13 @@ function requestPose(now:number){
  const elapsed=animation?Math.min(1,(now-animation.start)/animation.duration):1;
  const u=grip?.chosen?grip.progress:animation?animation.from+(animation.to-animation.from)*elapsed:1,quant=Math.round(u*48)/48;
  const config=layoutOptions(),growth=channels.state==='healthy'?1:channels.state==='recovery'?Math.round(Math.min(1,encounter.sequence.age/encounter.timing.recovery)*480)/480:0,rear=sequenced?Math.round(channels.rear*100)/100:0;
- const key=JSON.stringify([epoch,tree.id,format(tree),grip?.chosen?.action.key,animation?.kind,animation?elapsed===1:false,quant,Math.round(spread*25),config,options(),value('resolution'),sequenced?channels.state:'off',growth,rear,encounter.flow]);
+ const glideTime=trackGlide?Math.min(1,(now-trackGlide.start)/200):1;
+ const key=JSON.stringify([Math.round(glideTime*48),animation?.origin?Math.round(elapsed*48):0,epoch,tree.id,format(tree),grip?.chosen?.action.key,animation?.kind,animation?elapsed===1:false,quant,Math.round(spread*25),config,options(),value('resolution'),sequenced?channels.state:'off',growth,rear,encounter.flow]);
  if(key===lastKey)return;lastKey=key;
  const replay=sequenced&&channels.recovering?replayRecovery(recoveryTrace,hostTree,growth,config,options(),hostSpread,encounter.flow):undefined;
  let pose=replay?replay.pose:sequenced&&channels.state==='release'?layout(recoveryTree??tree,config):grip?.chosen?transition(tree,grip.chosen.after,quant,config,grip.chosen.action.key,grip.chosen.action.merge,options()):animation?transition(animation.before,animation.after,quant,config,animation.kind,animation.merge,options()):layout(tree,config);
+ if(animation?.origin)pose=glidePose(animation.origin,layout(tree,config),glideEase(elapsed),options());
+ else if(trackGlide){pose=glidePose(trackGlide.origin,pose,glideEase(glideTime),options());if(glideTime===1)trackGlide=undefined;}
  if(sequenced&&channels.recovering)pose={...pose,nodes:new Map(walk(hostTree).map(n=>[n.id,n]))};
  if(rear){const raise=(p:T.Vector3)=>new T.Vector3(p.x,p.y*(1+rear),p.z);pose={...pose,points:new Map([...pose.points].map(([id,p])=>[id,raise(p)])),edges:pose.edges.map(e=>({...e,a:raise(e.a),b:raise(e.b),curve:e.curve?raise(e.curve):undefined}))};}
  $('world').dataset.recoveryMove=replay?replay.phase==='rewind'?`Undo ${replay.kind} (${replay.index+1}/${recoveryTrace.length})`:'Return to spatial tree':'';
@@ -140,7 +145,7 @@ function nextClue(){
 }
 function ui(updateMessage=true){const busy=!!animation||!!grip;const done=solved(tree)&&!busy;$('expression').textContent=readable(tree);$('progress').textContent=`${count(tree)} nodes · ${steps} moves · start: ${count(hostTree)} nodes`;$('bar').style.width=Math.min(100,Math.max(0,(count(hostTree)-count(tree))/Math.max(1,count(hostTree)-count(goalTerm))*100))+'%';$('goal').textContent=done?readable(goalTerm)+' · same meaning, less structure.':'Simplify this tree to '+readable(goalTerm)+'.';$('problemNote').textContent=problem.note;problemSelect.disabled=busy||!!pin; $('guideTitle').textContent=done?'Paths opened':'Help';$('approach').hidden=near;$('hint').hidden=!near||done;($('hint') as HTMLButtonElement).disabled=busy||!loaded;
  ($('undo') as HTMLButtonElement).disabled=!history.length||busy;($('redo') as HTMLButtonElement).disabled=!future.length||busy;($('reset') as HTMLButtonElement).disabled=busy;($('settingsButton') as HTMLButtonElement).disabled=busy;
- ($('inputMode') as HTMLSelectElement).disabled=busy;($('dragDerivation') as HTMLSelectElement).disabled=busy;($('pinButton') as HTMLButtonElement).disabled=busy;($('clearPin') as HTMLButtonElement).disabled=busy||!pin;
+ ($('inputMode') as HTMLSelectElement).disabled=busy;($('dragDerivation') as HTMLSelectElement).disabled=busy;($('dragTracking') as HTMLSelectElement).disabled=busy;($('pinButton') as HTMLButtonElement).disabled=busy;($('clearPin') as HTMLButtonElement).disabled=busy||!pin;
  $('pinStatus').textContent=pin?'Holding '+format(find(tree,pin.id)!)+': position and incoming connection fixed.':'Second hand rests. F or Shift-click pins a node.';
  for(const box of document.querySelectorAll<HTMLInputElement>('#ruleList input'))box.disabled=busy;
  $('equippedCount').textContent=`${enabled.size} / ${rules.length} rules equipped`;
@@ -166,7 +171,9 @@ $('sigils').onchange=()=>{if(poseNow)updateRunes(poseNow);};
 $('lighting').onchange=()=>{treeMesh.material=materials[value('lighting') as keyof typeof materials];};
 for(const id of ['surface','resolution','thickness','taper','bow','random','irregularity','twist','facets','blend','spread','height'])$(id).addEventListener('input',()=>{lastKey='';});$('seed').onclick=()=>{shapeSeed++;lastKey='';};
 type ScreenPoint={x:number;y:number};
-type Grip={id:string;options:Gesture[];chosen?:Gesture;intent?:Gesture;progress:number;target:number;velocity:number;ready:boolean;cursorReady:boolean;caught:boolean;cursor:ScreenPoint;feedbackCursor?:ScreenPoint;from:ScreenPoint;keyboard:boolean;body:boolean;avatarStart:T.Vector3;gain:number;zoom:number;anchors:Map<Gesture,{from:ScreenPoint;to:ScreenPoint}>};
+type Grip={id:string;options:Gesture[];moved?:boolean;chosen?:Gesture;intent?:Gesture;progress:number;target:number;velocity:number;ready:boolean;cursorReady:boolean;caught:boolean;cursor:ScreenPoint;feedbackCursor?:ScreenPoint;from:ScreenPoint;keyboard:boolean;body:boolean;avatarStart:T.Vector3;gain:number;zoom:number;anchors:Map<Gesture,{from:ScreenPoint;to:ScreenPoint}>};
+let trackGlide:{origin:Pose;start:number}|undefined;
+const continuousTracking=()=>value('dragTracking')!=='locked';
 let grip:Grip|undefined,spotlight:Gesture|undefined,hoverId:string|undefined,activeHand=0,lastGesture:Gesture|undefined;
 let handFocus=false;const releasedBeforeReuse=new Set<string>(),heldDirections=new Set<string>();
 let pin:Pin|undefined,lingerPoint:T.Vector3|undefined,lastContactAt=0;
@@ -185,10 +192,25 @@ function anchors(g:Gesture){const before=layout(tree,layoutOptions()),after=layo
 function available(id:string){return candidateGestures(tree,id).filter(g=>allowed(g.owner,g.action)).filter(g=>{const a=anchors(g);return Math.hypot(a.to.x-a.from.x,a.to.y-a.from.y)>10;});}
 function togglePin(id=selected){if(grip||animation||!near||spread>.12)return;if(pin?.id===id)pin=undefined;else{const p=poseNow?.points.get(id);if(!p)return;pin={id,position:{x:p.x,y:p.y,z:p.z}};}spotlight=undefined;ui(false);status(pin?'The other hand holds this node fixed. Moves that relocate or reparent it are unavailable.':'Second-hand pin released.');}
 function beginGrip(id:string,at:ScreenPoint,keyboard=false){if(!mayRewrite())return;if(bodyMode()&&!handFocus)return;if(animation||grip||!near||spread>.12||!loaded)return;const list=available(id);selected=id;if(!list.length){ui(false);status('No equipped gesture can move this contact with the current pin. Choose another node, release the pin, or open the noolbox.');return;}
- spotlight=undefined;grip={id,options:list,progress:0,target:0,velocity:0,ready:false,cursorReady:false,caught:false,cursor:at,from:at,keyboard:keyboard||bodyMode(),body:bodyMode(),avatarStart:avatar.position.clone(),gain:+value('pullGain'),zoom:camera.zoom,anchors:new Map(list.map(g=>[g,anchors(g)]))};sound.start();clearMovement();controls.enabled=false;renderer.domElement.style.cursor='grabbing';epoch++;lastKey='';ui(false);status(bodyMode()?'GRIP · Keep Space held. Arrows move the traveller to pull; release Space to settle.':'Hold and pull along a colored path. Return to the source to change direction.');}
+ trackGlide=undefined;spotlight=undefined;grip={id,options:list,progress:0,target:0,velocity:0,ready:false,cursorReady:false,caught:false,cursor:at,from:at,keyboard:keyboard||bodyMode(),body:bodyMode(),avatarStart:avatar.position.clone(),gain:+value('pullGain'),zoom:camera.zoom,anchors:new Map(list.map(g=>[g,anchors(g)]))};sound.start();clearMovement();controls.enabled=false;renderer.domElement.style.cursor='grabbing';epoch++;lastKey='';ui(false);status(bodyMode()?'GRIP · Keep Space held. Arrows move the traveller to pull; release Space to settle.':continuousTracking()?'Hold and move between routes; release nearer a destination to finish.':'Hold and pull along a colored path. Return to the source to change direction.');}
 function updateGrip(at:ScreenPoint){if(!grip)return;const h=grip;h.feedbackCursor=at;
  // Camera fitting must not manufacture body pull or shift a frozen gesture's target.
  if(!h.keyboard){const ratio=h.zoom/camera.zoom;at={x:innerWidth/2+(at.x-innerWidth/2)*ratio,y:innerHeight/2+(at.y-innerHeight/2)*ratio};}
+ if(continuousTracking()){
+  const result=trackAt(h.options.map(g=>({item:g,...h.anchors.get(g)!})),at,h.chosen,value('dragTracking')==='sticky'?3:0,h.intent);
+  if(!result)return;
+  if(result.item!==h.chosen){
+   // Only the display origin changes. Every candidate still starts at grab-time tree.
+   if(poseNow)trackGlide={origin:capturePose(poseNow,options()),start:performance.now()};
+   epoch++;lastKey='';
+  }
+  h.chosen=result.item;h.target=h.progress=result.progress;h.velocity=0;h.moved=h.moved||result.progress>.005;
+  h.ready=h.cursorReady=result.ready;h.caught=false;
+  $('world').dataset.dragRoute=result.item.action.key;$('world').dataset.dragOwner=result.item.owner.id;
+  $('world').dataset.dragProgress=result.progress.toFixed(4);$('world').dataset.dragReady=String(result.ready);
+  status(result.item.action.label+(result.ready?' · Release to apply; keep moving to choose another route.':' · Move toward a destination; release nearer the start to cancel.'));
+  return;
+ }
  const candidates=h.options.map(g=>{const a=h.anchors.get(g)!,score=scoreDrag(a.from,a.to,at);return {g,...score,rank:score.distance+(score.progress<=0?100:0)};}).sort((a,b)=>a.rank-b.rank);
  const best=candidates[0];if(!best)return;
  const chosen=h.caught&&h.chosen?h.chosen:h.intent??(h.chosen&&h.target>.12?h.chosen:best.g);const a=h.anchors.get(chosen)!,result=catchPull(h.caught,a.from,a.to,at),was=h.caught;
@@ -199,10 +221,10 @@ function updateGrip(at:ScreenPoint){if(!grip)return;const h=grip;h.feedbackCurso
  if(h.chosen)status(h.caught?'Ready · release to finish. Move back past halfway to reverse.':h.chosen.instruction+'. '+(h.body?'Move to pull; step back to relax.':'Follow the path; return to reverse.'));
 
 }
-function releaseGrip(allow=true){const h=grip;if(!h)return;const g=h.chosen,commit=allow&&h.ready;if(h.body)clearMovement();grip=undefined;controls.enabled=true;renderer.domElement.style.cursor='grab';epoch++;lastKey='';
+function releaseGrip(allow=true){const h=grip;if(!h)return;const g=h.chosen,commit=allow&&h.ready,origin=continuousTracking()&&poseNow?capturePose(poseNow,options()):undefined;trackGlide=undefined;if(h.body)clearMovement();grip=undefined;controls.enabled=true;renderer.domElement.style.cursor='grab';epoch++;lastKey='';
  sound.finish(!!commit);const p=worldPoint(h.id);if(p)lingerPoint=p;lastContactAt=performance.now();
- if(g&&(commit||h.progress>.005)){lastGesture=g;const before=tree;exitAfterSettle=!!commit&&!solved(before)&&solved(g.after);if(commit){rewriteTrace.push({before,after:g.after,kind:g.action.key,merge:{...g.action.merge}});redoTrace=[];history.push({tree,steps});future=[];tree=g.after;steps++;hoverId=undefined;selected=find(tree,g.gripId)?g.gripId:g.action.result.id;spotlight=undefined;}
- animation={before,after:g.after,kind:g.action.key,merge:g.action.merge??{},start:performance.now(),from:h.progress,to:commit?1:0,duration:commit?Math.max(180,(1-h.progress)*500):350};
+ if(g&&(commit||h.progress>.005||(origin&&h.moved))){lastGesture=g;const before=tree;exitAfterSettle=!!commit&&!solved(before)&&solved(g.after);if(commit){rewriteTrace.push({before,after:g.after,kind:g.action.key,merge:{...g.action.merge}});redoTrace=[];history.push({tree,steps});future=[];tree=g.after;steps++;hoverId=undefined;selected=find(tree,g.gripId)?g.gripId:g.action.result.id;spotlight=undefined;}
+ animation={before,after:g.after,kind:g.action.key,merge:g.action.merge??{},start:performance.now(),from:h.progress,to:commit?1:0,duration:origin?200:commit?Math.max(180,(1-h.progress)*500):350,origin};
  }else lastGesture=undefined;ui(false);status(commit?'The rewrite settles under your hands.':'Released without changing the expression.');}
 function chooseContact(offset:number){if(grip||animation||!near)return;const nodes=walk(tree);const i=nodes.findIndex(n=>n.id===selected);selected=nodes[(i+offset+nodes.length)%nodes.length].id;hoverId=undefined;spotlight=undefined;lingerPoint=worldPoint(selected);lastContactAt=performance.now();ui(false);}
 // Do not carry a held walking key across walk / hand / pull transitions.
@@ -222,20 +244,20 @@ function drawGuides(){
  const validHover=hoverId&&find(tree,hoverId)?hoverId:undefined;
  const focus=grip?.id??spotlight?.gripId??(bodyMode()?selected:validHover??selected);
  const list=near&&(!bodyMode()||handFocus)?(grip?.options??available(focus)):[];guideSvg.replaceChildren();screenGuides.begin();
- const selectedKey=grip?.chosen?.action.key??spotlight?.action.key;
- const signature=JSON.stringify([list.map(g=>[g.owner.id,g.action.key]),selectedKey,grip?.ready,bodyMode(),pin?.id,value('spellPlacement')]);
- if(spells.dataset.signature!==signature){spells.dataset.signature=signature;spells.replaceChildren();for(const [i,g]of list.entries()){const row=document.createElement('div');row.className='spell'+(g.action.key===selectedKey?' active':'');row.style.setProperty('--spell',ruleColor(g.owner,g.action));row.textContent=`${i+1} · ${g.action.label}`;spells.appendChild(row);}}
+ const selectedGesture=grip?.chosen??spotlight,selectedKey=selectedGesture?.action.key;
+ const signature=JSON.stringify([list.map(g=>[g.owner.id,g.action.key]),selectedKey,selectedGesture?.owner.id,grip?.ready,bodyMode(),pin?.id,value('spellPlacement')]);
+ if(spells.dataset.signature!==signature){spells.dataset.signature=signature;spells.replaceChildren();for(const [i,g]of list.entries()){const row=document.createElement('div');row.className='spell'+(g===selectedGesture?' active':'');row.style.setProperty('--spell',ruleColor(g.owner,g.action));row.textContent=`${i+1} · ${g.action.label}`;spells.appendChild(row);}}
  const minY=poseNow?Math.min(...Array.from(poseNow.points.values()).map(p=>screen(treeWorld(p)).y)):200;
  const above=value('spellPlacement')==='above'&&minY>125;spells.className=above?'above':'side';
  if(above&&spells.parentElement!==document.body)document.body.appendChild(spells);else if(!above&&spells.parentElement!==$('selection'))$('selection').insertBefore(spells,$('spellEmpty'));
  $('spellEmpty').hidden=list.length>0;$('spellCount').textContent=`${list.length} available · ${pin?'second hand pinned':'second hand resting'}`;
  const el=(name:string,attrs:Record<string,string|number>)=>{const n=document.createElementNS('http://www.w3.org/2000/svg',name);for(const [k,v]of Object.entries(attrs))n.setAttribute(k,String(v));guideSvg.appendChild(n);screenGuides.add(name,attrs);return n;};
- for(const [i,g]of list.entries()){const a=anchors(g),color=ruleColor(g.owner,g.action),active=g.action.key===selectedKey,opacity=selectedKey&&!active?.55:.9;
+ for(const [i,g]of list.entries()){const frozen=grip?.anchors.get(g),ratio=grip?camera.zoom/grip.zoom:1;const project=(p:ScreenPoint)=>({x:innerWidth/2+(p.x-innerWidth/2)*ratio,y:innerHeight/2+(p.y-innerHeight/2)*ratio});const a=frozen?{from:project(frozen.from),to:project(frozen.to)}:anchors(g),color=ruleColor(g.owner,g.action),active=g===selectedGesture,opacity=selectedKey&&!active?.55:.9;
  if(value('guideStyle')==='paths'||(value('guideStyle')==='auto'&&!bodyMode()))el('path',{d:`M ${a.from.x} ${a.from.y} L ${a.to.x} ${a.to.y}`,stroke:color,'stroke-width':active?2.5:1.5,opacity,'stroke-dasharray':i%2?'4 5':'none',fill:'none'});
- el('circle',{'data-role':'destination','data-rule':g.action.key,cx:a.to.x,cy:a.to.y,r:active&&grip?.ready?8:6,fill:color,opacity});
+ el('circle',{'data-role':'destination','data-rule':g.action.key,'data-owner':g.owner.id,'data-active':String(active),cx:a.to.x,cy:a.to.y,r:active&&grip?.ready?8:6,fill:color,opacity});
  if(value('guideStyle')==='branches'&&poseNow){const root=find(tree,g.gripId);const ids=new Set(root?walk(root).map(n=>n.id):[]);for(const edge of poseNow.edges)if(ids.has(edge.id)){const x=screen(treeWorld(edge.a)),y=screen(treeWorld(edge.b));el('path',{d:`M ${x.x} ${x.y} L ${y.x} ${y.y}`,stroke:color,'stroke-width':3,opacity:active?.6:.2,fill:'none'});}}
  }
- if(grip?.chosen){$('catchFeedback').textContent=grip.caught?'Ready · release to finish':'Pull to reshape · move back to reverse';$('catchFeedback').style.color=grip.caught?'#467035':ruleColor(grip.chosen.owner,grip.chosen.action);$('catchFeedback').hidden=false;
+ if(grip?.chosen){$('catchFeedback').textContent=grip.ready?'Ready · release to finish':continuousTracking()?'Move between targets to choose a rewrite':'Pull to reshape · move back to reverse';$('catchFeedback').style.color=grip.ready?'#467035':ruleColor(grip.chosen.owner,grip.chosen.action);$('catchFeedback').hidden=false;
  }else $('catchFeedback').hidden=true;
  if(list.length){const a=anchors(list[0]);el('circle',{'data-role':'source',cx:a.from.x,cy:a.from.y,r:2,fill:'#f8e6a2',stroke:'#4c6554','stroke-width':1});}
  if(pin){const p=worldPoint(pin.id);if(p){const a=screen(p);el('path',{d:`M ${a.x-5} ${a.y+10} L ${a.x+5} ${a.y+10}`,stroke:'#45665d','stroke-width':3});}}
@@ -281,7 +303,7 @@ renderer.domElement.addEventListener('pointerup',e=>{
  if(e.pointerId!==activePointer||e.button!==0)return;
  if(freeStudyCamera||document.body.dataset.sceneEditing==='true'){cancelPointer();return;}
  activePointer=undefined;
- if(grip&&!grip.keyboard)releaseGrip();
+ if(grip&&!grip.keyboard){updateGrip({x:e.clientX,y:e.clientY});releaseGrip();}
  else if(groundDown){pick(e);const p=ray.ray.intersectPlane(plane,new T.Vector3());if(p&&Math.hypot(p.x,p.z)<14)navTarget=p.setY(0);}
  groundDown=undefined;
  if(e.pointerType==='touch')hoverId=undefined;
@@ -298,7 +320,7 @@ addEventListener('keydown',e=>{if(document.body.dataset.sceneEditing==='true')re
  if(key==='h'&&!e.repeat){$('hint').click();return;}
  if(key==='f'&&!e.repeat){if(!bodyMode()||handFocus)togglePin();return;}
  if(!bodyMode()&&['q','e'].includes(key)&&!e.repeat){chooseContact(key==='e'?1:-1);return;}
- if(grip&&/^[1-9]$/.test(e.key)&&grip.progress<.1){grip.intent=grip.options[+e.key-1];grip.chosen=grip.intent;return;}
+ if(grip&&/^[1-9]$/.test(e.key)&&grip.progress<.1){grip.intent=grip.options[+e.key-1];if(!continuousTracking())grip.chosen=grip.intent;return;}
  if(!bodyMode()&&key==='g'&&!e.repeat){e.preventDefault();if(grip)releaseGrip();else{const p=worldPoint(selected);if(p)beginGrip(selected,screen(p),true);}return;}
  if(e.code==='Space'){e.preventDefault();if(e.repeat)return;if(bodyMode()&&!handFocus){setHandFocus(true);return;}if(!grip){const id=bodyMode()?selected:hoverId??selected,p=worldPoint(id);if(p)beginGrip(id,screen(p),true);}return;}
  if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(key)){e.preventDefault();heldDirections.add(key);
@@ -328,6 +350,7 @@ function updateHands(now:number,dt:number,moving:boolean){const g=grip?.chosen??
 for(const rule of rules){const label=document.createElement('label');label.className='rule';const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=true;checkbox.dataset.rule=rule.id;checkbox.onchange=()=>{if(checkbox.checked)enabled.add(rule.id);else enabled.delete(rule.id);spotlight=undefined;ui(false);};const text=document.createElement('span');text.textContent=rule.name;const small=document.createElement('small');small.textContent=rule.equation;text.append(small);label.append(checkbox,text);label.style.setProperty('--rule',rule.color);$('ruleList').append(label);}
 $('toolboxButton').onclick=()=>$('toolbox').hidden=!$('toolbox').hidden;$('closeToolbox').onclick=()=>$('toolbox').hidden=true;
 $('pinButton').onclick=()=>togglePin();$('clearPin').onclick=()=>{pin=undefined;spotlight=undefined;ui(false);};
+$('dragTracking').onchange=()=>{trackGlide=undefined;status(continuousTracking()?'Continuous route choice: no catch; release nearer a destination to apply.':'Lock and catch checkpoint restored.');};
 $('dragDerivation').onchange=()=>{spotlight=undefined;pin=undefined;ui(false);drawGuides();status(value('dragDerivation')==='derived'?'Derived contacts: hold a surviving branch; dots show its actual endpoint.':'Authored contacts restored.');};
 $('inputMode').onchange=()=>{cancelPointer();releaseGrip(false);keys.clear();walkVelocity.setScalar(0);hoverId=undefined;spotlight=undefined;handFocus=false;lingerPoint=undefined;pin=undefined;clearMovement();ui(false);renderer.domElement.focus();};
 ($('inputMode') as HTMLSelectElement).value=requestedInputMode()??(touchPrimary()?'mouse':'body');
@@ -353,7 +376,7 @@ function tick(now:number){requestAnimationFrame(tick);const frameMs=now-last;con
  const stanceContact=bodyMode()?selected:hoverId;
  const stanceDelta=stance.step(now,dt,document.body.dataset.sceneEditing!=='true'&&value('stanceAssist')==='gentle'&&(bodyMode()?handFocus:!!hoverId)&&near&&spread<.12&&!grip&&!animation&&!pin&&!keys.size&&!navTarget,stanceContact??'',stanceContact?worldPoint(stanceContact):undefined,avatar.position,treeOrigin,right,p=>Math.hypot(p.x,p.z)<14.5&&!obstacles.some(o=>Math.hypot(p.x-o.x,p.z-o.z)<o.r+.3));
  if(stanceDelta.lengthSq()>0){avatar.position.add(stanceDelta);walkVelocity.copy(stanceDelta).divideScalar(Math.max(dt,.001));moving=true;stanceMoving=true;}
- if(grip?.keyboard){if(grip.body){const d=avatar.position.clone().sub(grip.avatarStart);updateGrip({x:grip.from.x+d.dot(right)*grip.gain,y:grip.from.y-d.dot(forward)*grip.gain});const spring=advanceSpring({value:grip.progress,velocity:grip.velocity},grip.target,dt,+value('mass'));grip.progress=spring.value;grip.velocity=spring.velocity;grip.ready=grip.caught;}
+ if(grip?.keyboard){if(grip.body){const d=avatar.position.clone().sub(grip.avatarStart);updateGrip({x:grip.from.x+d.dot(right)*grip.gain,y:grip.from.y-d.dot(forward)*grip.gain});if(!continuousTracking()){const spring=advanceSpring({value:grip.progress,velocity:grip.velocity},grip.target,dt,+value('mass'));grip.progress=spring.value;grip.velocity=spring.velocity;grip.ready=grip.caught;}}
  else{const dx=(keys.has('arrowright')?1:0)-(keys.has('arrowleft')?1:0),dy=(keys.has('arrowdown')?1:0)-(keys.has('arrowup')?1:0);grip.cursor.x+=dx*dt*190;grip.cursor.y+=dy*dt*190;const here=screen(avatar.position),was=screen(grip.avatarStart);updateGrip({x:grip.cursor.x+(here.x-was.x)*2,y:grip.cursor.y+(here.y-was.y)*2});}}
  // Enter near the tree, then keep the whole interaction active until explicitly
  // leaving hand control. Distance cannot interrupt the interval between pulls.
@@ -434,7 +457,7 @@ burntBark.mount($('settings'));
 mountRootControls($('settings'));
 function jumpEncounter(state:EncounterState){
  // Developer previews share the lifecycle, but never mark the equation solved.
- if(grip)releaseGrip(false);animation=undefined;exitAfterSettle=false;handFocus=false;hoverId=undefined;lingerPoint=undefined;pin=undefined;spotlight=undefined;clearMovement();controls.enabled=true;
+ if(grip)releaseGrip(false);animation=undefined;trackGlide=undefined;exitAfterSettle=false;handFocus=false;hoverId=undefined;lingerPoint=undefined;pin=undefined;spotlight=undefined;clearMovement();controls.enabled=true;
  if(state==='dormant'&&encounter.sequence.automatic){tree=instantiate(problem.start);hostTree=tree;rewriteTrace=[];redoTrace=[];recoveryTrace=[];history=[];future=[];steps=0;selected=tree.id;recoveryTree=undefined;avatar.position.set(0,0,9);insideRing=false;hostSpread=+value('spread');}
  if(['release','recovery','healthy'].includes(state))prepareRecovery();
  encounter.sequence.jump(state);if(state==='dormant'||state==='healthy')spread=hostSpread;if(state==='release')spread=0;
@@ -472,7 +495,7 @@ return mountSceneEditor(scene,camera,renderer,controls,{
 });
 
 }
-setupSettings(inhabitedStudy?'clearing-019':'clearing-018',$('settings'),'.dock input,.dock select',true).finally(async()=>{const comparison=new URLSearchParams(location.search).get('drag');if(comparison==='derived'||comparison==='authored'){($('dragDerivation') as HTMLSelectElement).value=comparison;$('dragDerivation').dispatchEvent(new Event('change'));}sceneEditor=createEditor();await sceneEditor.ready;preferencesReady=true;});
+setupSettings(inhabitedStudy?'clearing-019':'clearing-018',$('settings'),'.dock input,.dock select',true).finally(async()=>{const comparison=new URLSearchParams(location.search).get('drag');if(comparison==='derived'||comparison==='authored'){($('dragDerivation') as HTMLSelectElement).value=comparison;$('dragDerivation').dispatchEvent(new Event('change'));}const tracking=new URLSearchParams(location.search).get('tracking');if(tracking&&['locked','glide','sticky'].includes(tracking))($('dragTracking') as HTMLSelectElement).value=tracking;sceneEditor=createEditor();await sceneEditor.ready;preferencesReady=true;});
 ui();requestAnimationFrame(tick);
 
 // Read-only integration diagnostics; rendering uses the displayed worker pose.

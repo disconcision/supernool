@@ -13,3 +13,7 @@ Use `npm run check`, `npm test`, and checks appropriate to the change. Browser p
 Port 3100 is live gameplay; 3101 is its frozen preview. Both now include the full scenery editor at **Inspect → Scene → Edit scenery**. Both save immutable scene versions and default pointers to this checkout’s `scenes/` directory. Frozen rendering stays fixed until explicitly rebuilt/restarted; saved scene documents are shared live. Use `?scene=<key>` to open another scene definition.
 
 The separate `../supernool-scene-editor` worktree on `codex/scene-editor`, port 3102, is an older editor checkpoint. Its editor was merged here; do not treat it as the only place rock controls exist or reuse its port for another service.
+
+## Interaction knowledge
+
+Before changing dragging, route scoring, correspondence or preview animation, read `design/knowledge/dragology.md`. It records the upstream algebra example, Nool's missing-glide diagnosis, and the current comparison's invariants. The topic index is `design/knowledge/README.md`; retain new findings there or in linked topic notes, distinguishing experiments from accepted decisions.

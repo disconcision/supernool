@@ -113,3 +113,7 @@ Judge: accidental selections, repeated attempts, rule disabling, direction separ
 ### Validation of this pass
 
 Typecheck and the full core suite pass. New checks cover 440 initial derived candidates across the 15 presets and replay a solving route for every preset, plus retained descendant identities, carried-interior suppression and endpoint agreement. Live in-app-browser play completed Hollow Crown in four mouse drags and Carry a whole subtree in two moves (factor via the existing sticky G/arrow cursor, arithmetic via mouse); partial factor states were inspected. Chrome was not available through the browser tool. A full body-pull playthrough was not repeated, so its feel remains specifically unvalidated even though it shares the candidate/scoring layer. No new mechanism beyond derived contacts was enabled.
+
+## Dragology research and first continuity comparison
+
+See [the durable Dragology topic note](knowledge/dragology.md) for primary sources and the distinction between multi-candidate spatial interpolation and nearest-track selection with temporal display glide. The user approved the latter as the first experiment. Encounter → Route tracking now offers continuous selection, slight stickiness, and the prior lock/catch. Contacts remain independently selectable as authored or derived. Late switching no longer requires returning below 12% in continuous modes; release uses the selected track's nearest endpoint. This does not resolve identical destinations, introduce curve-shape recognition, or implement all the other mechanisms above.
