@@ -1,7 +1,7 @@
 {
   "app": "nool",
   "branch": "mobile",
-  "revision": "acdb3813f6df91e9c561bc440a666f3176fa1cf7",
+  "revision": "4fc864bbbe5805f416a1ab703ab9276f1ef024fd",
   "prefix": "classic/mobile",
   "files": [
     "classic/mobile/assets/blend-4abbe854.svg",
@@ -12,7 +12,7 @@
     "classic/mobile/assets/eye-open-dc29c2a1.svg",
     "classic/mobile/assets/fan-c81002f8.svg",
     "classic/mobile/assets/hpost-f2312814.svg",
-    "classic/mobile/assets/index-dc2984be.js",
+    "classic/mobile/assets/index-eafc078e.js",
     "classic/mobile/assets/index-f6608c8e.css",
     "classic/mobile/assets/klohk-3322a8ac.m4a",
     "classic/mobile/assets/magnet-8c0bb1a5.svg",
