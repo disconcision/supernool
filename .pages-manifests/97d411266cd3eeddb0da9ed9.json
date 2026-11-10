@@ -1,7 +1,7 @@
 {
   "app": "nool",
   "branch": "main",
-  "revision": "4fc864bbbe5805f416a1ab703ab9276f1ef024fd",
+  "revision": "3c3c50518d646eb7235139a2e03814a78b114998",
   "prefix": "classic",
   "files": [
     "classic/assets/blend-4abbe854.svg",
@@ -11,9 +11,10 @@
     "classic/assets/eye-closed-ed9bf34e.svg",
     "classic/assets/eye-open-dc29c2a1.svg",
     "classic/assets/fan-c81002f8.svg",
+    "classic/assets/flask-97cf4089.svg",
     "classic/assets/hpost-f2312814.svg",
-    "classic/assets/index-eafc078e.js",
-    "classic/assets/index-f6608c8e.css",
+    "classic/assets/index-c8177608.js",
+    "classic/assets/index-e1ecaba2.css",
     "classic/assets/klohk-3322a8ac.m4a",
     "classic/assets/magnet-8c0bb1a5.svg",
     "classic/assets/motion-half-750c7d32.svg",
