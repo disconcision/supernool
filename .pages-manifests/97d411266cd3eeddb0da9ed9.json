@@ -1,7 +1,7 @@
 {
   "app": "nool",
   "branch": "main",
-  "revision": "3c3c50518d646eb7235139a2e03814a78b114998",
+  "revision": "0d80181111cd2ac8e8042215df62ac76a42093f8",
   "prefix": "classic",
   "files": [
     "classic/assets/blend-4abbe854.svg",
@@ -13,7 +13,7 @@
     "classic/assets/fan-c81002f8.svg",
     "classic/assets/flask-97cf4089.svg",
     "classic/assets/hpost-f2312814.svg",
-    "classic/assets/index-c8177608.js",
+    "classic/assets/index-c05dc71b.js",
     "classic/assets/index-e1ecaba2.css",
     "classic/assets/klohk-3322a8ac.m4a",
     "classic/assets/magnet-8c0bb1a5.svg",
@@ -41,8 +41,8 @@
     "classic/assets/ps-toolbar-8cf9e3ff.png",
     "classic/assets/pshew-f91bbecd.m4a",
     "classic/assets/shwo-ph-out-d527e7c9.wav",
-    "classic/assets/sound-off-d4fbf1ed.svg",
-    "classic/assets/sound-on-73c398c1.svg",
+    "classic/assets/sound-off-bf0ab387.svg",
+    "classic/assets/sound-on-d6e56b99.svg",
     "classic/assets/tiup-comm-out-01520652.wav",
     "classic/assets/vflat-174d4d05.svg",
     "classic/assets/x-daf0b983.svg",
